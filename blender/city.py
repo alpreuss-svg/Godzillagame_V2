@@ -406,11 +406,9 @@ def build():
     return objs
 
 
-def layout_preview(objs):
-    x = 0
-    for o in objs:
-        s = o.get('size', [20, 20, 5])
-        o.location = (x + s[0] / 2, 0, 0)
-        x += s[0] + 8
+def layout_preview(objs, cols=6, cell=72):
+    """Raster mit den hohen Türmen hinten, damit die Kamera schräg von vorn alles sieht."""
+    for i, o in enumerate(objs):
+        o.location = ((i % cols) * cell, -(i // cols) * cell, 0)
         if o.name == 'B_rubble':
             o.scale = (30, 30, 30)

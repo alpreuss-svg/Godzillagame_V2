@@ -21,10 +21,19 @@ if 'godzilla' in WHAT:
     arm, ob = godzilla.build()
     common.export_glb(os.path.join(OUT, 'godzilla.glb'), [arm, ob], anim=True)
     if PREVIEW:
-        common.preview(os.path.join(PRE, 'godzilla_front.png'), target=(0, 0, 40), dist=210, elev=12, azim=-70)
-        common.preview(os.path.join(PRE, 'godzilla_side.png'), target=(0, 25, 35), dist=240, elev=8, azim=0)
-        common.preview(os.path.join(PRE, 'godzilla_top.png'), target=(0, 10, 40), dist=260, elev=55, azim=-120)
-        common.preview(os.path.join(PRE, 'godzilla_head.png'), target=(0, -14, 72), dist=40, elev=8, azim=-60)
+        common.preview(os.path.join(PRE, 'godzilla_front.png'), target=(0, 0, 40), dist=210, elev=12, azim=-70, color='VERTEX')
+        common.preview(os.path.join(PRE, 'godzilla_side.png'), target=(0, 25, 35), dist=240, elev=8, azim=0, color='VERTEX')
+        common.preview(os.path.join(PRE, 'godzilla_top.png'), target=(0, 10, 40), dist=260, elev=55, azim=-120, color='VERTEX')
+        common.preview(os.path.join(PRE, 'godzilla_head.png'), target=(0, -14, 72), dist=40, elev=8, azim=-60, color='VERTEX')
+        common.preview(os.path.join(PRE, 'godzilla_mouth.png'), target=(0, -17, 72.5), dist=26, elev=4, azim=-90, color='VERTEX')
+        # Atemstrahl-Pose (Maul weit offen) zur Kontrolle von Kiefer und Gewichtung
+        act = bpy.data.actions['breath']
+        arm.animation_data.action = act
+        if hasattr(arm.animation_data, 'action_slot') and act.slots:
+            arm.animation_data.action_slot = act.slots[0]
+        bpy.context.scene.frame_set(20)
+        common.preview(os.path.join(PRE, 'godzilla_breath.png'), target=(0, -16, 70), dist=60, elev=6, azim=-40, color='VERTEX')
+        arm.animation_data.action = None
 
 if 'city' in WHAT:
     common.reset()
@@ -32,7 +41,9 @@ if 'city' in WHAT:
     common.export_glb(os.path.join(OUT, 'city.glb'), objs)
     if PREVIEW:
         city.layout_preview(objs)
-        common.preview(os.path.join(PRE, 'city.png'), target=(120, 60, 20), dist=420, elev=28, azim=-110)
+        cam = dict(target=(180, -60, 30), dist=560, elev=30, azim=-105, lens=45)
+        common.preview(os.path.join(PRE, 'city.png'), color='TEXTURE', **cam)
+        common.night_preview(os.path.join(PRE, 'city_night.png'), **cam)
 
 if 'units' in WHAT:
     common.reset()
@@ -41,3 +52,6 @@ if 'units' in WHAT:
     if PREVIEW:
         units.layout_preview(objs)
         common.preview(os.path.join(PRE, 'units.png'), target=(40, 0, 5), dist=150, elev=25, azim=-100)
+        common.preview(os.path.join(PRE, 'units_military.png'), target=(14, -8, 2), dist=48, elev=28, azim=-110)
+        common.preview(os.path.join(PRE, 'units_superx.png'), target=next(o for o in objs if o.name == 'U_superx').location[:],
+                       dist=55, elev=25, azim=-130)

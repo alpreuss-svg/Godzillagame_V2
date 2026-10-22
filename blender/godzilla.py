@@ -1,4 +1,4 @@
-"""Heisei-Godzilla (1984er Gestalt): Körper per Skin-Modifier aus einem Skelettgraph,
+"""Heisei-Godzilla (1984er Gestalt): Körper aus Metaballs entlang eines Skelettgraphen,
 Hautrelief per Rauschen, Rückenplatten in drei Reihen, eigenes Rig mit Gewichten und Animationen.
 Blender-Koordinaten: Z oben, Godzilla schaut nach -Y (wird im glTF zu +Z)."""
 import bpy, bmesh, math, random
@@ -105,7 +105,9 @@ def build_body(target_tris=26000):
         ell((sx * 3.6, -12.2, 72.6), (2.0, 3.0, 2.4))
     ell((0, -15.8, 71.6), (3.1, 4.4, 1.35), rot=(-4, 0, 0))
     ell((0, -11.8, 71.6), (3.6, 2.6, 1.9))
-    ell((0, -17.2, 72.85), (3.8, 4.6, 0.5), rot=(-4, 0, 0), neg=True)
+    # Maulhöhle bis zu den Mundwinkeln, damit der Kiefer sich öffnen kann und Zähne Platz haben
+    ell((0, -17.0, 72.85), (3.6, 5.4, 0.85), rot=(-4, 0, 0), neg=True)
+    ell((0, -13.6, 72.5), (2.9, 3.0, 0.7), rot=(-4, 0, 0), neg=True)
     # Brust und Oberschenkel kräftiger
     for sx in (1, -1):
         ell((sx * 5.0, -7.5, 51), (5.0, 3.0, 5.5))
@@ -249,19 +251,34 @@ def build():
             extra[v] = (bone, col)
 
     ivory = V((0.62, 0.58, 0.48))
-    # --- Zähne entlang der Kieferlinie
-    for i in range(9):
-        y = -13.2 - i * 0.72
+    # --- Zähne in der Maulhöhle: senkrechter Strahl von oben durch den Kopf, Höhle = Gaumen (Normale nach
+    # unten) direkt gefolgt vom Unterkiefer (Normale nach oben). Zahnlänge richtet sich nach der Höhlenhöhe.
+    def cavity(x, y):
+        z, prev = 80.0, None
+        while True:
+            h = bvh.ray_cast(V((x, y, z)), V((0, 0, -1)), z - 66)
+            if h[0] is None:
+                return None
+            if prev is not None and prev[1].z < -0.3 and h[1].z > 0.3 and 71 < h[0].z < 74.5:
+                return prev[0], h[0]
+            prev, z = h, h[0].z - 0.01
+
+    nt = [0, 0]
+    for i in range(8):
+        y = -15.3 - i * 0.6
         for sx in (1, -1):
-            xo = sx * (2.6 - i * 0.16)
-            hit = bvh.ray_cast(V((xo, y, 72.85)), V((0, 0, 1)), 2.2)
-            if hit[0] is not None:
-                vs = add_cone(bm, hit[0] + V((0, 0, 0.15)), V((0, -0.15, -1)), 0.32, 0.9 + 0.25 * (i % 2), 4)
-                tag(vs, 'head', ivory)
-            hit = bvh.ray_cast(V((xo * 0.8, y, 72.85)), V((0, 0, -1)), 2.2)
-            if hit[0] is not None and y > -18.2:
-                vs = add_cone(bm, hit[0] - V((0, 0, 0.15)), V((0, -0.15, 1)), 0.28, 0.75, 4)
-                tag(vs, 'jaw', ivory)
+            xo = sx * (2.5 - i * 0.14)
+            cav = cavity(xo, y)
+            if cav is None:
+                continue
+            top, bot = cav
+            gap = top.z - bot.z
+            vs = add_cone(bm, top + V((0, 0, 0.15)), V((0, -0.15, -1)), 0.3, min(0.9 + 0.25 * (i % 2), gap * 0.75), 4)
+            tag(vs, 'head', ivory); nt[0] += 1
+            if i < 7:
+                vs = add_cone(bm, bot - V((0, 0, 0.15)), V((0, -0.15, 1)), 0.26, min(0.75, gap * 0.55), 4)
+                tag(vs, 'jaw', ivory); nt[1] += 1
+    print('Zähne oben/unten:', *nt)
     # --- Augen (klein, bernsteinfarben, unter schwerem Brauenwulst)
     eye = V((0.55, 0.32, 0.06))
     for sx in (1, -1):

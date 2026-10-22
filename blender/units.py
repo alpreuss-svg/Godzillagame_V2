@@ -208,11 +208,18 @@ def build():
     return objs
 
 
+PROPS = ('U_tree', 'U_lamp', 'U_pole', 'U_debris0', 'U_debris1', 'U_debris2')
+
+
 def layout_preview(objs):
-    x = 0
+    """Fahrzeuge in einer Reihe, Requisiten davor, Frachter dahinter."""
+    x = xp = 0
     for o in objs:
         w = max(4, o.dimensions.x)
-        o.location = (x + w / 2, 0, 0 if o.name != 'U_superx' else 6)
         if o.name == 'U_ship':
-            o.location = (x, 80, 0)
-        x += w + 4
+            o.location = (60, 80, 0)
+        elif o.name in PROPS:
+            o.location = (xp, -22, 0); xp += 8
+        else:
+            o.location = (x + w / 2, 0, 0 if o.name != 'U_superx' else 6)
+            x += w + 4

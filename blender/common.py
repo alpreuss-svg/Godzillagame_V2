@@ -53,6 +53,7 @@ def material(name, color=(0.5, 0.5, 0.5), rough=0.8, metal=0.0, emit=None, emit_
     bsdf = nt.nodes.get('Principled BSDF')
     lin = list(srgb_to_lin(color)) + [1.0]
     bsdf.inputs['Base Color'].default_value = lin
+    m.diffuse_color = lin   # Viewport-/Workbench-Farbe für die Vorschau
     bsdf.inputs['Roughness'].default_value = rough
     bsdf.inputs['Metallic'].default_value = metal
     if img is not None:
@@ -90,17 +91,11 @@ def export_glb(path, objs, anim=False):
     print('exportiert:', path, os.path.getsize(path) // 1024, 'KB')
 
 
-def preview(path, target=(0, 0, 40), dist=200, elev=20, azim=-60, lens=50, size=(900, 700)):
-    """Schnelle Workbench-Vorschau zur Kontrolle der Modelle."""
+
+def _render_cam(path, target=(0, 0, 40), dist=200, elev=20, azim=-60, lens=50, size=(900, 700)):
     s = bpy.context.scene
-    s.render.engine = 'BLENDER_WORKBENCH'
-    sh = s.display.shading
-    sh.light = 'STUDIO'; sh.color_type = 'MATERIAL' if not any(m.name == 'GZ_Body' for m in bpy.data.materials) else 'VERTEX'
-    sh.show_cavity = True; sh.cavity_type = 'BOTH'; sh.show_shadows = True
     s.render.resolution_x, s.render.resolution_y = size
     s.render.film_transparent = False
-    if s.world is None:
-        s.world = bpy.data.worlds.new('W')
     cam = bpy.data.cameras.new('cam'); cam.lens = lens; cam.clip_end = 5000
     co = bpy.data.objects.new('cam', cam); link(co)
     t = Vector(target)
@@ -111,3 +106,31 @@ def preview(path, target=(0, 0, 40), dist=200, elev=20, azim=-60, lens=50, size=
     s.render.filepath = path
     bpy.ops.render.render(write_still=True)
     bpy.data.objects.remove(co)
+
+
+def preview(path, color='MATERIAL', **cam):
+    """Schnelle Workbench-Vorschau zur Kontrolle der Modelle. color: MATERIAL, TEXTURE oder VERTEX."""
+    s = bpy.context.scene
+    s.render.engine = 'BLENDER_WORKBENCH'
+    sh = s.display.shading
+    sh.light = 'STUDIO'; sh.color_type = color
+    sh.show_cavity = True; sh.cavity_type = 'BOTH'; sh.show_shadows = True
+    if s.world is None:
+        s.world = bpy.data.worlds.new('W')
+    _render_cam(path, **cam)
+
+
+def night_preview(path, **cam):
+    """EEVEE-Nachtansicht: fast schwarze Welt, schwaches Mondlicht – zeigt die Emission (Fenster, Neon)."""
+    s = bpy.context.scene
+    s.world = s.world or bpy.data.worlds.new('W')
+    s.world.use_nodes = True
+    s.world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.004, 0.005, 0.009, 1)
+    sun = link(bpy.data.objects.new('moon', bpy.data.lights.new('moon', 'SUN')))
+    sun.data.energy = 0.25; sun.data.color = (0.6, 0.7, 1.0)
+    sun.rotation_euler = (math.radians(50), 0, math.radians(30))
+    engines = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items]
+    s.render.engine = next(e for e in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT') if e in engines)
+    s.view_settings.view_transform = 'AgX'
+    _render_cam(path, **cam)
+    bpy.data.objects.remove(sun)
