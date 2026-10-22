@@ -3,7 +3,7 @@ Hochhäuser in Shinjuku, Büros, Danchi-Wohnblöcke, Läden mit Leuchtreklame, H
 Ursprung jedes Gebäudes = Mitte der Grundfläche am Boden. Ein Objekt pro Gebäudetyp."""
 import bpy, bmesh, math
 import numpy as np
-from mathutils import Vector
+from mathutils import Vector, Matrix, Euler
 from common import link, material, make_image, obj_from_bm
 
 V = Vector
@@ -180,22 +180,28 @@ def make_materials():
 
 
 # ---------------- Geometrie ----------------
+CELL = 12.0   # m: Wände werden in ein Raster dieser Größe geteilt, damit der Spiel-Shader sie eindellen/knicken kann
+
+
 def prism(bm, uv, poly, z0, z1, wall, roof, tile, uoff=0.0, voff=0.0, top=True):
     tw, th = tile
     n = len(poly)
-    bot = [bm.verts.new((p[0], p[1], z0)) for p in poly]
-    tp = [bm.verts.new((p[0], p[1], z1)) for p in poly]
+    nz = max(1, math.ceil((z1 - z0) / CELL - 0.01))
+    zs = [z0 + (z1 - z0) * k / nz for k in range(nz + 1)]
     acc = uoff
     for i in range(n):
-        j = (i + 1) % n
-        L = (V(poly[j]) - V(poly[i])).length
-        f = bm.faces.new((bot[i], bot[j], tp[j], tp[i]))
-        f.material_index = MI[wall]
-        u0, u1 = acc / tw, (acc + L) / tw
-        v0, v1 = (z0 + voff) / th, (z1 + voff) / th
-        for loop, (u, v) in zip(f.loops, ((u0, v0), (u1, v0), (u1, v1), (u0, v1))):
-            loop[uv].uv = (u, v)
+        a, b = V(poly[i]), V(poly[(i + 1) % n])
+        L = (b - a).length
+        nx = max(1, math.ceil(L / CELL - 0.01))
+        grid = [[bm.verts.new((*a.lerp(b, s / nx), z)) for z in zs] for s in range(nx + 1)]
+        for s in range(nx):
+            for k in range(nz):
+                f = bm.faces.new((grid[s][k], grid[s + 1][k], grid[s + 1][k + 1], grid[s][k + 1]))
+                f.material_index = MI[wall]
+                for loop, (ss, kk) in zip(f.loops, ((s, k), (s + 1, k), (s + 1, k + 1), (s, k + 1))):
+                    loop[uv].uv = ((acc + L * ss / nx) / tw, (zs[kk] + voff) / th)
         acc += L
+    tp = [bm.verts.new((p[0], p[1], z1)) for p in poly]
     if top:
         f = bm.faces.new(tp)
         f.material_index = MI[roof]
@@ -260,9 +266,9 @@ def building(name):
 
 @building('tower_glass')
 def _(bm, uv):
-    box(bm, uv, 34, 34, 0, 200, 'glass'); box(bm, uv, 28, 28, 200, 14, 'glass')
-    rooftop(bm, uv, 28, 28, 214, 2, False); antenna(bm, uv, 214, 14, 6, 4)
-    return (34, 34, 214)
+    box(bm, uv, 34, 34, 0, 128, 'glass'); box(bm, uv, 28, 28, 128, 12, 'glass')
+    rooftop(bm, uv, 28, 28, 140, 2, False); antenna(bm, uv, 140, 14, 6, 4)
+    return (34, 34, 140)
 
 
 @building('tower_tri')
@@ -277,9 +283,9 @@ def _(bm, uv):   # dreieckiger Turm wie das Sumitomo-Gebäude
             q = V((R * math.cos(b), R * math.sin(b)))
             poly.append(tuple(p.lerp(q, c / (q - p).length * 1.6)))
         poly[-2], poly[-1] = poly[-1], poly[-2]
-    prism(bm, uv, _hull(poly), 0, 210, 'glass', 'roof', STYLES['glass'][1])
-    rooftop(bm, uv, 16, 16, 210, 2, False); antenna(bm, uv, 210, 10)
-    return (46, 46, 210)
+    prism(bm, uv, _hull(poly), 0, 152, 'glass', 'roof', STYLES['glass'][1])
+    rooftop(bm, uv, 16, 16, 152, 2, False); antenna(bm, uv, 152, 10)
+    return (46, 46, 152)
 
 
 def _hull(pts):
@@ -297,16 +303,16 @@ def _hull(pts):
 
 @building('tower_slab')
 def _(bm, uv):   # weiße Hotelscheibe wie das Keio Plaza
-    box(bm, uv, 52, 24, 0, 170, 'office'); box(bm, uv, 64, 34, 0, 14, 'shop', 'roof', 0, 4)
-    rooftop(bm, uv, 52, 24, 170, 4); antenna(bm, uv, 170, 8, -18, 0); antenna(bm, uv, 170, 8, 18, 0)
-    return (64, 38, 170)
+    box(bm, uv, 52, 24, 0, 112, 'office'); box(bm, uv, 64, 34, 0, 14, 'shop', 'roof', 0, 4)
+    rooftop(bm, uv, 52, 24, 112, 4); antenna(bm, uv, 112, 8, -18, 0); antenna(bm, uv, 112, 8, 18, 0)
+    return (64, 38, 112)
 
 
 @building('tower_step')
 def _(bm, uv):
-    box(bm, uv, 32, 32, 0, 150, 'glass'); box(bm, uv, 25, 25, 150, 12, 'glass'); box(bm, uv, 17, 17, 162, 10, 'glass')
-    antenna(bm, uv, 172, 12)
-    return (32, 32, 172)
+    box(bm, uv, 32, 32, 0, 88, 'glass'); box(bm, uv, 25, 25, 88, 10, 'glass'); box(bm, uv, 17, 17, 98, 8, 'glass')
+    antenna(bm, uv, 106, 12)
+    return (32, 32, 106)
 
 
 @building('office_a')
@@ -377,16 +383,68 @@ def _(bm, uv):
     return (26, 26, 16)
 
 
-def rubble(bm, uv):
-    """Schutthaufen in einer 1x1-Grundfläche, Höhe ~0.35 (wird im Spiel skaliert)."""
-    for _ in range(26):
-        s = RNG.uniform(0.08, 0.22)
-        cx, cy = RNG.uniform(-0.42, 0.42), RNG.uniform(-0.42, 0.42)
-        h = (0.35 - (abs(cx) + abs(cy)) * 0.35) * RNG.uniform(0.5, 1.0)
-        tp = prism(bm, uv, [(cx + s * math.cos(a + 0.4 * RNG.random()), cy + s * math.sin(a)) for a in np.linspace(0, 2 * math.pi, 5)[:-1]],
-                   -0.05, max(0.04, h), 'roof', 'roof', (1, 1))
-        for v in tp:
-            v.co.x += RNG.uniform(-0.05, 0.05); v.co.y += RNG.uniform(-0.05, 0.05)
+def rbox(bm, uv, size, loc, rot, mat, k=1.0):
+    """Gedrehter Quader mit Box-Mapping (k = Texturwiederholungen pro Einheit)."""
+    M = Matrix.Translation(loc) @ Euler(rot).to_matrix().to_4x4() @ Matrix.Diagonal((*size, 1))
+    r = bmesh.ops.create_cube(bm, size=1.0, matrix=M)
+    faces = {f for v in r['verts'] for f in v.link_faces}
+    for f in faces:
+        f.material_index = MI[mat]
+        n = f.normal
+        ax = max(range(3), key=lambda i: abs(n[i]))
+        a, b = [(1, 2), (0, 2), (0, 1)][ax]
+        for loop in f.loops:
+            loop[uv].uv = (loop.vert.co[a] * k, loop.vert.co[b] * k)
+
+
+def rubble(bm, uv, rng):
+    """Schutthaufen in einer 1x1-Grundfläche, Höhe ~0.35 (wird im Spiel skaliert): unregelmäßiger Hügel, darauf
+    Betonplatten, Fassadenbrocken mit Fenstern, herausragende Stahlträger und verkohlte Stücke."""
+    N = 10
+    bumps = [(rng.uniform(-0.3, 0.3), rng.uniform(-0.3, 0.3), rng.uniform(0.06, 0.12)) for _ in range(5)]
+
+    def mound(x, y):
+        r = math.hypot(x, y) / 0.5
+        h = 0.22 * max(0.0, 1 - r * r) ** 0.7
+        for bx, by, bh in bumps:
+            h += bh * math.exp(-((x - bx) ** 2 + (y - by) ** 2) / 0.012) * max(0.0, 1 - r)
+        return h
+
+    grid = [[bm.verts.new((x, y, mound(x, y) + (rng.uniform(-0.01, 0.01) if 0 < i < N and 0 < j < N else 0)))
+             for j, y in enumerate(np.linspace(-0.5, 0.5, N + 1))] for i, x in enumerate(np.linspace(-0.5, 0.5, N + 1))]
+    for i in range(N):
+        for j in range(N):
+            q = (grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1])
+            if min(math.hypot(v.co.x, v.co.y) for v in q) > 0.47:
+                continue                      # runder Hügel statt quadratischer Platte
+            f = bm.faces.new(q)
+            f.material_index = MI['roof']
+            for loop in f.loops:
+                loop[uv].uv = (loop.vert.co.x * 1.5, loop.vert.co.y * 1.5)
+
+    def spot(rmax=0.42):
+        a, r = rng.uniform(0, 2 * math.pi), math.sqrt(rng.random()) * rmax
+        x, y = math.cos(a) * r, math.sin(a) * r
+        return x, y, mound(x, y)
+
+    for _ in range(46):   # Deckenplatten
+        x, y, z = spot()
+        s = (rng.uniform(0.07, 0.18), rng.uniform(0.05, 0.14), rng.uniform(0.012, 0.025))
+        rbox(bm, uv, s, (x, y, z + s[2] * 0.3), (rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), rng.uniform(0, 6.3)), 'roof', 1.5)
+    for _ in range(14):   # Fassadenbrocken, schräg gegeneinander gelehnt
+        x, y, z = spot(0.36)
+        s = (rng.uniform(0.12, 0.24), rng.uniform(0.012, 0.02), rng.uniform(0.07, 0.15))
+        mat = ('office', 'apt', 'glass', 'shop')[rng.integers(4)]
+        rbox(bm, uv, s, (x, y, z + s[2] * 0.25), (rng.uniform(0.35, 1.2) * rng.choice((-1, 1)), 0, rng.uniform(0, 6.3)), mat, 1.0)
+    for _ in range(16):   # Stahlträger
+        x, y, z = spot(0.38)
+        L = rng.uniform(0.1, 0.24)
+        rbox(bm, uv, (0.008, 0.008, L), (x, y, z + L * 0.3), (rng.uniform(-0.9, 0.9), rng.uniform(-0.9, 0.9), 0), 'metal', 4)
+    for k in range(34):   # Brocken: verkohlt und Beton
+        x, y, z = spot(0.44)
+        s = rng.uniform(0.025, 0.07)
+        rbox(bm, uv, (s, s * 0.8, s * 0.6), (x, y, z), (rng.uniform(0, 3), rng.uniform(0, 3), rng.uniform(0, 3)),
+             'dark' if k % 3 == 0 else 'roof', 2)
 
 
 def build():
@@ -399,10 +457,11 @@ def build():
         ob = obj_from_bm('B_' + name, bm, mats)
         ob['size'] = list(size)
         objs.append(ob)
-    bm = bmesh.new(); uv = bm.loops.layers.uv.new('UV')
-    rubble(bm, uv)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    objs.append(obj_from_bm('B_rubble', bm, mats))
+    for name, seed in (('B_rubble', 11), ('B_rubble_b', 23)):   # zwei Varianten gegen Wiederholung
+        bm = bmesh.new(); uv = bm.loops.layers.uv.new('UV')
+        rubble(bm, uv, np.random.default_rng(seed))
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        objs.append(obj_from_bm(name, bm, mats))
     return objs
 
 
@@ -410,5 +469,5 @@ def layout_preview(objs, cols=6, cell=72):
     """Raster mit den hohen Türmen hinten, damit die Kamera schräg von vorn alles sieht."""
     for i, o in enumerate(objs):
         o.location = ((i % cols) * cell, -(i // cols) * cell, 0)
-        if o.name == 'B_rubble':
+        if o.name.startswith('B_rubble'):
             o.scale = (30, 30, 30)

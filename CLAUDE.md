@@ -42,8 +42,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
 - `blender/city.py` – Gebäudebaukasten mit prozeduralen Fassaden (Tag + leuchtende Nachtfenster als Emission),
   Typen `B_tower_glass`, `B_tower_tri`, `B_tower_slab`, `B_tower_step`, `B_office_a/b/c`, `B_apt_a/b`, `B_shop_a/b`,
   `B_house_a/b`, `B_warehouse`, `B_oiltank`, `B_rubble`. Läuft unter Blender 5.2, Tag- und Nachtvorschau geprüft.
-  Shinjuku-Türme wie 1984 (Sumitomo 210 m, Keio Plaza 178 m): `tower_glass` 214 m, `tower_tri` 210, `tower_step` 172,
-  `tower_slab` 170.
+  Turmhöhen 106–152 m (ein Versuch mit 170–214 m war dem Nutzer zu hoch – er prüft die alten Werte noch einmal
+  aus der Stadt heraus). Wände sind in ein 12-m-Raster geteilt (`CELL`), damit der Spiel-Shader sie eindellen und
+  knicken kann. Schutt: zwei Varianten `B_rubble`/`B_rubble_b` (runder Hügel, Betonplatten, Fassadenbrocken mit
+  Fenstern, Stahlträger, verkohlte Brocken).
   Custom Property `size` (Breite, Tiefe, Höhe in m) landet als glTF-`extras` im Export.
 - `blender/units.py` – Panzer Typ 74, Raketen-LKW, AH-1 (+ Rotor separat), **Super-X**, Auto, Yamanote-Zug, Frachter,
   Baum, Laterne, Strommast, Trümmer (`U_debris0..2`). Läuft unter Blender 5.2, Vorschau geprüft.
@@ -54,31 +56,41 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Norden, kameragebundenes Fülllicht), Laden, Zustände `loading → title → play ⇄ pause`, kleiner Event-Bus
   (`attack`, `stomp`, `roar`, `breath`, `shake`). Qualität per `?q=low|mid|high`.
 - `js/input.js` – Tastatur + Gamepad (Standard-Mapping: A Klaue, X Atomstrahl, Y Brüllen, B Kernpuls, Start Pause).
-- `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt immer nach Norden – kein
-  Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl). Steuerung ist damit bildschirmbezogen (W = Norden).
-  Mausrad zoomt 320–620 m, Erschütterung bei Treffern.
-- `js/godzilla.js` – Bewegung bildschirmbezogen (dreht träge, geht nur in Blickrichtung), 15 m/s; die Laufanimation
+- `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt nach **Nordosten** – kein
+  Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl). Gesteuert wird nach Himmelsrichtung (W = Norden, also auf
+  dem Bildschirm schräg nach rechts oben). Mausrad zoomt 320–620 m, Erschütterung bei Treffern.
+- `js/buildings.js` – Shader-Patch aller Stadtmaterialien (doppelseitig): Durchsicht-Kreis (Kegel Kamera→Godzilla,
+  gerastert verworfen, Uniforms in `seeThrough`), Schaden je Instanz über `aDmg` (Schaden, Trefferpunkt lokal):
+  Delle + Bröseln im Vertex-Shader, Löcher mit dunklen Innenwänden, Ruß und Glutränder am Einschlag, verteilte
+  Ruß-/Rissflecken und ausfallende Fenster überall (damit man den Schaden von jeder Seite sieht), `aFx` (−1 = Schutt,
+  Bruchhöhe, Knickwinkel, Knickachse) für das Knicken kippender Türme und verglimmende Glut im Schutt.
+- `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), 15 m/s; die Laufanimation
   ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/15 (Füße bleiben synchron). Animationsmischung (Einzel-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
   Körperdrehung), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
   (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
-- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; Staub (ein `Points`-Pool,
-  Punktgröße auf 18 % der Bildhöhe gedeckelt – große Staubpunkte kosten auf schwachen GPUs viel Füllrate),
+- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
+  `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
+  GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
   Trümmer (InstancedMesh aus `U_debris0..2`, Schwerkraft, ein Abpraller).
 - `js/city.js` – Teststadt: Raster 136 m, Zonen (Shinjuku-Türme um z = −204, gut 1 km nördlich vom Start, Büros,
   Wohn-/Ladenviertel, Hafen),
   Bucht südlich `BAY_Z`, ein InstancedMesh pro Typ und Material (~46 Draw Calls bei ~3900 Gebäuden),
   Raycast für den Strahl (ignoriert Gebäude, in denen das Maul steckt). Zerstörung: HP = 20 + 2,5·Höhe;
-  `damage()` (Umkreis, optional mit Abfall), `crush()` (Godzillas Körper, 320 Schaden/s, bremst auf 5 bzw. 2,5 m/s),
-  Einsturz: unter 70 m Einsinken mit Schräglage und Staub, ab 70 m Kippen weg vom Angreifer – der Aufschlag
-  zerschlägt alles darunter (Kettenreaktion) und meldet `topple` (Linie, Breite; für den Super-X-Boss gedacht).
-  Danach bleibt ein Schutthaufen (`B_rubble`, eigenes InstancedMesh). Schaden: Klaue 60, Schwanz 80 (75 m),
+  `damage()` (Umkreis, Abfall, Trefferhöhe `height`), `crush()` (Godzillas Körper, 320 Schaden/s, bremst auf 5 bzw.
+  2,5 m/s). Jeder Treffer: Schaden sichtbar im Shader, Zittern, Brocken und Staub am Einschlag; ab 45 % neigt sich
+  das Gebäude vom Angreifer weg, ab 55 % brennt es (max. 40 Brände). Einsturz unter 70 m: das Gebäude staucht sich
+  Stockwerk um Stockwerk zusammen, kippt leicht, sinkt in die eigene Staubwolke, Brocken fallen von oben, eine
+  Staubwalze rollt über die Straßen. Ab 70 m kippt es weg vom Angreifer und knickt an einer Bruchstelle; der Aufschlag
+  zerschlägt alles darunter (Kettenreaktion) und meldet `topple` (für den Super-X-Boss gedacht). Danach Schutthaufen
+  (zufällige Variante und Drehung), der 45 s glimmt, anfangs brennt und raucht. Schaden: Klaue 60, Schwanz 80 (75 m),
   Kernpuls 140 (130 m, Abfall), Strahl 220/s, Stampfer 60 (14 m).
 
 ## Testen
 Server starten (`tools\serve.ps1`, auch als `.claude/launch.json` für die Browser-Vorschau). Mit `?debug` läuft der
 Renderer mit `preserveDrawingBuffer`; `game.step(dt)` rechnet einen Frame von Hand (auch wenn das Fenster verborgen ist
 und `requestAnimationFrame` pausiert), Tasten lassen sich per `dispatchEvent(new KeyboardEvent('keydown', {code}))` simulieren.
+`game.manual = true` hält die eigene Schleife an, damit Screenshots genau den von Hand gerechneten Stand zeigen.
 
 ## Stand
 Erledigt: Repo, Three.js eingebunden, Godzilla-Modell + Rig + Animationen exportiert. Auf dem zweiten PC (Blender 5.2.3)
@@ -91,9 +103,8 @@ Nächste Schritte für den Prototyp „Tokio 1984 – Die Rückkehr“:
 2. Spiel: (erledigt) `index.html`, `js/main.js`, Godzilla-Steuerung mit Kombo, Atomstrahl, Kernpuls, Brüllen,
    Kamera, Gamepad-Belegung (Gamepad noch nicht mit echtem Gerät getestet), Teststadt aus InstancedMesh.
    (erledigt) Zerstörung: Einsinken/Kippen, Kettenreaktion, Staub, Trümmer, Schutt, Einreißen beim Gehen.
-   Offen: Hochhäuser zwischen Kamera und Godzilla verdecken ihn im Shinjuku-Viertel völlig → Durchsicht-Kreis
-   per Shader (Fragmente nahe der Linie Kamera–Godzilla gerastert verwerfen); echte GPU-Last der Staubwolken auf der
-   UHD 615 prüfen. Militär (Panzer, LKW, Hubschrauber),
+   (erledigt) Durchsicht-Kreis, sichtbarer Schaden pro Treffer, Brände, neuer Einsturz und Schutt.
+   Offen: echte GPU-Last (Partikel, ~230k Dreiecke) auf der UHD 615 prüfen. Militär (Panzer, LKW, Hubschrauber),
    Bossphase **Super-X** mit Kadmium-Geschossen (Godzilla sackt zusammen → `down`) – Schwachstelle wie im Film:
    ein einstürzendes Hochhaus auf sie fallen lassen.
 3. Nachtstimmung: Nebel, Regen, Suchscheinwerfer, Brände mit wenigen Punktlichtern, ACES-Tonemapping, Filmkorn/Vignette per CSS.

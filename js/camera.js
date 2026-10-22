@@ -1,16 +1,18 @@
-// Feste Kamera schräg von oben, blickt immer nach Norden (wie im ersten Teil); Mausrad zoomt, Erschütterung bei Treffern
+// Feste Kamera schräg von oben, blickt nach Nordosten; gesteuert wird trotzdem nach Himmelsrichtung (W = Norden).
+// Mausrad zoomt, Erschütterung bei Treffern.
 import * as THREE from 'three';
 
 const PITCH = 0.92;          // rad über dem Horizont (~53°)
 const DIST = [320, 620];
 const LOOK_Y = 30;           // Blickpunkt etwa in Hüfthöhe
+const YAW = Math.PI / 4;     // Blickrichtung: 0 = Norden, PI/4 = Nordosten
 
 export class CameraRig {
   constructor(camera) {
     this.cam = camera;
     this.dist = 460;
     this.target = new THREE.Vector3();
-    this.forward = new THREE.Vector3(0, 0, -1);   // "oben" auf dem Bildschirm = Norden
+    this.forward = new THREE.Vector3(0, 0, -1);   // Bewegung nach Himmelsrichtung, unabhängig vom Blickwinkel
     this.right = new THREE.Vector3(1, 0, 0);
     this.shakeAmt = 0;
   }
@@ -25,8 +27,9 @@ export class CameraRig {
     this.target.x += (focus.x - this.target.x) * k;
     this.target.z += (focus.z - this.target.z) * k;
     this.target.y = LOOK_Y;
-    this.cam.position.set(this.target.x, this.target.y + Math.sin(PITCH) * this.dist,
-      this.target.z + Math.cos(PITCH) * this.dist);
+    const h = Math.cos(PITCH) * this.dist;           // Kamera steht südwestlich und blickt nach Nordosten
+    this.cam.position.set(this.target.x - Math.sin(YAW) * h, this.target.y + Math.sin(PITCH) * this.dist,
+      this.target.z + Math.cos(YAW) * h);
     this.cam.lookAt(this.target);
     if (this.shakeAmt > 0.001) {
       const a = this.shakeAmt * 2.2;

@@ -1,4 +1,4 @@
-// Effekte ohne Postprocessing (günstig für schwache GPUs): Atomstrahl, Kernpuls, Staub, Trümmer
+// Effekte ohne Postprocessing (günstig für schwache GPUs): Atomstrahl, Kernpuls, Partikel (Staub, Rauch, Feuer), Trümmer
 import * as THREE from 'three';
 
 const VS = /* glsl */`
@@ -135,32 +135,42 @@ export class Shockwave {
   }
 }
 
-// ---------- Staub: ein Points-Objekt mit Partikelpool, weiche runde Punkte, wachsen und verblassen ----------
+// ---------- Partikel: ein Points-Objekt mit Pool, weiche runde Punkte, wachsen und verblassen ----------
+// Staub und Rauch teilen sich einen Pool (Farbe pro Partikel), Feuer ist ein eigener additiver Pool mit Farbverlauf.
 const DUST_VS = /* glsl */`
 attribute float aSize;
 attribute float aAlpha;
+attribute vec3 aColor;
 uniform float uScale, uMaxPx;
 varying float vA;
+varying vec3 vC;
 void main() {
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
   gl_PointSize = min(aSize * uScale / -mv.z, uMaxPx);   // Deckel gegen Overdraw auf schwachen GPUs
   gl_Position = projectionMatrix * mv;
   vA = aAlpha;
+  vC = aColor;
 }`;
 const DUST_FS = /* glsl */`
-uniform vec3 uColor;
 varying float vA;
+varying vec3 vC;
 void main() {
   vec2 c = gl_PointCoord - 0.5;
   float d = dot(c, c) * 4.0;
   if (d > 1.0) discard;
   float a = (1.0 - d) * (1.0 - d);
-  gl_FragColor = vec4(uColor, a * vA);
+  gl_FragColor = vec4(vC, a * vA);
 }`;
 
-export class Dust {
-  constructor(scene, max = 1000) {
+export class Particles {
+  // ramp: [Startfarbe, Endfarbe] über die Lebenszeit (sonst feste Farbe je Partikel), additive: leuchtend (Feuer)
+  constructor(scene, max = 1000, { color = [0.36, 0.34, 0.31], ramp = null, additive = false, opacity = 0.65, grow = 1.4 } = {}) {
     this.max = max;
+    this.color = color;
+    this.ramp = ramp;
+    this.opacity = opacity;
+    this.growth = grow;
+    this.col = new Float32Array(max * 3);
     this.pos = new Float32Array(max * 3);
     this.vel = new Float32Array(max * 3);
     this.size = new Float32Array(max);
@@ -170,19 +180,20 @@ export class Dust {
     this.life = new Float32Array(max);
     this.next = 0;
     const geo = new THREE.BufferGeometry();
-    for (const [name, arr, n] of [['position', this.pos, 3], ['aSize', this.size, 1], ['aAlpha', this.alpha, 1]]) {
+    for (const [name, arr, n] of [['position', this.pos, 3], ['aSize', this.size, 1], ['aAlpha', this.alpha, 1], ['aColor', this.col, 3]]) {
       geo.setAttribute(name, new THREE.BufferAttribute(arr, n).setUsage(THREE.DynamicDrawUsage));
     }
     this.mat = new THREE.ShaderMaterial({
       vertexShader: DUST_VS, fragmentShader: DUST_FS, transparent: true, depthWrite: false,
-      uniforms: { uScale: { value: 500 }, uMaxPx: { value: 120 }, uColor: { value: new THREE.Color(0.36, 0.34, 0.31) } },
+      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+      uniforms: { uScale: { value: 500 }, uMaxPx: { value: 120 } },
     });
     this.points = new THREE.Points(geo, this.mat);
     this.points.frustumCulled = false;
     scene.add(this.points);
   }
 
-  emit(x, y, z, n, { spread = 10, up = 5, out = 4, size = 18, life = 3.5 } = {}) {
+  emit(x, y, z, n, { spread = 10, up = 5, out = 4, size = 18, life = 3.5, color = this.color } = {}) {
     for (let k = 0; k < n; k++) {
       const i = this.next++ % this.max, j = i * 3;
       const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * spread;
@@ -193,6 +204,8 @@ export class Dust {
       this.base[i] = size * (0.6 + 0.8 * Math.random());
       this.life[i] = life * (0.7 + 0.6 * Math.random());
       this.age[i] = 0;
+      const v = 0.85 + 0.3 * Math.random();
+      for (let c = 0; c < 3; c++) this.col[j + c] = color[c] * v;
     }
   }
 
@@ -205,11 +218,15 @@ export class Dust {
       const j = i * 3;
       this.vel[j] *= drag; this.vel[j + 1] *= drag; this.vel[j + 2] *= drag;
       this.pos[j] += this.vel[j] * dt; this.pos[j + 1] += this.vel[j + 1] * dt; this.pos[j + 2] += this.vel[j + 2] * dt;
-      this.size[i] = this.base[i] * (1 + 1.4 * k);
-      this.alpha[i] = Math.min(1, k * 8) * (1 - k) ** 1.5 * 0.65;
+      this.size[i] = this.base[i] * (1 + this.growth * k);
+      this.alpha[i] = Math.min(1, k * 8) * (1 - k) ** 1.5 * this.opacity;
+      if (this.ramp) {
+        const [a, b] = this.ramp;
+        for (let c = 0; c < 3; c++) this.col[j + c] = a[c] + (b[c] - a[c]) * k;
+      }
     }
     const g = this.points.geometry.attributes;
-    g.position.needsUpdate = g.aSize.needsUpdate = g.aAlpha.needsUpdate = true;
+    g.position.needsUpdate = g.aSize.needsUpdate = g.aAlpha.needsUpdate = g.aColor.needsUpdate = true;
     this.mat.uniforms.uScale.value = viewHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     this.mat.uniforms.uMaxPx.value = viewHeight * 0.18;
   }

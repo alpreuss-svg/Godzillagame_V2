@@ -5,15 +5,16 @@ import { Input } from './input.js';
 import { CameraRig } from './camera.js';
 import { Godzilla } from './godzilla.js';
 import { City, BAY_Z } from './city.js';
-import { Dust, Debris } from './effects.js';
+import { Particles, Debris } from './effects.js';
+import { seeThrough } from './buildings.js';
 
 // Qualität: ?q=low für schwache Grafik (z. B. Intel UHD 615), ?q=high für mehr Kantenglättung/Schatten
 const Q = new URLSearchParams(location.search).get('q') || 'mid';
 const QUALITY = {
-  low: { ratio: 1, aa: false, shadow: 512, dust: 500 },
-  mid: { ratio: 1.25, aa: true, shadow: 1024, dust: 1000 },
-  high: { ratio: 2, aa: true, shadow: 2048, dust: 1600 },
-}[Q] || { ratio: 1.25, aa: true, shadow: 1024, dust: 1000 };
+  low: { ratio: 1, aa: false, shadow: 512, dust: 500, fire: 250 },
+  mid: { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500 },
+  high: { ratio: 2, aa: true, shadow: 2048, dust: 1600, fire: 800 },
+}[Q] || { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500 };
 
 class Events {
   constructor() { this.map = new Map(); }
@@ -80,7 +81,8 @@ async function load() {
   const [gz, city, units] = await Promise.all(['godzilla', 'city', 'units'].map(n => loader.loadAsync(`assets/models/${n}.glb`)));
 
   const fx = game.fx = {
-    dust: new Dust(scene, QUALITY.dust),
+    dust: new Particles(scene, QUALITY.dust),
+    fire: new Particles(scene, QUALITY.fire, { ramp: [[1.0, 0.72, 0.3], [0.45, 0.05, 0.0]], additive: true, opacity: 0.9, grow: 0.5 }),
     debris: new Debris(scene, [0, 1, 2].map(i => units.scene.getObjectByName('U_debris' + i))),
   };
   game.city = new City(city, scene, fx, events);
@@ -90,20 +92,11 @@ async function load() {
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
   rig.snap(g.position);
 
-  events.on('attack', e => {
-    const n = game.city.damage(e.pos, e.radius, e.damage, e.from, e.falloff);
-    if (!n) return;
-    if (e.kind === 'beam') {
-      if (Math.random() < 0.25) fx.dust.emit(e.pos.x, e.pos.y, e.pos.z, 1, { spread: 4, up: 2, out: 10, size: 14, life: 2.5 });
-      if (Math.random() < 0.06) fx.debris.emit(e.pos, 1, { speed: 22 });
-    } else if (e.kind === 'claw') {
-      fx.debris.emit(e.pos.clone().setY(40), 3, { speed: 14 });
-      fx.dust.emit(e.pos.x, 30, e.pos.z, 4, { spread: 8, up: 1, out: 8, size: 14, life: 2.5 });
-    }
-  });
+  // Treffer-Effekte (Brocken, Staub, Brände) erzeugt die Stadt selbst am Einschlagpunkt
+  events.on('attack', e => game.city.damage(e.pos, e.radius, e.damage, e.from, e.falloff, e.height ?? e.pos.y));
   events.on('stomp', e => {
     rig.shake(0.35 * e.strength);
-    game.city.damage(e.pos, 14, 60, e.pos);
+    game.city.damage(e.pos, 14, 60, e.pos, false, 3);
     fx.dust.emit(e.pos.x, 0, e.pos.z, 3, { spread: 6, up: 1.5, out: 6, size: 12, life: 2 });
   });
   events.on('collapse', e => rig.shake(e.topple ? 0.6 : 0.25));
@@ -130,9 +123,15 @@ function step(dt) {
       game.city.update(dt);
       game.fx.debris.update(dt);
     }
-    if (game.state !== 'pause') game.fx.dust.update(dt, camera, renderer.domElement.height);
+    if (game.state !== 'pause') {
+      game.fx.dust.update(dt, camera, renderer.domElement.height);
+      game.fx.fire.update(dt, camera, renderer.domElement.height);
+      seeThrough.uTime.value += dt;
+    }
     else if (game.state === 'title') g.mixer.update(dt);
     if (game.state !== 'pause') rig.update(dt, g.position, game.state === 'play' ? input : IDLE);
+    seeThrough.uCam.value.copy(camera.position);
+    seeThrough.uFocus.value.copy(g.position).setY(40);
     moon.position.copy(g.position).add(MOON_OFS);
     moon.target.position.copy(g.position);
     FILL_OFS.copy(camera.position).sub(g.position).addScaledVector(rig.right, -120);
@@ -152,7 +151,8 @@ game.step = step;
 const clock = new THREE.Clock();
 function frame() {
   requestAnimationFrame(frame);
-  step(Math.min(clock.getDelta(), 1 / 20));
+  const dt = Math.min(clock.getDelta(), 1 / 20);
+  if (!game.manual) step(dt);   // game.manual = true: nur noch game.step() von Hand (Tests)
 }
 
 show('loading');

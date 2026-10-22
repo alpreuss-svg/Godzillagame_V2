@@ -44,6 +44,9 @@ if 'city' in WHAT:
         cam = dict(target=(180, -60, 30), dist=560, elev=30, azim=-105, lens=45)
         common.preview(os.path.join(PRE, 'city.png'), color='TEXTURE', **cam)
         common.night_preview(os.path.join(PRE, 'city_night.png'), **cam)
+        rb = [o for o in objs if o.name.startswith('B_rubble')]
+        c = sum((o.location for o in rb), bpy.data.objects[rb[0].name].location * 0) / len(rb)
+        common.preview(os.path.join(PRE, 'city_rubble.png'), color='TEXTURE', target=c[:], dist=95, elev=35, azim=-100)
 
 if 'units' in WHAT:
     common.reset()

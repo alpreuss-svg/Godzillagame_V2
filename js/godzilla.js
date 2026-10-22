@@ -138,7 +138,7 @@ export class Godzilla {
           this.released = true;
           const p = this.position.clone().setY(35);
           this.wave.fire(p, 130);
-          this.events.emit('attack', { kind: 'pulse', pos: p.setY(0), from: p, radius: 130, damage: PULSE_DAMAGE, falloff: true });
+          this.events.emit('attack', { kind: 'pulse', pos: p.setY(0), from: p, radius: 130, damage: PULSE_DAMAGE, falloff: true, height: 35 });
           this.events.emit('shake', 2.2);
         }
         if (this.t > 0.95) this.finish();
@@ -187,13 +187,13 @@ export class Godzilla {
       this.spun = k;
       if (!this.hitDone && this.t > this.dur * 0.45) {
         this.hitDone = true;
-        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), from: this.position.clone(), radius: 75, damage: TAIL_DAMAGE });
+        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), from: this.position.clone(), radius: 75, damage: TAIL_DAMAGE, height: 12 });
         this.events.emit('shake', 0.8);
       }
     } else if (!this.hitDone && this.t > this.dur * 0.45) {
       this.hitDone = true;
       const pos = this.position.clone().addScaledVector(this.forward(), 24);
-      this.events.emit('attack', { kind: 'claw', pos, from: this.position.clone(), radius: 22, damage: CLAW_DAMAGE });
+      this.events.emit('attack', { kind: 'claw', pos, from: this.position.clone(), radius: 22, damage: CLAW_DAMAGE, height: 45 });
       this.events.emit('shake', 0.4);
     }
     if (this.queued && this.combo < COMBO.length - 1 && this.t > this.dur * 0.55) this.attack(this.combo + 1);
