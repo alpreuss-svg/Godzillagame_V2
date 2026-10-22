@@ -155,5 +155,7 @@ Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
 4. **Audio** – erledigt: Teil-1-Audio portiert, Musikmanager, drei Heisei-Stücke, Effekte an allen Ereignissen.
    Noch nicht angehört (Tests liefen ohne Ton) – Lautstärken ggf. nachstellen.
 5. **HUD und Rahmen** – erledigt: Leben/Energie, Zähler, Ziel, Bossleiste, Kinobalken, Meldungen, Endbildschirm mit
-   Bewertung. Offen: Service Worker (PWA).
-Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~230k Dreiecke, Partikel).
+   Bewertung, PWA (`manifest.webmanifest`, `sw.js`: Netz zuerst, Cache offline; mit `?nosw` abschaltbar; bei neuen
+   Dateien `ASSETS` und `VERSION` in sw.js anpassen).
+Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~230k Dreiecke, Partikel, bis ~80 Draw Calls), Lautstärken
+anhören, Balance (Wellen, Schaden, Bossphase) im echten Spiel prüfen, weitere Level (1989 Biollante usw.).

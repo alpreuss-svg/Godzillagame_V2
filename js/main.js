@@ -262,6 +262,11 @@ function frame() {
   $('grain').style.backgroundImage = `url(${c.toDataURL()})`;
 }
 
+// Offline/Installierbar (PWA); mit ?nosw abschaltbar
+if ('serviceWorker' in navigator && !new URLSearchParams(location.search).has('nosw')) {
+  addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('Service Worker', e)));
+}
+
 show('loading');
 load().catch(err => {
   console.error(err);
