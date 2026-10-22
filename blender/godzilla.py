@@ -14,8 +14,9 @@ P = {
     'pelvis': (0, 3, 31), 'belly': (0, 0, 40), 'chest': (0, -2.5, 50.5), 'shoulder': (0, -4.2, 58.5),
     'neck0': (0, -6.2, 64.5), 'neck1': (0, -8.6, 69.5), 'head0': (0, -10.8, 73.6), 'skull': (0, -14.2, 75.2),
     'snout': (0, -19.6, 74.0), 'jaw0': (0, -12.0, 71.0), 'chin': (0, -18.2, 70.6),
-    # Schwanz: Spitze 105 m hinter der Hüfte (zweimal auf Wunsch verlängert)
-    't1': (0, 14.5, 27), 't2': (0, 26.3, 21), 't3': (0, 41.8, 14.5), 't4': (0, 57.6, 9.0), 't5': (0, 74.2, 6.2), 't6': (0, 89.7, 4.4), 't7': (0, 105.4, 2.6),
+    # Schwanz wie die 1984er Figur: senkt sich hinter der Hüfte zum Boden und hebt sich zum Ende wieder leicht an;
+    # Spitze ~105 m hinter der Hüfte
+    't1': (0, 14, 25.5), 't2': (0, 27, 16), 't3': (0, 42, 9.5), 't4': (0, 58, 7.0), 't5': (0, 74, 7.5), 't6': (0, 89.5, 10), 't7': (0, 104.5, 13.5),
 }
 for s, sx in (('L', 1), ('R', -1)):
     P['hip' + s] = (8.6 * sx, 3, 30)
@@ -31,8 +32,8 @@ for s, sx in (('L', 1), ('R', -1)):
 RAD = {
     'pelvis': 10.7, 'belly': 11.7, 'chest': 10.8, 'shoulder': 9.1, 'neck0': 7.6, 'neck1': 6.3, 'head0': 5.3,   # Rumpf ~7 % schlanker
     'skull': 4.9, 'snout': 2.9, 'jaw0': 3.3, 'chin': 1.9,
-    # verjüngt sich vorn kräftig, im letzten Drittel nur noch wenig (keine Nadelspitze)
-    't1': 9.4, 't2': 8.3, 't3': 7.1, 't4': 6.0, 't5': 5.1, 't6': 4.1, 't7': 2.6,
+    # erstes Viertel sehr dick (fast hüftbreit), im zweiten und dritten stark verjüngt, im letzten kaum noch (Seil)
+    't1': 11.0, 't2': 10.0, 't3': 8.0, 't4': 5.6, 't5': 3.6, 't6': 2.6, 't7': 2.0,
 }
 for s in 'LR':
     RAD.update({'hip' + s: 8.1, 'knee' + s: 6.6, 'ankle' + s: 5.0, 'foot' + s: 4.6, 'toe' + s: 3.0,
@@ -309,32 +310,40 @@ def build():
             vs = add_cone(bm, o, V((0, -1, -0.25)), 0.6, 1.9, 4)
             tag(vs, 'foot.' + s, ivory)
 
-    # --- Rückenplatten (eigenes Material, leuchten im Spiel)
+    # --- Rückenplatten (eigenes Material, leuchten im Spiel). Größe nach Metern entlang der Wirbelsäule: am größten
+    # mitten auf dem Rücken, zum Hals schnell, zum Schwanz allmählich kleiner, dort ein Kamm kleiner Zacken bis fast
+    # ans Ende. Abstand je nach Plattengröße, damit sie dicht wie bei der Figur stehen.
     plate_verts = []
     chain, pts, rads, lens = spine_path()
-    nC = 26
-    for i in range(nC):
-        s = 0.02 + 0.96 * i / (nC - 1)
-        c, r, T, N = sample_path(s)
-        prof = math.sin(min(1, s / 0.55) * math.pi * 0.5) * (1 - max(0, s - 0.3) / 0.7 * 0.62)   # Schwanzplatten größer
-        h = 2.4 + 11.5 * prof
+    total = lens[-1]
+    peak = lens[3] * 0.4 + lens[4] * 0.6               # zwischen Brust und Bauch
+
+    def bell(L, w_head, w_tail):
+        w = w_head if L < peak else w_tail
+        return math.exp(-((L - peak) / w) ** 2)
+
+    L = 1.0
+    while L < total - 1.5:
+        h = 2.0 + 12.0 * bell(L, 13, 50)
+        c, r, T, N = sample_path(L / total)
         up = (N * 0.9 - T * 0.25).normalized()
         base = c + N * (r * 0.96 - 0.4)
         vs = add_plate(bm, base, up, -T, h, 0.16 + 0.05 * h)
-        plate_verts.append((vs, s))
+        plate_verts.append((vs, L / total))
+        L += max(2.6, h * 0.5)
+    tail_end = lens[chain.index('t4')]                  # Seitenreihen enden etwa in der Schwanzmitte
     for sx in (1, -1):
-        nS = 19
-        for i in range(nS):
-            s = 0.06 + 0.88 * i / (nS - 1)
-            c, r, T, N = sample_path(s)
-            prof = math.sin(min(1, s / 0.5) * math.pi * 0.5) * (1 - max(0, s - 0.3) / 0.7 * 0.68)
-            h = 1.6 + 6.5 * prof
+        L = 4.0
+        while L < tail_end:
+            h = 1.3 + 6.8 * bell(L, 12, 38)
+            c, r, T, N = sample_path(L / total)
             side = V((sx, 0, 0))
             dirn = (N * 0.78 + side * 0.5).normalized()
             base = c + dirn * (r * 0.92 - 0.3) + (-T) * (1.2)
             up = (dirn * 0.9 - T * 0.25).normalized()
             vs = add_plate(bm, base, up, -T, h, 0.14 + 0.04 * h)
-            plate_verts.append((vs, s))
+            plate_verts.append((vs, L / total))
+            L += max(3.0, h * 0.6)
     for vs, s in plate_verts:
         for v in vs:
             extra[v] = (None, V((0.72, 0.68, 0.58)) * (0.75 + 0.25 * (1 - s)))

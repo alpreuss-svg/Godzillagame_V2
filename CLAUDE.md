@@ -33,8 +33,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   dezimiert auf ~26k Dreiecke, Hautrelief per Voronoi-Rauschen, Vertexfarben (`Col`), Augen/Klauen per Raycast,
   Maulhöhle = zwei negative Metaball-Ellipsoide; Zähne (14 oben/14 unten) per senkrechtem Spaltenscan durch die Höhle,
   Rückenplatten (3 Reihen, Material `GZ_Plates`), eigenes Rig + eigene Gewichtung (Distanz zu Knochensegmenten).
-  Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Schwanzspitze 105 m hinter der Hüfte (zweimal
-  auf Wunsch verlängert; im letzten Drittel kaum noch verjüngt, Platten bis ans Ende), Rumpf etwas schlanker als zuerst.
+  Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Rumpf etwas schlanker als zuerst. Vorbild für
+  Schwanz und Platten ist die 1984er Figur (Bilder vom Nutzer): Schwanz ~105 m, erstes Viertel fast hüftbreit, im
+  zweiten und dritten stark verjüngt, im letzten kaum noch (Seil), senkt sich zum Boden und hebt sich am Ende leicht.
+  Plattengröße nach Metern entlang der Wirbelsäule (`bell`): Maximum zwischen Brust und Bauch, zum Hals schnell, zum
+  Schwanz langsam kleiner, kleiner Zackenkamm bis ans Ende; Seitenreihen enden in der Schwanzmitte.
 - `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death, turn.
   Klauenhieb: hoch und nach außen ausholen, diagonal über den Körper schlagen, Oberkörper dreht mit (`ARM_OUT`
   = Vorzeichen fürs Abspreizen). `turn`: Treten auf der Stelle (IK), für das Drehen im Stand.
