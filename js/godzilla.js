@@ -36,6 +36,9 @@ const _hb = new THREE.Vector3();
 // Zusammen dreht der Kopf bis ~0,85 · LEAD_MAX gegenüber der Hüfte, der Oberkörper davon gut ein Viertel.
 const LEAD = [['spine1', 0.1, 'spine'], ['spine2', 0.14, 'spine'], ['neck1', 0.17, 'neck'], ['neck2', 0.2, 'neck'], ['head', 0.24, 'head']];
 const LEAD_RATE = { head: 3.4, neck: 2.8, spine: 2.2 }; // 1/s – Kopf führt, aber gemächlich
+// J-Bogen: zusätzliches Anheben je Schwanzglied (rad, positiv = nach oben), die hintere Hälfte biegt sich steil auf
+const TAIL_J = [0, 0, 0.05, 0.16, 0.25, 0.3, 0.26];
+const J_PERIOD = 11;                                    // s für einmal S -> J -> S
 const LEAD_MAX = 0.75;                                  // rad: Kopf dreht so bis ~37° zu jeder Seite (gesamt ~75°)
 
 function approach(cur, target, step) { return cur < target ? Math.min(cur + step, target) : Math.max(cur - step, target); }
@@ -358,11 +361,17 @@ export class Godzilla {
       const b = this.bones[name];
       this.offset(b, _ax.copy(_Y).applyQuaternion(b.getWorldQuaternion(_wq).invert()), this.lead[g] * k);
     }
-    // Schwanz: Trägheit beim Drehen plus eine langsame Welle, die zur Spitze hin größer wird (schlängelt sich)
+    // Schwanz: windet sich kräftig von links nach rechts (Welle läuft zur Spitze, wird dort größer), schleift beim
+    // Drehen nach und hebt sich in langen Atemzügen vom S-Bogen der Ruhepose (Bild 1) zum steilen J-Bogen (Bild 2)
+    const t = this.lookT;
+    const lift = 0.5 - 0.5 * Math.cos(t * 2 * Math.PI / J_PERIOD);
+    const jTarget = (this.state === 'attack' ? 0 : 1) * smooth((lift - 0.15) / 0.7);
+    this.jBlend = (this.jBlend || 0) + (jTarget - (this.jBlend || 0)) * (1 - Math.exp(-2.5 * dt));
     for (let i = 1; i <= 7; i++) {
-      const amp = 0.4 + 0.16 * i, t = this.lookT;
-      const side = this.tailLag * (0.1 + 0.04 * i) + 0.055 * amp * Math.sin(t * 1.3 - i * 0.75);
-      const up = 0.03 * amp * Math.sin(t * 0.9 - i * 0.6 + 1.2);
+      const amp = 0.4 + 0.16 * i;
+      const side = this.tailLag * (0.1 + 0.04 * i)
+        + amp * (0.1 * Math.sin(t * 1.05 - i * 0.8) + 0.035 * Math.sin(t * 2.3 - i * 1.3));
+      const up = this.jBlend * TAIL_J[i - 1] + 0.03 * amp * Math.sin(t * 0.9 - i * 0.6 + 1.2);
       this.offset(this.bones['tail' + i], _Z, side);
       this.bones['tail' + i].quaternion.multiply(_tq.setFromAxisAngle(_X, up));
     }

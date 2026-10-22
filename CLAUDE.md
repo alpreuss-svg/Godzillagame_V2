@@ -34,8 +34,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Maulhöhle = zwei negative Metaball-Ellipsoide; Zähne (14 oben/14 unten) per senkrechtem Spaltenscan durch die Höhle,
   Rückenplatten (3 Reihen, Material `GZ_Plates`), eigenes Rig + eigene Gewichtung (Distanz zu Knochensegmenten).
   Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Rumpf etwas schlanker als zuerst. Vorbild für
-  Schwanz und Platten ist die 1984er Figur (Bilder vom Nutzer): Schwanz ~100 m, erstes Viertel fast hüftbreit, im
-  zweiten und dritten stark verjüngt, im letzten kaum noch (Seil), senkt sich zum Boden, Ende biegt sich auf 28 m hoch.
+  Schwanz und Platten ist die 1984er Figur (zwei Bilder vom Nutzer): Schwanz ~100 m, wächst tief und ohne Einbuchtung
+  aus dem Becken, erstes Viertel fast hüftbreit und hochoval (Ellipsoid-Kette), im zweiten und dritten stark verjüngt,
+  im letzten kaum noch (Seil); Ruhepose = S-Bogen aus Bild 1 (am Boden, Bogen nach oben, stumpfe Spitze senkt sich),
+  Querringe mit dunklen Rillen (`tail_ring`), Körper mit 32k Dreiecken, damit die Ringe sichtbar bleiben.
   Plattengröße nach Metern entlang der Wirbelsäule (`bell`): Maximum zwischen Brust und Bauch, zum Hals schnell, zum
   Schwanz langsam kleiner, kleiner Zackenkamm bis ans Ende; Seitenreihen enden in der Schwanzmitte.
 - `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death, turn.
@@ -79,7 +81,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   `LEAD_RATE`: Kopf zuerst, dann Hals, dann Oberkörper, zuletzt Hüfte; Kopf bis ~37° je Seite gegenüber der Hüfte –
   ~60° war dem Nutzer zu weit und zu schnell; gedreht um
   die echte Senkrechte), im Stand schaut er sich leicht um, der Schwanz schleift nach (`tailLag`) und schlängelt sich
-  ständig mit einer zur Spitze wachsenden Welle. **Achtung:** der AnimationMixer schreibt Knochen nur bei geänderten Werten – prozedurale
+  ständig kräftig von links nach rechts (Spitze ±27 m) und hebt sich alle 11 s vom S-Bogen zum steilen J-Bogen aus
+  Bild 2 (`TAIL_J`, `J_PERIOD`; Spitze 14–56 m hoch), beim Angriff nicht. **Achtung:** der AnimationMixer schreibt Knochen nur bei geänderten Werten – prozedurale
   Zusatzdrehungen darum immer über `offset()`/`restorePose()` (sonst addieren sie sich bei gehaltenen Posen auf).
   Atemstrahl: Oberkörper-Clip `breathUpper`, die Beine kommen aus `idleLegs`/`turnLegs` (treten beim Schwenken);
   der Strahl folgt der Kopfrichtung (Maul minus Kopfknochen), reagiert also sofort, der Körper zieht nach.

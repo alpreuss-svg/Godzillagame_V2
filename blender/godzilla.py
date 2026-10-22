@@ -14,9 +14,10 @@ P = {
     'pelvis': (0, 3, 31), 'belly': (0, 0, 40), 'chest': (0, -2.5, 50.5), 'shoulder': (0, -4.2, 58.5),
     'neck0': (0, -6.2, 64.5), 'neck1': (0, -8.6, 69.5), 'head0': (0, -10.8, 73.6), 'skull': (0, -14.2, 75.2),
     'snout': (0, -19.6, 74.0), 'jaw0': (0, -12.0, 71.0), 'chin': (0, -18.2, 70.6),
-    # Schwanz wie die 1984er Figur: senkt sich hinter der Hüfte zum Boden, das Ende biegt sich deutlich nach oben;
-    # Spitze ~100 m hinter der Hüfte, 28 m hoch
-    't1': (0, 14, 25.5), 't2': (0, 27, 16), 't3': (0, 42, 9.5), 't4': (0, 57.5, 8.0), 't5': (0, 72.5, 11.5), 't6': (0, 86.5, 18.5), 't7': (0, 99, 28),
+    # Schwanz wie die 1984er Figur (Bild 1): wächst tief aus dem Becken, liegt im ersten Abschnitt am Boden, steigt in
+    # einem weichen Bogen an, die stumpfe Spitze senkt sich wieder etwas (S-Bogen). Den J-Bogen aus Bild 2 erreicht
+    # er im Spiel durch Anheben der hinteren Glieder (godzilla.js).
+    't1': (0, 13, 21.5), 't2': (0, 26, 12.5), 't3': (0, 40, 8.6), 't4': (0, 55, 9.8), 't5': (0, 69.5, 15), 't6': (0, 83.5, 19.5), 't7': (0, 96.5, 17.5),
 }
 for s, sx in (('L', 1), ('R', -1)):
     P['hip' + s] = (8.6 * sx, 3, 30)
@@ -33,7 +34,7 @@ RAD = {
     'pelvis': 10.7, 'belly': 11.7, 'chest': 10.8, 'shoulder': 9.1, 'neck0': 7.6, 'neck1': 6.3, 'head0': 5.3,   # Rumpf ~7 % schlanker
     'skull': 4.9, 'snout': 2.9, 'jaw0': 3.3, 'chin': 1.9,
     # erstes Viertel sehr dick (fast hüftbreit), im zweiten und dritten stark verjüngt, im letzten kaum noch (Seil)
-    't1': 11.0, 't2': 10.0, 't3': 8.0, 't4': 5.6, 't5': 3.6, 't6': 2.6, 't7': 2.0,
+    't1': 11.5, 't2': 10.0, 't3': 8.0, 't4': 5.8, 't5': 3.9, 't6': 2.9, 't7': 2.3,
 }
 for s in 'LR':
     RAD.update({'hip' + s: 8.1, 'knee' + s: 6.6, 'ankle' + s: 5.0, 'foot' + s: 4.6, 'toe' + s: 3.0,
@@ -67,11 +68,37 @@ def _segdist(pts, a, b):
     return np.linalg.norm(pts - (a + t[:, None] * ab), axis=1), t
 
 
+TAIL_CHAIN = ['pelvis', 't1', 't2', 't3', 't4', 't5', 't6', 't7']
+
+
+def tail_ring(p):
+    """Für Punkte am Schwanz: (g, Stärke) mit g = 0 auf einem Wulst, 1 in einer Rille; sonst None."""
+    if p.y < 6:
+        return None
+    best, acc = None, 0.0
+    for a, b in zip(TAIL_CHAIN, TAIL_CHAIN[1:]):
+        pa, pb = V(P[a]), V(P[b])
+        ab = pb - pa
+        t = max(0.0, min(1.0, (p - pa).dot(ab) / ab.length_squared))
+        d = (p - (pa + ab * t)).length
+        r = RAD[a] + (RAD[b] - RAD[a]) * t
+        if best is None or d - r < best[0]:
+            best = (d - r, acc + ab.length * t, r)
+        acc += ab.length
+    off, L, r = best
+    if off > 3.0 or L < 7:
+        return None
+    u = L / acc
+    spacing = 4.4 - 1.6 * u                     # Ringe zur Spitze hin enger
+    g = abs(2 * ((L / spacing) % 1.0) - 1)
+    return g, max(0.45, min(1.3, r / 6)) * min(1.0, (L - 7) / 6)
+
+
 MB_K = 1.0 / 0.575   # sichtbarer Radius einer einzelnen Metaball-Kugel ~ 0.575 * Radius
 HEAD_EDGES = {('neck1', 'head0'), ('head0', 'skull'), ('skull', 'snout'), ('neck1', 'jaw0'), ('jaw0', 'chin')}
 
 
-def build_body(target_tris=26000):
+def build_body(target_tris=32000):
     """Körper aus Metaballs: Kugelketten entlang der Skelettkanten verschmelzen weich (Muskeln, Übergänge),
     Kopf aus Ellipsoiden, ein negatives Ellipsoid schneidet das Maul auf."""
     mb = bpy.data.metaballs.new('gz_mb')
@@ -96,9 +123,22 @@ def build_body(target_tris=26000):
         pa, pb = V(P[a]), V(P[b])
         ra, rb = RAD[a], RAD[b]
         n = max(2, int((pa - pb).length / (min(ra, rb) * 0.26)) + 1)
+        tail = b in TAIL_CHAIN
         for i in range(n + 1):
             k = i / n
-            ball(pa.lerp(pb, k), ra + (rb - ra) * k)
+            r = ra + (rb - ra) * k
+            if not tail:
+                ball(pa.lerp(pb, k), r)
+                continue
+            # Schwanz: an der Wurzel hochoval (schmaler, höher), zur Spitze rund, die Spitze selbst abgeflacht
+            u = (TAIL_CHAIN.index(a) + k) / (len(TAIL_CHAIN) - 1) if a in TAIL_CHAIN else 0.0
+            sx, sz = 0.84 + 0.16 * u, 1.14 - 0.14 * u
+            if b == 't7':
+                sx, sz = sx * (1 + 0.12 * k), sz * (1 - 0.25 * k)
+            q = V((0, 1, 0)).rotation_difference((pb - pa).normalized())
+            e = mb.elements.new(type='ELLIPSOID'); e.co = pa.lerp(pb, k); e.radius = MB_K; e.stiffness = 2.0
+            e.size_x, e.size_y, e.size_z = r * 0.8 * sx, r * 0.8, r * 0.8 * sz
+            e.rotation = q
     # Kopf: flacher Schädel, lange Schnauze, schwere Brauen, Kaumuskeln, Unterkiefer
     ell((0, -10.5, 72.6), (5.6, 4.6, 4.8))
     ell((0, -13.8, 75.0), (4.5, 5.2, 3.3), rot=(-6, 0, 0))
@@ -115,6 +155,8 @@ def build_body(target_tris=26000):
     for sx in (1, -1):
         ell((sx * 4.7, -7.3, 51), (4.6, 2.8, 5.3))
         ell((sx * 9.4, 0.5, 24), (7.2, 7.0, 9.2), rot=(-15, 0, 0))
+    # Schwanzwurzel geht ohne Einbuchtung aus dem Becken hervor, ihre Unterseite reicht hinter den Fersen fast zum Boden
+    ell((0, 9.5, 17.5), (8.6, 9.5, 8.2), rot=(25, 0, 0))
     dg = bpy.context.evaluated_depsgraph_get()
     raw = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
     bpy.data.objects.remove(ob)
@@ -144,6 +186,11 @@ def skin_detail(bm):
         ridge = 0.0
         if n.y < -0.35 and abs(p.x) < 8 and 28 < p.z < 62:
             ridge = 0.18 * math.sin(p.z * 1.6)  # Bauchquerfalten
+        groove = tail_ring(p)                   # Querringe am Schwanz: Wülste mit tiefen Rillen dazwischen
+        if groove is not None:
+            g, rs = groove
+            ridge += rs * (0.16 * (1 - g) - 0.55 * max(0.0, (g - 0.72) / 0.28) ** 1.5)
+            amp *= 0.7
         v.co += n * (bump * amp + ridge)
         # Farbe (sRGB, wird später linearisiert)
         c = V(BODY_SRGB)
@@ -154,6 +201,8 @@ def skin_detail(bm):
             c = c.lerp(V((0.25, 0.24, 0.2)), 0.55)
         if bump > 0.45:
             k *= 1.15
+        if groove is not None and groove[0] > 0.8:
+            k *= 0.7                            # Rillen dunkler
         cols[v.index] = c * k
     return cols
 
@@ -324,18 +373,18 @@ def build():
 
     L = 1.0
     while L < total - 1.5:
-        h = 2.0 + 12.0 * bell(L, 13, 50)
+        h = 2.6 + 11.4 * bell(L, 13, 62)      # Kamm am Schwanz bleibt bis zur Spitze sichtbar
         c, r, T, N = sample_path(L / total)
         up = (N * 0.9 - T * 0.25).normalized()
         base = c + N * (r * 0.96 - 0.4)
         vs = add_plate(bm, base, up, -T, h, 0.16 + 0.05 * h)
         plate_verts.append((vs, L / total))
         L += max(2.6, h * 0.5)
-    tail_end = lens[chain.index('t4')]                  # Seitenreihen enden etwa in der Schwanzmitte
+    tail_end = lens[chain.index('t5')]                  # Seitenreihen enden nach gut der Hälfte des Schwanzes
     for sx in (1, -1):
         L = 4.0
         while L < tail_end:
-            h = 1.3 + 6.8 * bell(L, 12, 38)
+            h = 1.5 + 6.8 * bell(L, 12, 48)
             c, r, T, N = sample_path(L / total)
             side = V((sx, 0, 0))
             dirn = (N * 0.78 + side * 0.5).normalized()
