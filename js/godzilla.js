@@ -263,7 +263,7 @@ export class Godzilla {
     if (this.state === 'dead') return;
     this.firing = false;
     this.lock = null;
-    this.takeDamage(4, this.position);
+    this.takeDamage(2.5, this.position);
     if (this.state === 'dead') return;
     this.play('down');
     this.enter('down');

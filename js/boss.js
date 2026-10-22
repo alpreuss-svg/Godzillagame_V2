@@ -10,7 +10,7 @@ const HP = 100;
 const TOPPLE_DAMAGE = 38;          // drei Hochhäuser holen sie herunter
 const BEAM_DPS = 1.5;              // Panzerung: der Strahl kratzt nur
 const CADMIUM_EVERY = 14;          // s
-const GUN_EVERY = 1.6;
+const GUN_EVERY = 2.0;
 
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _d = new THREE.Vector3();
 
@@ -124,7 +124,7 @@ export class SuperX {
       const dy = THREE.MathUtils.clamp(p.y, 6, 72);
       if (Math.hypot(p.x - gz.x, p.z - gz.z, p.y - dy) < (m.cadmium ? 16 : 15)) {
         if (m.cadmium) { g.cadmium(); this.military.boom(p, 0.8); this.fx.dust.emit(p.x, p.y, p.z, 10, { spread: 6, up: 2, out: 6, size: 14, life: 4, color: [0.75, 0.75, 0.65] }); }
-        else { g.takeDamage(0.9, p); this.military.boom(p, 0.3); }
+        else { g.takeDamage(0.55, p); this.military.boom(p, 0.3); }
         this.scene.remove(m.mesh); m.hp = 0;
         return false;
       }
