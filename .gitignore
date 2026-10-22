@@ -1,0 +1,7 @@
+# Eigene Soundtrack-Dateien bleiben lokal (Urheberrecht Toho)
+music/*
+!music/README.md
+# Blender-Vorschaubilder
+tools/previews/
+__pycache__/
+*.blend1
