@@ -207,6 +207,7 @@ export class Military {
     const vel = aim.sub(from).normalize().multiplyScalar(W.speed);
     if (u.T.weapon === 'missiles') vel.y += 40;                    // Raketen steigen erst auf
     this.shots.push({ pos: from, vel, W, life: 4 });
+    this.events.emit('shot', { pos: from });
     this.fx.fire.emit(from.x, from.y, from.z, 3, { spread: 1.5, up: 2, out: 3, size: 5, life: 0.25 });   // Mündungsfeuer
     this.fx.dust.emit(from.x, from.y, from.z, 1, { spread: 2, up: 1, out: 2, size: 6, life: 1.5, color: [0.25, 0.24, 0.23] });
   }

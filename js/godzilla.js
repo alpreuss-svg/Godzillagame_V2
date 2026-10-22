@@ -177,7 +177,10 @@ export class Godzilla {
         const d = this.turnToward(mag > 0.15 ? _dir : null, TURN_RATE, dt);
         if (mag > 0.15) targetSpeed = WALK_SPEED * mag * Math.max(0, Math.cos(d)) ** 2;
         if (input.pressed('claw')) this.attack(0);
-        else if (input.pressed('breath') && this.energy > 10) { this.firing = false; this.play('breathUpper'); this.enter('breath'); }
+        else if (input.pressed('breath') && this.energy > 10) {
+          this.firing = false; this.play('breathUpper'); this.enter('breath');
+          this.events.emit('charge', { dur: CHARGE_TIME * (1 - this.charge) });
+        }
         else if (input.pressed('roar')) { this.play('roar'); this.enter('roar'); this.roared = false; }
         else if (input.pressed('pulse') && this.energy >= PULSE_COST) {
           this.energy -= PULSE_COST; this.play('roar', 1.5); this.enter('pulse'); this.released = false;
@@ -274,6 +277,7 @@ export class Godzilla {
     this.hitDone = false;
     this.play(COMBO[step]);
     this.enter('attack');
+    this.events.emit('swing', { kind: COMBO[step] });
     this.spun = 0;
     this.tailHits = new Set();          // Gebäude, die dieser Schwanzhieb schon getroffen hat
     this.attackHeading = this.heading;  // vorn = Blickrichtung beim Ausholen

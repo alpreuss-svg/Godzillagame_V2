@@ -5,8 +5,8 @@ Kamera schräg von oben wie im ersten Spiel, aber moderne 3D-Grafik. Alle Modell
 werden per Python-Skript in **Blender** erzeugt und als `.glb` exportiert; das Spiel läuft im Browser mit **Three.js**
 (PWA, keine Build-Tools, wie Teil 1). Kommunikation mit dem Nutzer auf **Deutsch**.
 
-Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-game`) – dessen `js/audio.js`
-(WebAudio-Orchester-Synth + synthetischer Schrei) soll für V2 als ES-Modul übernommen werden.
+Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame – dessen `js/audio.js`
+(WebAudio-Orchester-Synth + synthetischer Schrei) ist als ES-Modul in `js/audio.js` übernommen.
 
 ## Rahmenbedingungen
 - Ziel-Hardware mindestens: Intel UHD 615, i7-8500Y, 8 GB RAM → wenige Draw Calls (InstancedMesh für Gebäude),
@@ -112,6 +112,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
 - `js/atmosphere.js` – Nachtstimmung: Regen (LineSegments in einem Kasten um den Blickpunkt), 5 Flak-Suchscheinwerfer
   (additive Kegel auf Kreuzungen um Godzilla, tasten ihn ab), feste Anzahl Punktlichter an den nächsten Bränden
   (Anzahl je Qualitätsstufe, nie wechselnd – sonst übersetzt Three.js die Shader neu). Filmkorn per CSS (`#grain`).
+- `js/audio.js` – Audio aus Teil 1 als ES-Modul (`Sound`: Orchester-Synth, Schrei als gestrichene Saite, Effekte) plus
+  drei eigene Heisei-Stücke (`heisei` Titel, `tokyo` Spiel, `superx` Boss-Marsch). `Music` spielt pro Platz (title,
+  level, boss, over, win) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
+  Suchen sind gewollt), sonst das Synth-Stück. Ton startet mit der ersten Taste (Browser-Regel), M schaltet stumm.
+  Ereignis → Geräusch in `hookSounds()` (main.js), häufige Ereignisse gedrosselt.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
@@ -147,7 +152,8 @@ Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
    (erledigt) Militär mit Wellen, Beschuss, Lebensverlust, Zielerfassung des Strahls; Bossphase Super-X mit
    Kadmium und Hochhaus-Falle; Niederlage/Sieg mit Endbildschirm und Bewertung. Gamepad nicht mit echtem Gerät getestet.
 3. **Nachtstimmung** – erledigt: ACES, Vignette, Brände/Rauch/Glut, Regen, Flak-Scheinwerfer, Brandlicht, Filmkorn.
-4. **Audio** – offen: `audio.js` aus Teil 1 portieren, Musikmanager (erst `music/`, sonst Synth), Heisei-Stücke.
+4. **Audio** – erledigt: Teil-1-Audio portiert, Musikmanager, drei Heisei-Stücke, Effekte an allen Ereignissen.
+   Noch nicht angehört (Tests liefen ohne Ton) – Lautstärken ggf. nachstellen.
 5. **HUD und Rahmen** – erledigt: Leben/Energie, Zähler, Ziel, Bossleiste, Kinobalken, Meldungen, Endbildschirm mit
    Bewertung. Offen: Service Worker (PWA).
 Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~230k Dreiecke, Partikel).

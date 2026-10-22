@@ -10,6 +10,7 @@ import { seeThrough } from './buildings.js';
 import { Military } from './military.js';
 import { SuperX } from './boss.js';
 import { Atmosphere } from './atmosphere.js';
+import { Sound, Music } from './audio.js';
 
 // Qualität: ?q=low für schwache Grafik (z. B. Intel UHD 615), ?q=high für mehr Kantenglättung/Schatten
 const Q = new URLSearchParams(location.search).get('q') || 'mid';
@@ -119,12 +120,13 @@ async function load() {
   events.on('topple', () => rig.shake(1.6));
   events.on('roar', () => rig.shake(1.0));
   events.on('shake', a => rig.shake(a));
-  events.on('death', () => { game.endT = 4; game.result = 'lost'; });
-  events.on('bossStart', () => { cinema('SUPER-X', 4.5); $('boss').hidden = false; });
+  events.on('death', () => { game.endT = 4; game.result = 'lost'; Sound.breath(false); Music.play('over'); });
+  events.on('bossStart', () => { cinema('SUPER-X', 4.5); $('boss').hidden = false; Music.play('boss'); Sound.sfx('siren'); });
   events.on('cadmiumWarning', () => toast('KADMIUM-RAKETEN!', 2));
   events.on('cadmium', () => toast('Godzilla ist betäubt', 2.5));
   events.on('bossHit', () => toast('Volltreffer!', 1.5));
-  events.on('bossCrash', () => { game.result = 'won'; game.endT = 5; $('boss').hidden = true; cinema('DIE SUPER-X IST BESIEGT', 4); });
+  events.on('bossCrash', () => { game.result = 'won'; game.endT = 5; $('boss').hidden = true; cinema('DIE SUPER-X IST BESIEGT', 4); Sound.sfx('boom', true); Music.play('win'); });
+  hookSounds();
 
   game.state = 'title';
   show('title');
@@ -135,7 +137,11 @@ function step(dt) {
   input.update();
   const g = game.godzilla;
 
-  if (game.state === 'title' && input.any) { game.state = 'play'; show(null); }
+  if (game.state === 'title' && input.any) {
+    game.state = 'play'; show(null);
+    Sound.init(); Music.play('level'); Sound.sfx('siren');          // Ton erst nach der ersten Taste (Browser-Regel)
+  }
+  if (input.pressed('mute')) Music.mute(Sound.toggleMute());
   else if (game.state === 'over' && (game.overT += dt) > 1.5 && input.any) location.reload();   // neues Spiel
   else if (game.state === 'play' && input.pressed('pause')) { game.state = 'pause'; show('paused'); }
   else if (game.state === 'pause' && input.pressed('pause')) { game.state = 'play'; show(null); }
@@ -214,6 +220,26 @@ function rating() {
   return score > 90 ? 'S – König der Monster' : score > 65 ? 'A – Zerstörer' : score > 40 ? 'B – Bedrohung' : 'C – Ausreißer';
 }
 game.endGame = endGame;
+
+// Geräusche zu den Spielereignissen; häufige Ereignisse werden gedrosselt, damit es kein Lärmbrei wird
+function hookSounds() {
+  const last = {};
+  const once = (key, gap, fn) => { const t = performance.now(); if (t - (last[key] || 0) > gap * 1000) { last[key] = t; fn(); } };
+  events.on('roar', () => Sound.sfx('roar', { kind: 'godzilla' }));
+  events.on('charge', e => Sound.sfx('charge', Math.max(0.2, e.dur)));
+  events.on('breath', e => Sound.breath(e.on));
+  events.on('swing', e => Sound.sfx(e.kind === 'tail' ? 'whip' : 'swing'));
+  events.on('stomp', () => Sound.sfx('stomp'));
+  events.on('attack', e => { if (e.kind === 'pulse') { Sound.sfx('boom', true); Sound.sfx('zap'); } });
+  events.on('collapse', e => once('collapse', 0.25, () => Sound.sfx('collapse', e.b.h)));
+  events.on('topple', () => Sound.sfx('heavy'));
+  events.on('unitDestroyed', () => once('boom', 0.15, () => Sound.sfx('boom', false)));
+  events.on('shot', () => once('shot', 0.12, () => Sound.sfx('shot')));
+  events.on('hurt', () => once('hurt', 0.4, () => Sound.sfx('hurt')));
+  events.on('cadmiumWarning', () => Sound.sfx('alarm'));
+  events.on('cadmium', () => Sound.sfx('hit'));
+  events.on('bossHit', () => Sound.sfx('boom', true));
+}
 
 function cinema(text, sec) { $('cinemaText').textContent = text; $('cinema').classList.add('on'); game.cinemaT = sec; }
 function toast(text, sec) { $('toast').textContent = text; $('toast').classList.add('on'); game.toastT = sec; }

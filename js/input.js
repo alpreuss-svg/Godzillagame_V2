@@ -4,7 +4,7 @@ const KEYS = {
   KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
   KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
   KeyJ: 'claw', KeyK: 'breath', KeyL: 'roar', KeyR: 'pulse',
-  Escape: 'pause', KeyP: 'pause',
+  Escape: 'pause', KeyP: 'pause', KeyM: 'mute',
 };
 // Standard-Mapping, Xbox-Belegung: A Klaue, B Kernpuls, X Atomstrahl, Y Brüllen, Start Pause
 const PAD = { 0: 'claw', 1: 'pulse', 2: 'breath', 3: 'roar', 9: 'pause' };
