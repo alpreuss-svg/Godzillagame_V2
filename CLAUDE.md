@@ -56,9 +56,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Norden, kameragebundenes Fülllicht), Laden, Zustände `loading → title → play ⇄ pause`, kleiner Event-Bus
   (`attack`, `stomp`, `roar`, `breath`, `shake`). Qualität per `?q=low|mid|high`.
 - `js/input.js` – Tastatur + Gamepad (Standard-Mapping: A Klaue, X Atomstrahl, Y Brüllen, B Kernpuls, Start Pause).
-- `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt nach **Nordosten** – kein
-  Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl). Gesteuert wird nach Himmelsrichtung (W = Norden, also auf
-  dem Bildschirm schräg nach rechts oben). Mausrad zoomt 320–620 m, Erschütterung bei Treffern.
+- `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt nach **Norden** – kein
+  Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl; Nordosten wurde probiert und verworfen, `YAW`). Gesteuert wird
+  nach Himmelsrichtung (W = Norden). Mausrad zoomt 320–620 m, Erschütterung bei Treffern. Start: Südwesten der
+  Karte in der Bucht (`main.js`).
 - `js/buildings.js` – Shader-Patch aller Stadtmaterialien (doppelseitig): Durchsicht-Kreis (Kegel Kamera→Godzilla,
   gerastert verworfen, Uniforms in `seeThrough`), Schaden je Instanz über `aDmg` (Schaden, Trefferpunkt lokal):
   Delle + Bröseln im Vertex-Shader, Löcher mit dunklen Innenwänden, Ruß und Glutränder am Einschlag, verteilte
@@ -72,7 +73,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
 - `js/ground.js` – Bodenschäden: `GroundScars` = Schadenskarte über die Stadt (Canvas 1024², ~3 m/px, additiv bemalt,
   max. 4 Uploads/s; R Ruß/Glut, G Staub/Splitt, B Krater/Risse), Boden-Shader `patchGround` liest sie in
   Weltkoordinaten (Staubfelder lassen Schutt in den Boden übergehen, frische Strahlspuren glühen). Für scharfe Details
-  `Decals` (InstancedMesh-Quadrate mit Canvas-Textur): Fußabdrücke bei jedem Stampfer, Rissnetze unter Ruinen.
+  `Decals` (InstancedMesh-Quadrate mit Canvas-Textur): formlose Einschläge bei jedem Stampfer (keine Fußform – sah
+  wie Spinnensymbole aus), Einsturzstellen mit kurzen Rissen und Rußflecken (lange Risslinien wirken wie Spinnenbeine).
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
@@ -88,7 +90,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Staubwalze rollt über die Straßen. Ab 70 m kippt es weg vom Angreifer und knickt an einer Bruchstelle; der Aufschlag
   zerschlägt alles darunter (Kettenreaktion) und meldet `topple` (für den Super-X-Boss gedacht). Danach Schutthaufen
   (zufällige Variante und Drehung, fast gleichmäßig skaliert – gestreckt sah er wie Splitter aus; umgestürzte Türme
-  als Kette von Haufen), der 45 s glimmt, anfangs brennt und raucht. Im Schutt leuchten keine Fenster. Schaden: Klaue 60, Schwanz 80 (75 m),
+  als Kette von Haufen), der 45 s glimmt, anfangs brennt und raucht. Im Schutt leuchten keine Fenster.
+  Teilruinen: 45 % der Gebäude ab 12 m brechen nur oben ab (Abbruchhöhe sinkt, Shader verwirft alles darüber mit
+  gezackter, verrußter Kante), jeder zweite gekippte Turm lässt einen Stumpf stehen; innen und daneben liegt Schutt. Schaden: Klaue 60, Schwanz 80 (75 m),
   Kernpuls 140 (130 m, Abfall), Strahl 220/s, Stampfer 60 (14 m).
 
 ## Testen
@@ -97,21 +101,17 @@ Renderer mit `preserveDrawingBuffer`; `game.step(dt)` rechnet einen Frame von Ha
 und `requestAnimationFrame` pausiert), Tasten lassen sich per `dispatchEvent(new KeyboardEvent('keydown', {code}))` simulieren.
 `game.manual = true` hält die eigene Schleife an, damit Screenshots genau den von Hand gerechneten Stand zeigen.
 
-## Stand
-Erledigt: Repo, Three.js eingebunden, Godzilla-Modell + Rig + Animationen exportiert. Auf dem zweiten PC (Blender 5.2.3)
-geprüft: Silhouette und Platten gut; Maulhöhle vergrößert und Zähne neu gesetzt (vorher ragten die unteren aus dem Kinn),
-Maul öffnet sich in der `breath`-Pose sauber (Vorschau `godzilla_breath.png`). `city.glb` und `units.glb` gebaut,
-keine API-Fehler. Kleinigkeit offen: Kinnspitze bei offenem Maul etwas kantig.
-
-Nächste Schritte für den Prototyp „Tokio 1984 – Die Rückkehr“:
-1. (erledigt) Godzilla-Vorschau prüfen, `city` und `units` bauen.
-2. Spiel: (erledigt) `index.html`, `js/main.js`, Godzilla-Steuerung mit Kombo, Atomstrahl, Kernpuls, Brüllen,
-   Kamera, Gamepad-Belegung (Gamepad noch nicht mit echtem Gerät getestet), Teststadt aus InstancedMesh.
-   (erledigt) Zerstörung: Einsinken/Kippen, Kettenreaktion, Staub, Trümmer, Schutt, Einreißen beim Gehen.
-   (erledigt) Durchsicht-Kreis, sichtbarer Schaden pro Treffer, Brände, neuer Einsturz und Schutt.
-   Offen: echte GPU-Last (Partikel, ~230k Dreiecke) auf der UHD 615 prüfen. Militär (Panzer, LKW, Hubschrauber),
-   Bossphase **Super-X** mit Kadmium-Geschossen (Godzilla sackt zusammen → `down`) – Schwachstelle wie im Film:
-   ein einstürzendes Hochhaus auf sie fallen lassen.
-3. Nachtstimmung: Nebel, Regen, Suchscheinwerfer, Brände mit wenigen Punktlichtern, ACES-Tonemapping, Filmkorn/Vignette per CSS.
-4. Audio: `audio.js` aus Teil 1 portieren, Musikmanager (erst `music/`, sonst Synth), neue düstere Stücke im Heisei-Stil.
-5. HUD (Lebens-/Energieleiste, Ziel, Bossleiste), Boss-Auftritt mit schwarzen Balken, Bewertung, Service Worker.
+## Stand und Fahrplan
+Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
+1. **Erledigt** – Modelle: Godzilla geprüft (Maul, Zähne), `city` und `units` gebaut. Offen: Kinnspitze etwas kantig.
+2. **Spiel – in Arbeit.** Erledigt: Spielgerüst, Steuerung (Gang per IK, Kombo, Atomstrahl, Kernpuls, Brüllen),
+   feste Kamera, Teststadt, Zerstörung (sichtbarer Schaden, Brände, Einsturz, Teilruinen, Schutt, Bodenschäden).
+   Offen: **Militär** (Panzer, Raketen-LKW, Hubschrauber greifen an, Godzilla verliert Leben), **Bossphase Super-X**
+   mit Kadmium-Geschossen (Godzilla sackt zusammen → `down`); Schwachstelle wie im Film: ein Hochhaus auf sie kippen
+   (`topple`-Ereignis liefert Fall-Linie und Breite). Gamepad noch nicht mit echtem Gerät getestet.
+3. **Nachtstimmung** – teilweise: ACES, Vignette, Brände/Rauch/Glut. Offen: Nebel abstimmen, Regen,
+   Suchscheinwerfer, wenige Punktlichter an Bränden, Filmkorn; die Szene ist insgesamt sehr dunkel.
+4. **Audio** – offen: `audio.js` aus Teil 1 portieren, Musikmanager (erst `music/`, sonst Synth), Heisei-Stücke.
+5. **HUD und Rahmen** – teilweise: Leben/Energie, Zerstörungszähler. Offen: Ziel, Bossleiste, Boss-Auftritt mit
+   schwarzen Balken, Bewertung, Service Worker (PWA).
+Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~230k Dreiecke, Partikel).

@@ -87,7 +87,7 @@ async function load() {
   };
   game.city = new City(city, scene, fx, events);
   const g = game.godzilla = new Godzilla(gz, scene, events);
-  g.position.set(0, 0, BAY_Z + 220);          // kommt aus der Bucht
+  g.position.set(-1200, 0, BAY_Z + 200);      // kommt im Südwesten der Karte aus der Bucht
   g.raycast = (o, d, max) => game.city.raycast(o, d, max);
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
   rig.snap(g.position);
@@ -101,7 +101,7 @@ async function load() {
   events.on('stomp', e => {
     rig.shake(0.35 * e.strength);
     game.city.damage(e.pos, 14, 60, e.pos, false, 3);
-    game.city.decals.add('foot', e.pos.x, e.pos.z, e.heading, 24);
+    game.city.decals.add('impact', e.pos.x, e.pos.z, Math.random() * 6.3, 16 + Math.random() * 10);
     game.city.scars.blob(e.pos.x, e.pos.z, 12, [0, 0.3, 0.1]);
     fx.dust.emit(e.pos.x, 0, e.pos.z, 3, { spread: 6, up: 1.5, out: 6, size: 12, life: 2 });
   });

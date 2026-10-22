@@ -98,11 +98,11 @@ float gzN2(vec2 p) {
   mat.customProgramCacheKey = () => 'gz-ground';
 }
 
-// ---------- Decals: scharfe Details flach auf dem Boden (Fußabdrücke, Rissnetze), je Art ein InstancedMesh ----------
+// ---------- Decals: scharfe Details flach auf dem Boden (Einschläge, Rissnetze), je Art ein InstancedMesh ----------
 export class Decals {
   constructor(scene) {
     this.kinds = {
-      foot: this.pool(scene, footTexture(), 300),
+      impact: [this.pool(scene, impactTexture(), 160), this.pool(scene, impactTexture(), 160)],   // zwei Varianten
       crack: this.pool(scene, crackTexture(), 200),
     };
   }
@@ -120,9 +120,10 @@ export class Decals {
     return { im, next: 0, n };
   }
 
-  // rot: Drehung um die Hochachse (Fußabdruck: Godzillas Blickrichtung), size in m
+  // rot: Drehung um die Hochachse, size in m
   add(kind, x, z, rot, size) {
-    const p = this.kinds[kind];
+    let p = this.kinds[kind];
+    if (Array.isArray(p)) p = p[Math.random() * p.length | 0];
     const i = p.next++ % p.n;
     _dq.setFromAxisAngle(_up, rot);
     p.im.setMatrixAt(i, _dm.compose(_dv.set(x, 0.06, z), _dq, _ds.set(size, 1, size)));
@@ -157,47 +158,60 @@ function crackLine(g, x, y, ang, len, w, depth = 0) {
   g.stroke();
 }
 
-// Fußabdruck (Zehen zeigen nach +Z der Instanz = unten in der Textur): Staubkranz, lange Sohle, drei spitze
-// Krallenzehen, Risse im Asphalt
-function footTexture() {
+// Einschlag im Asphalt (formlos, keine Fußform): unregelmäßiger Staubkranz, zersplitterte Platten in der Mitte,
+// verästelte Risse nach außen
+function impactTexture() {
   return canvasTex((g, S) => {
-    const c = S / 2;
-    const ring = g.createRadialGradient(c, c, S * 0.15, c, c, S * 0.5);
-    ring.addColorStop(0, 'rgba(160,150,135,0.7)');
-    ring.addColorStop(0.55, 'rgba(140,132,118,0.35)');
-    ring.addColorStop(1, 'rgba(120,112,100,0)');
-    g.fillStyle = ring; g.fillRect(0, 0, S, S);
-    g.strokeStyle = 'rgba(12,11,10,0.85)';
-    for (let i = 0; i < 12; i++) crackLine(g, c, c, i / 12 * Math.PI * 2 + Math.random() * 0.4, S * (0.28 + Math.random() * 0.2), 2.6);
-    const dark = (path) => {
-      g.save(); g.shadowColor = 'rgba(0,0,0,0.9)'; g.shadowBlur = S * 0.03;
-      g.fillStyle = 'rgba(10,9,8,0.95)'; path(); g.fill(); g.restore();
-    };
-    dark(() => { g.beginPath(); g.ellipse(c, c - S * 0.04, S * 0.13, S * 0.22, 0, 0, Math.PI * 2); });   // Sohle
-    for (const k of [-1, 0, 1]) {                                                                        // Krallenzehen
-      const x = c + k * S * 0.1, y = c + S * 0.14, a = k * 0.35;
-      dark(() => {
-        g.beginPath();
-        g.moveTo(x - Math.cos(a) * S * 0.045, y - Math.sin(a) * S * 0.045);
-        g.lineTo(x + Math.sin(a) * S * 0.2 * -1 + k * S * 0.03, y + Math.cos(a) * S * 0.2);
-        g.lineTo(x + Math.cos(a) * S * 0.045, y + Math.sin(a) * S * 0.045);
-        g.closePath();
-      });
+    const c = S / 2, R = Math.random;
+    for (let i = 0; i < 5; i++) {                       // Staubkranz aus versetzten Wolken
+      const x = c + (R() - 0.5) * S * 0.25, y = c + (R() - 0.5) * S * 0.25, r = S * (0.25 + R() * 0.22);
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, 'rgba(150,140,126,0.35)'); gr.addColorStop(1, 'rgba(130,122,110,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, S, S);
     }
+    g.strokeStyle = 'rgba(12,11,10,0.8)';
+    for (let i = 0; i < 16; i++) {
+      const a = R() * Math.PI * 2, d = R() * S * 0.18;
+      crackLine(g, c + Math.cos(a) * d, c + Math.sin(a) * d, a + (R() - 0.5), S * (0.08 + R() * 0.12), 1.8);
+    }
+    for (let i = 0; i < 26; i++) {                      // Asphaltschollen: dunkle Splitter mit hellem Bruchrand
+      const a = R() * Math.PI * 2, d = Math.sqrt(R()) * S * 0.16, x = c + Math.cos(a) * d, y = c + Math.sin(a) * d;
+      const r = S * (0.02 + R() * 0.04);
+      g.beginPath();
+      for (let k = 0; k < 5; k++) {
+        const b = k / 5 * Math.PI * 2 + R() * 0.8, rr = r * (0.6 + R() * 0.7);
+        k ? g.lineTo(x + Math.cos(b) * rr, y + Math.sin(b) * rr) : g.moveTo(x + Math.cos(b) * rr, y + Math.sin(b) * rr);
+      }
+      g.closePath();
+      g.fillStyle = `rgba(${10 + R() * 25 | 0},${9 + R() * 22 | 0},${8 + R() * 18 | 0},0.92)`;
+      g.fill();
+      g.strokeStyle = 'rgba(120,112,100,0.5)'; g.lineWidth = 1; g.stroke();
+    }
+    g.strokeStyle = 'rgba(12,11,10,0.8)';
   });
 }
 
-// Rissnetz mit Staub für Einsturzstellen
+// Einsturzstelle: Staub, unregelmäßige Ruß- und Splittflecken, viele kurze Risse (lange Linien wirken wie Spinnenbeine)
 function crackTexture() {
   return canvasTex((g, S) => {
-    const c = S / 2;
-    const dust = g.createRadialGradient(c, c, 0, c, c, S * 0.5);
-    dust.addColorStop(0, 'rgba(110,102,92,0.5)'); dust.addColorStop(0.7, 'rgba(100,94,86,0.25)'); dust.addColorStop(1, 'rgba(90,85,80,0)');
-    g.fillStyle = dust; g.fillRect(0, 0, S, S);
-    g.strokeStyle = 'rgba(10,9,8,0.85)';
-    for (let i = 0; i < 14; i++) {
-      const a = Math.random() * Math.PI * 2, r = Math.random() * S * 0.2;
-      crackLine(g, c + Math.cos(a) * r, c + Math.sin(a) * r, a, S * (0.18 + Math.random() * 0.22), 1.8);
+    const c = S / 2, R = Math.random;
+    for (let i = 0; i < 7; i++) {
+      const x = c + (R() - 0.5) * S * 0.3, y = c + (R() - 0.5) * S * 0.3, r = S * (0.2 + R() * 0.25);
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, 'rgba(115,107,96,0.4)'); gr.addColorStop(1, 'rgba(100,94,86,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, S, S);
+    }
+    for (let i = 0; i < 18; i++) {                       // Ruß- und Splittflecken
+      const a = R() * Math.PI * 2, d = Math.sqrt(R()) * S * 0.3, x = c + Math.cos(a) * d, y = c + Math.sin(a) * d;
+      const r = S * (0.02 + R() * 0.05);
+      const gr = g.createRadialGradient(x, y, 0, x, y, r);
+      gr.addColorStop(0, 'rgba(14,13,12,0.6)'); gr.addColorStop(1, 'rgba(14,13,12,0)');
+      g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    g.strokeStyle = 'rgba(14,13,12,0.6)';
+    for (let i = 0; i < 40; i++) {
+      const a = R() * Math.PI * 2, d = Math.sqrt(R()) * S * 0.32;
+      crackLine(g, c + Math.cos(a) * d, c + Math.sin(a) * d, R() * Math.PI * 2, S * (0.04 + R() * 0.08), 1.4);
     }
   }, 512);
 }

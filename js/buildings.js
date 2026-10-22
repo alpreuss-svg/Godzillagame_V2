@@ -6,7 +6,8 @@
 //
 // Instanz-Attribute (InstancedBufferAttribute, je Gebäudetyp geteilt):
 //   aDmg = (Schaden 0..1+, Trefferpunkt x, y, z in Gebäudekoordinaten)
-//   aFx  = (Modus/Fortschritt: -1 = Schutt, Bruchhöhe, Knickwinkel, Winkel der Knickachse)
+//   aFx  = (-1 = Schutt / 0 = stehend / > 0 = Teilruine mit dieser Abbruchhöhe in m, Bruchhöhe, Knickwinkel,
+//           Winkel der Knickachse)
 import * as THREE from 'three';
 
 export const seeThrough = {
@@ -114,6 +115,15 @@ const FRAG_CLIP = /* glsl */`
     gzBurn = max(gzBurn, smoothstep(th, th + 0.04, n2) * 0.9);
     gzEmber = max(gzEmber, (1.0 - smoothstep(0.0, 0.02, abs(n2 - th))) * smoothstep(0.4, 0.7, d) * broken * 0.6);
     gzLights = 1.0 - 0.6 * min(d, 1.0);                                       // Strom fällt nach und nach aus
+  }
+  if (vFx.x > 0.5) {
+    // Teilruine: alles über der (gezackten) Abbruchhöhe fehlt, die Bruchkante ist verrußt und glüht stellenweise
+    float cut = vFx.x + (gzNoise(vec3(vLocal.xz * 0.11, 1.7)) - 0.5) * vFx.x * 0.6 + (gzNoise(vLocal * 0.45) - 0.5) * 4.0;
+    if (vLocal.y > cut) discard;
+    float edge = cut - vLocal.y;
+    gzBurn = max(gzBurn, (1.0 - smoothstep(0.0, 10.0, edge)) * 0.9);
+    gzEmber = max(gzEmber, (1.0 - smoothstep(0.0, 1.2, edge)) * smoothstep(0.45, 0.65, gzNoise(vLocal * 0.3 + 5.0)) * 0.8);
+    gzLights = min(gzLights, 0.25);
   }
 }
 `;

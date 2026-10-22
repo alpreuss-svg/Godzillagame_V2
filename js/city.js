@@ -226,16 +226,20 @@ export class City {
     if (dir.lengthSq() < 1) dir.set(Math.random() - 0.5, 0, Math.random() - 0.5);
     dir.normalize();
     const topple = b.h >= TOPPLE_H;
+    // manche Gebäude bleiben als Teilruine stehen: mittlere brechen oben ab, Türme lassen nach dem Kippen einen Stumpf
+    const ruin = topple ? Math.random() < 0.5 : b.h >= 12 && Math.random() < RUIN_P;
     const a = Math.random() * Math.PI * 2;
     const axis = new THREE.Vector3().crossVectors(UP, dir);
     const c = Math.cos(b.rot), s = Math.sin(b.rot);
+    const breakY = b.h * (0.32 + Math.random() * 0.2);
     this.falling.push({
-      b, t: 0, topple, dir, acc: 0, landed: false, ring: false,
-      dur: topple ? TOPPLE_FALL + 1.6 : 1.5 + b.h / 50,
+      b, t: 0, topple, ruin, dir, acc: 0, landed: false, ring: false,
+      ruinY: topple ? breakY * (0.45 + Math.random() * 0.3) : b.h * (0.25 + Math.random() * 0.35),
+      dur: topple ? TOPPLE_FALL + 1.6 : ruin ? 1.2 + b.h / 60 : 1.5 + b.h / 50,
       tiltAxis: new THREE.Vector3(Math.cos(a), 0, Math.sin(a)), tilt: 0.06 + Math.random() * 0.1,
       edge: Math.abs(dir.x) * b.hw + Math.abs(dir.z) * b.hd,   // Abstand Mitte -> Kippkante
       // Knick: Bruchhöhe und Achse in Gebäudekoordinaten (Achse = UP x Fallrichtung)
-      breakY: b.h * (0.32 + Math.random() * 0.2), bendMax: 0.35 + Math.random() * 0.3,
+      breakY, bendMax: 0.35 + Math.random() * 0.3,
       axisAngle: Math.atan2(axis.x * s + axis.z * c, axis.x * c - axis.z * s),
       dmg0: b.attrs.dmg.getX(b.index),
     });
@@ -258,10 +262,10 @@ export class City {
     for (let i = this.falling.length - 1; i >= 0; i--) {
       const f = this.falling[i], b = f.b;
       f.t += dt;
-      if (f.topple) this.toppleStep(f, dt); else this.sinkStep(f, dt);
+      if (f.topple) this.toppleStep(f, dt); else if (f.ruin) this.ruinStep(f, dt); else this.sinkStep(f, dt);
       this.setMatrix(b, _m);
       if (f.t >= f.dur) {
-        this.setMatrix(b, ZERO);
+        if (f.ruin) this.finishRuin(f); else this.setMatrix(b, ZERO);
         this.addRubble(f);
         this.falling.splice(i, 1);
       }
@@ -297,6 +301,40 @@ export class City {
         1, { speed: 5, up: 0.4, size: 1.5 + r * 0.06 });
     }
     if (!f.ring && k > 0.45) this.dustRing(f, b.x, b.z, r);
+  }
+
+  // Teilruine: der obere Teil bröckelt von oben nach unten weg (Abbruchhöhe im Shader sinkt), das Gebäude zittert,
+  // Staub und Brocken stürzen von der Bruchkante
+  ruinStep(f, dt) {
+    const b = f.b, k = Math.min(1, f.t / f.dur);
+    const cut = b.h - (b.h - f.ruinY) * (1 - (1 - k) * (1 - k));
+    const shake = (1 - k) * 0.6 * Math.sin(f.t * 43);
+    this.baseMatrix(b, _m, shake, -shake);
+    b.attrs.fx.setX(b.index, cut);
+    b.attrs.fx.needsUpdate = true;
+    b.attrs.dmg.setXYZW(b.index, Math.max(f.dmg0, 0.55 + 0.2 * k), 0, cut, 0);
+    b.attrs.dmg.needsUpdate = true;
+    const r = Math.max(b.hw, b.hd);
+    for (f.acc += (8 + r * 0.6) * dt; f.acc >= 1; f.acc--) {
+      const a = Math.random() * Math.PI * 2;
+      this.fx.dust.emit(b.x + Math.cos(a) * b.hw, cut, b.z + Math.sin(a) * b.hd, 1, { spread: 3, up: 1.5, out: 5, size: 10 + r * 0.3, life: 4 });
+    }
+    if (Math.random() < dt * (3 + b.h / 15)) {
+      this.fx.debris.emit(_v.set(b.x + (Math.random() - 0.5) * b.hw * 2, cut, b.z + (Math.random() - 0.5) * b.hd * 2),
+        1, { speed: 6, up: 0.4, size: 1.5 + r * 0.06 });
+    }
+    if (!f.ring && k > 0.6) this.dustRing(f, b.x, b.z, r);
+  }
+
+  // Ruine bleibt stehen (auch der Stumpf eines umgestürzten Turms, der im Staub des Aufschlags wieder auftaucht)
+  finishRuin(f) {
+    const b = f.b;
+    b.ruin = true;
+    this.setMatrix(b, this.baseMatrix(b, _m));
+    b.attrs.fx.setXYZW(b.index, f.ruinY, 0, 0, 0);
+    b.attrs.fx.needsUpdate = true;
+    b.attrs.dmg.setXYZW(b.index, Math.max(b.attrs.dmg.getX(b.index), 0.75), 0, f.ruinY, 0);
+    b.attrs.dmg.needsUpdate = true;
   }
 
   // Kippen: das Hochhaus fällt um die Kante auf der dem Angreifer abgewandten Seite und knickt dabei an einer
@@ -401,6 +439,13 @@ export class City {
         this.decals.add('crack', x, z, Math.random() * 6.3, w * 2.4);
       }
       this.scars.line(b.x + f.dir.x * f.edge, b.z + f.dir.z * f.edge, f.dir, len, w * 1.3);
+    } else if (f.ruin) {
+      // eingestürzte Decken füllen die offene Ruine, weitere Trümmer liegen auf der vom Angreifer abgewandten Seite
+      const r = Math.max(b.hw, b.hd), inner = Math.min(b.hw, b.hd) * 2.1;
+      this.placeRubble(b.x, b.z, inner, false, Math.min(f.ruinY * 0.7, inner * 0.9));
+      this.placeRubble(b.x + f.dir.x * r * 1.1, b.z + f.dir.z * r * 1.1, r * 1.5, true);
+      this.decals.add('crack', b.x, b.z, Math.random() * 6.3, r * 3.2);
+      this.scars.collapse(b.x, b.z, r * 0.8);
     } else {
       const r = Math.max(b.hw, b.hd);
       this.placeRubble(b.x, b.z, r * 2.4, true);
@@ -409,9 +454,10 @@ export class City {
     }
   }
 
-  placeRubble(x, z, size, smolder) {
+  // height: gewünschte Höhe in m (sonst flach nach RUBBLE_FLAT)
+  placeRubble(x, z, size, smolder, height = 0) {
     _q.setFromAxisAngle(UP, Math.random() * Math.PI * 2);
-    _m.compose(_v.set(x, 0, z), _q, _s.set(size, size * RUBBLE_FLAT, size));
+    _m.compose(_v.set(x, 0, z), _q, _s.set(size, height ? height / 0.35 : size * RUBBLE_FLAT, size));
     const pool = this.rubble[Math.random() < 0.5 ? 0 : 1];
     const idx = pool.meshes[0].count;
     if (idx >= pool.meshes[0].instanceMatrix.count) return;
@@ -431,6 +477,7 @@ const TOPPLE_FALL = 2.1;      // s bis zum Aufschlag
 const TOPPLE_DAMAGE = 260;    // Schaden für alles, worauf ein Turm fällt
 const CRUSH_DPS = 320;        // Godzillas Körper gegen Gebäude
 const RUBBLE_FLAT = 0.55;     // Schutt in der Höhe gestaucht (Modell: 1 breit, 0,35 hoch)
+const RUIN_P = 0.45;          // Anteil mittlerer Gebäude (ab 12 m), die als Teilruine stehen bleiben
 const MAX_FIRES = 40;         // gleichzeitig brennende Gebäude (älteste erlöschen)
 const SMOLDER_TIME = 45;      // s, bis die Glut im Schutt verloschen ist
 const SMOKE = { spread: 4, up: 7, out: 2, size: 20, life: 7, color: [0.06, 0.06, 0.065] };
