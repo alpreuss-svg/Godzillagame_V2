@@ -53,10 +53,17 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
   Körperdrehung), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
   (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
-- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes.
+- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; Staub (ein `Points`-Pool,
+  Punktgröße auf 18 % der Bildhöhe gedeckelt – große Staubpunkte kosten auf schwachen GPUs viel Füllrate),
+  Trümmer (InstancedMesh aus `U_debris0..2`, Schwerkraft, ein Abpraller).
 - `js/city.js` – Teststadt: Raster 136 m, Zonen (Shinjuku-Türme im Norden, Büros, Wohn-/Ladenviertel, Hafen),
   Bucht südlich `BAY_Z`, ein InstancedMesh pro Typ und Material (~46 Draw Calls bei ~3900 Gebäuden),
-  Raycast für den Strahl, `damage()` – zerstörte Gebäude werden vorerst nur ausgeblendet.
+  Raycast für den Strahl (ignoriert Gebäude, in denen das Maul steckt). Zerstörung: HP = 20 + 2,5·Höhe;
+  `damage()` (Umkreis, optional mit Abfall), `crush()` (Godzillas Körper, 320 Schaden/s, bremst auf 5 bzw. 2,5 m/s),
+  Einsturz: unter 70 m Einsinken mit Schräglage und Staub, ab 70 m Kippen weg vom Angreifer – der Aufschlag
+  zerschlägt alles darunter (Kettenreaktion) und meldet `topple` (Linie, Breite; für den Super-X-Boss gedacht).
+  Danach bleibt ein Schutthaufen (`B_rubble`, eigenes InstancedMesh). Schaden: Klaue 60, Schwanz 80 (75 m),
+  Kernpuls 140 (130 m, Abfall), Strahl 220/s, Stampfer 60 (14 m).
 
 ## Testen
 Server starten (`tools\serve.ps1`, auch als `.claude/launch.json` für die Browser-Vorschau). Mit `?debug` läuft der
@@ -73,8 +80,10 @@ Nächste Schritte für den Prototyp „Tokio 1984 – Die Rückkehr“:
 1. (erledigt) Godzilla-Vorschau prüfen, `city` und `units` bauen.
 2. Spiel: (erledigt) `index.html`, `js/main.js`, Godzilla-Steuerung mit Kombo, Atomstrahl, Kernpuls, Brüllen,
    Kamera, Gamepad-Belegung (Gamepad noch nicht mit echtem Gerät getestet), Teststadt aus InstancedMesh.
-   Offen: Zerstörung (Einsinken + Kippen + Staub + Schuttmodell; Godzilla soll beim Gehen Gebäude einreißen,
-   Balance der Gebäude-HP), Militär (Panzer, LKW, Hubschrauber),
+   (erledigt) Zerstörung: Einsinken/Kippen, Kettenreaktion, Staub, Trümmer, Schutt, Einreißen beim Gehen.
+   Offen: Hochhäuser zwischen Kamera und Godzilla verdecken ihn im Shinjuku-Viertel völlig → Durchsicht-Kreis
+   per Shader (Fragmente nahe der Linie Kamera–Godzilla gerastert verwerfen); echte GPU-Last der Staubwolken auf der
+   UHD 615 prüfen. Militär (Panzer, LKW, Hubschrauber),
    Bossphase **Super-X** mit Kadmium-Geschossen (Godzilla sackt zusammen → `down`) – Schwachstelle wie im Film:
    ein einstürzendes Hochhaus auf sie fallen lassen.
 3. Nachtstimmung: Nebel, Regen, Suchscheinwerfer, Brände mit wenigen Punktlichtern, ACES-Tonemapping, Filmkorn/Vignette per CSS.

@@ -5,14 +5,15 @@ import { Input } from './input.js';
 import { CameraRig } from './camera.js';
 import { Godzilla } from './godzilla.js';
 import { City, BAY_Z } from './city.js';
+import { Dust, Debris } from './effects.js';
 
 // Qualität: ?q=low für schwache Grafik (z. B. Intel UHD 615), ?q=high für mehr Kantenglättung/Schatten
 const Q = new URLSearchParams(location.search).get('q') || 'mid';
 const QUALITY = {
-  low: { ratio: 1, aa: false, shadow: 512 },
-  mid: { ratio: 1.25, aa: true, shadow: 1024 },
-  high: { ratio: 2, aa: true, shadow: 2048 },
-}[Q] || { ratio: 1.25, aa: true, shadow: 1024 };
+  low: { ratio: 1, aa: false, shadow: 512, dust: 500 },
+  mid: { ratio: 1.25, aa: true, shadow: 1024, dust: 1000 },
+  high: { ratio: 2, aa: true, shadow: 2048, dust: 1600 },
+}[Q] || { ratio: 1.25, aa: true, shadow: 1024, dust: 1000 };
 
 class Events {
   constructor() { this.map = new Map(); }
@@ -76,16 +77,37 @@ async function load() {
   const manager = new THREE.LoadingManager();
   manager.onProgress = (url, done, total) => { $('progress').style.width = (100 * done / total) + '%'; };
   const loader = new GLTFLoader(manager);
-  const [gz, city] = await Promise.all(['godzilla', 'city'].map(n => loader.loadAsync(`assets/models/${n}.glb`)));
+  const [gz, city, units] = await Promise.all(['godzilla', 'city', 'units'].map(n => loader.loadAsync(`assets/models/${n}.glb`)));
 
-  game.city = new City(city, scene);
+  const fx = game.fx = {
+    dust: new Dust(scene, QUALITY.dust),
+    debris: new Debris(scene, [0, 1, 2].map(i => units.scene.getObjectByName('U_debris' + i))),
+  };
+  game.city = new City(city, scene, fx, events);
   const g = game.godzilla = new Godzilla(gz, scene, events);
   g.position.set(0, 0, BAY_Z + 220);          // kommt aus der Bucht
   g.raycast = (o, d, max) => game.city.raycast(o, d, max);
+  g.collide = (c, r, dt) => game.city.crush(c, r, dt);
   rig.snap(g.position);
 
-  events.on('attack', e => game.city.damage(e.pos, e.radius, e.damage));
-  events.on('stomp', e => rig.shake(0.35 * e.strength));
+  events.on('attack', e => {
+    const n = game.city.damage(e.pos, e.radius, e.damage, e.from, e.falloff);
+    if (!n) return;
+    if (e.kind === 'beam') {
+      if (Math.random() < 0.25) fx.dust.emit(e.pos.x, e.pos.y, e.pos.z, 1, { spread: 4, up: 2, out: 10, size: 14, life: 2.5 });
+      if (Math.random() < 0.06) fx.debris.emit(e.pos, 1, { speed: 22 });
+    } else if (e.kind === 'claw') {
+      fx.debris.emit(e.pos.clone().setY(40), 3, { speed: 14 });
+      fx.dust.emit(e.pos.x, 30, e.pos.z, 4, { spread: 8, up: 1, out: 8, size: 14, life: 2.5 });
+    }
+  });
+  events.on('stomp', e => {
+    rig.shake(0.35 * e.strength);
+    game.city.damage(e.pos, 14, 60, e.pos);
+    fx.dust.emit(e.pos.x, 0, e.pos.z, 3, { spread: 6, up: 1.5, out: 6, size: 12, life: 2 });
+  });
+  events.on('collapse', e => rig.shake(e.topple ? 0.6 : 0.25));
+  events.on('topple', () => rig.shake(1.6));
   events.on('roar', () => rig.shake(1.0));
   events.on('shake', a => rig.shake(a));
 
@@ -103,7 +125,12 @@ function step(dt) {
   else if (game.state === 'pause' && input.pressed('pause')) { game.state = 'play'; show(null); }
 
   if (g) {
-    if (game.state === 'play') g.update(dt, input, rig);
+    if (game.state === 'play') {
+      g.update(dt, input, rig);
+      game.city.update(dt);
+      game.fx.debris.update(dt);
+    }
+    if (game.state !== 'pause') game.fx.dust.update(dt, camera, renderer.domElement.height);
     else if (game.state === 'title') { g.mixer.update(dt); rig.yaw += dt * 0.05; }
     if (game.state !== 'pause') rig.update(dt, g.position, game.state === 'play' ? input : IDLE);
     moon.position.copy(g.position).add(MOON_OFS);
@@ -113,11 +140,13 @@ function step(dt) {
     fill.target.position.copy(g.position);
     $('hp').style.width = g.hp + '%';
     $('en').style.width = g.energy + '%';
+    if (game.city.destroyed !== shownDestroyed) $('destroyed').textContent = shownDestroyed = game.city.destroyed;
   }
   renderer.render(scene, camera);
   input.endFrame();
 }
 const IDLE = { cam: 0, zoom: 0 };
+let shownDestroyed = -1;
 game.step = step;
 
 const clock = new THREE.Clock();

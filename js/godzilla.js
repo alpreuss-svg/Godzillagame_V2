@@ -9,6 +9,8 @@ const CHARGE_TIME = 1.1;        // s, Platten laden vom Schwanz zum Hals
 const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m voraus
 const BREATH_COST = 20;         // Energie pro Sekunde
 const PULSE_COST = 30;
+const CLAW_DAMAGE = 60, TAIL_DAMAGE = 80, PULSE_DAMAGE = 140, BEAM_DPS = 220;
+const BODY_RADIUS = 13;          // Körperkreis, der Gebäude beim Gehen zermalmt
 const FADE = 0.15;              // s Überblendzeit der Einzelanimationen
 const COMBO = ['clawL', 'clawR', 'tail'];
 const MOUTH = new THREE.Vector3(0, 72.9, 19.4);   // Maulspitze im Modell (Bind-Pose, glTF: +Z vorn)
@@ -73,6 +75,7 @@ export class Godzilla {
     this.wave = new Shockwave(scene);
     this.footY = { L: 99, R: 99 };
     this.raycast = null;          // vom Spiel gesetzt: (from, dir, max) -> Abstand
+    this.collide = null;          // vom Spiel gesetzt: (mitte, radius, dt) -> Höhe des blockierenden Gebäudes
   }
 
   get position() { return this.root.position; }
@@ -134,16 +137,20 @@ export class Godzilla {
           this.released = true;
           const p = this.position.clone().setY(35);
           this.wave.fire(p, 130);
-          this.events.emit('attack', { kind: 'pulse', pos: p.setY(0), radius: 130, damage: 60 });
+          this.events.emit('attack', { kind: 'pulse', pos: p.setY(0), from: p, radius: 130, damage: PULSE_DAMAGE, falloff: true });
           this.events.emit('shake', 2.2);
         }
         if (this.t > 0.95) this.finish();
         break;
     }
 
-    // Bewegung
+    // Bewegung; Gebäude vor der Brust werden zermalmt und bremsen (Hochhäuser stärker als Häuser)
     this.speed = approach(this.speed, targetSpeed, 16 * dt);
     const p = this.position;
+    if (this.collide && this.speed > 0.5) {
+      const block = this.collide(_v.copy(p).addScaledVector(this.forward(new THREE.Vector3()), 7), BODY_RADIUS, dt);
+      if (block > 0) this.speed = Math.min(this.speed, block > 60 ? 2.5 : 5);
+    }
     p.addScaledVector(this.forward(), this.speed * dt);
     p.x = THREE.MathUtils.clamp(p.x, -BOUNDS, BOUNDS);
     p.z = THREE.MathUtils.clamp(p.z, -BOUNDS, BOUNDS);
@@ -179,13 +186,13 @@ export class Godzilla {
       this.spun = k;
       if (!this.hitDone && this.t > this.dur * 0.45) {
         this.hitDone = true;
-        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), radius: 75, damage: 50 });
+        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), from: this.position.clone(), radius: 75, damage: TAIL_DAMAGE });
         this.events.emit('shake', 0.8);
       }
     } else if (!this.hitDone && this.t > this.dur * 0.45) {
       this.hitDone = true;
       const pos = this.position.clone().addScaledVector(this.forward(), 24);
-      this.events.emit('attack', { kind: 'claw', pos, radius: 22, damage: 40 });
+      this.events.emit('attack', { kind: 'claw', pos, from: this.position.clone(), radius: 22, damage: CLAW_DAMAGE });
       this.events.emit('shake', 0.4);
     }
     if (this.queued && this.combo < COMBO.length - 1 && this.t > this.dur * 0.55) this.attack(this.combo + 1);
@@ -215,7 +222,7 @@ export class Godzilla {
     let max = from.y / Math.sin(BREATH_PITCH);              // bis zum Boden
     if (this.raycast) max = Math.min(max, this.raycast(from, dir, max));
     const end = this.beam.update(dt, this.firing, from, dir, max);
-    if (end) this.events.emit('attack', { kind: 'beam', pos: end, radius: 16, damage: 90 * dt });
+    if (end) this.events.emit('attack', { kind: 'beam', pos: end, from: this.position, radius: 16, damage: BEAM_DPS * dt });
   }
 
   // ---------- Einzelanimationen über Fortbewegung legen (Gewichte summieren sich zu 1) ----------

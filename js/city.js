@@ -34,7 +34,7 @@ function zoneOf(i, j) {
 }
 
 export class City {
-  constructor(gltf, scene, seed = 1984) {
+  constructor(gltf, scene, fx, events, seed = 1984) {
     this.types = {};
     for (const node of gltf.scene.children) {
       const meshes = [];
@@ -44,6 +44,19 @@ export class City {
     this.buildings = this.layout(rng(seed));
     this.instanced = this.instantiate(scene);
     scene.add(makeGround(), makeWater());
+    this.fx = fx;
+    this.events = events;
+    this.falling = [];
+    this.destroyed = 0;
+    // Schutthaufen: ein Pool so groß wie die Stadt, wächst über count
+    this.rubble = this.types.rubble.meshes.map(src => {
+      const im = new THREE.InstancedMesh(src.geometry, src.material, this.buildings.length);
+      im.count = 0;
+      im.receiveShadow = true;
+      im.frustumCulled = false;
+      scene.add(im);
+      return im;
+    });
   }
 
   layout(rand) {
@@ -79,7 +92,7 @@ export class City {
   place(type, x, z, rot) {
     const [w, d, h] = this.types[type].size;
     const quarter = Math.abs(Math.sin(rot)) > 0.5;
-    return { type, x, z, rot, hw: (quarter ? d : w) / 2, hd: (quarter ? w : d) / 2, h, hp: 40 + h * 2.5, alive: true };
+    return { type, x, z, rot, hw: (quarter ? d : w) / 2, hd: (quarter ? w : d) / 2, h, hp: hpFor(h), alive: true };
   }
 
   instantiate(scene) {
@@ -105,7 +118,8 @@ export class City {
     return list;
   }
 
-  // Abstand entlang des Strahls bis zum ersten stehenden Gebäude (Achsen-Box-Test)
+  // Abstand entlang des Strahls bis zum ersten stehenden Gebäude (Achsen-Box-Test). Gebäude, in denen der Startpunkt
+  // steckt (Godzilla steht mit dem Kopf in einem Hochhaus), zählen nicht – sonst hätte der Strahl die Länge 0.
   raycast(o, d, max) {
     let best = max;
     for (const b of this.buildings) {
@@ -115,28 +129,170 @@ export class City {
       const s2 = slab(o.y, d.y, 0, b.h, s[0], s[1]);
       if (!s2) continue;
       const s3 = slab(o.z, d.z, b.z - b.hd, b.z + b.hd, s2[0], s2[1]);
-      if (s3 && s3[0] < best) best = s3[0];
+      if (s3 && s3[0] > 0.5 && s3[0] < best) best = s3[0];
     }
     return best;
   }
 
-  // Schaden im Umkreis; zerstörte Gebäude verschwinden vorerst (Einsturz folgt mit dem Zerstörungssystem)
-  damage(pos, radius, amount) {
-    const destroyed = [];
+  // ---------- Zerstörung ----------
+
+  // Schaden im Umkreis (Abstand zur Grundfläche). from = Ursprung des Angriffs, bestimmt die Fallrichtung.
+  // falloff: außen nur noch 40 % Schaden. Rückgabe: Anzahl getroffener Gebäude.
+  damage(pos, radius, amount, from = pos, falloff = false) {
+    let n = 0;
     for (const b of this.buildings) {
-      if (!b.alive) continue;
-      const dx = Math.max(Math.abs(pos.x - b.x) - b.hw, 0), dz = Math.max(Math.abs(pos.z - b.z) - b.hd, 0);
-      if (dx * dx + dz * dz > radius * radius || pos.y > b.h + radius) continue;
-      b.hp -= amount;
-      if (b.hp <= 0) {
-        b.alive = false;
-        const zero = new THREE.Matrix4().makeScale(0, 0, 0);
-        for (const im of b.meshes) { im.setMatrixAt(b.index, zero); im.instanceMatrix.needsUpdate = true; }
-        destroyed.push(b);
+      if (!b.alive || pos.y > b.h + radius) continue;
+      const d = footDist(b, pos.x, pos.z);
+      if (d > radius) continue;
+      this.hit(b, falloff ? amount * (1 - 0.6 * d / radius) : amount, from);
+      n++;
+    }
+    return n;
+  }
+
+  // Godzillas Körper drückt gegen Gebäude: zermalmt sie mit der Zeit. Rückgabe: Höhe des höchsten noch stehenden
+  // berührten Gebäudes (0 = freie Bahn), Godzilla wird davon gebremst.
+  crush(center, radius, dt) {
+    let block = 0;
+    for (const b of this.buildings) {
+      if (!b.alive || footDist(b, center.x, center.z) > radius) continue;
+      this.hit(b, CRUSH_DPS * dt, center);
+      if (b.alive) block = Math.max(block, b.h);
+    }
+    return block;
+  }
+
+  hit(b, amount, from) {
+    if (!b.alive) return;
+    b.hp -= amount;
+    if (b.hp <= 0) this.collapse(b, from);
+  }
+
+  collapse(b, from) {
+    b.alive = false;
+    this.destroyed++;
+    const dir = new THREE.Vector3(b.x - from.x, 0, b.z - from.z);
+    if (dir.lengthSq() < 1) dir.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+    dir.normalize();
+    const topple = b.h >= TOPPLE_H;
+    const a = Math.random() * Math.PI * 2;
+    this.falling.push({
+      b, t: 0, topple, dir, acc: 0, landed: false,
+      dur: topple ? TOPPLE_FALL + 1.4 : 1.3 + b.h / 60,
+      axis: new THREE.Vector3(Math.cos(a), 0, Math.sin(a)), tilt: 0.05 + Math.random() * 0.1,
+      edge: Math.abs(dir.x) * b.hw + Math.abs(dir.z) * b.hd,   // Abstand Mitte -> Kippkante
+    });
+    const r = Math.max(b.hw, b.hd);
+    this.fx.dust.emit(b.x, 0, b.z, Math.min(40, 8 + r), { spread: r, up: 4, out: 6, size: 11 + r * 0.4, life: 4.5 });
+    this.fx.debris.emit(_v.set(b.x, Math.min(b.h * 0.6, 40), b.z), Math.min(8, 2 + Math.round(b.h / 15)), { speed: 14 });
+    this.events.emit('collapse', { b, topple });
+  }
+
+  update(dt) {
+    for (let i = this.falling.length - 1; i >= 0; i--) {
+      const f = this.falling[i], b = f.b;
+      f.t += dt;
+      if (f.topple) this.toppleStep(f, dt); else this.sinkStep(f, dt);
+      for (const im of b.meshes) { im.setMatrixAt(b.index, _m); im.instanceMatrix.needsUpdate = true; }
+      if (f.t >= f.dur) {
+        for (const im of b.meshes) im.setMatrixAt(b.index, ZERO);
+        this.addRubble(f);
+        this.falling.splice(i, 1);
       }
     }
-    return destroyed;
   }
+
+  // Einsinken: beschleunigt in den Boden, leicht schief, zittert, Staub quillt an der Grundfläche hervor
+  sinkStep(f, dt) {
+    const b = f.b, k = Math.min(1, f.t / f.dur);
+    const shake = (1 - k) * 0.7 * Math.sin(f.t * 47);
+    _q.setFromAxisAngle(f.axis, f.tilt * Math.min(1, k * 2)).multiply(_q2.setFromAxisAngle(UP, b.rot));
+    _m.compose(_v.set(b.x + shake, -b.h * 1.02 * k * k, b.z - shake), _q, ONE);
+    this.dustAlong(f, dt, 10 + Math.max(b.hw, b.hd));
+  }
+
+  // Kippen: Hochhaus fällt um die Kante auf der dem Angreifer abgewandten Seite, schlägt auf, sinkt dann ein Stück ein
+  toppleStep(f, dt) {
+    const b = f.b;
+    const k = Math.min(1, f.t / TOPPLE_FALL);
+    const ang = Math.PI / 2 * 0.94 * k * k;
+    const sink = f.t > TOPPLE_FALL ? -Math.min(1, (f.t - TOPPLE_FALL) / (f.dur - TOPPLE_FALL)) * Math.min(b.hw, b.hd) : 0;
+    const ex = f.dir.x * f.edge, ez = f.dir.z * f.edge;
+    _axis.crossVectors(UP, f.dir);
+    _m.makeTranslation(b.x + ex, sink, b.z + ez)
+      .multiply(_m2.makeRotationAxis(_axis, ang))
+      .multiply(_m2.makeTranslation(-ex, 0, -ez))
+      .multiply(_m2.makeRotationY(b.rot));
+    if (k < 1) this.dustAlong(f, dt, 8);
+    else if (!f.landed) this.land(f);
+  }
+
+  // Aufschlag: Staubwalze entlang des Turms, zerschlägt was darunter steht (Kettenreaktion)
+  land(f) {
+    f.landed = true;
+    const b = f.b, w = Math.min(b.hw, b.hd) + 4;
+    const x0 = b.x + f.dir.x * f.edge, z0 = b.z + f.dir.z * f.edge;
+    for (let s = 0; s <= b.h; s += 12) {
+      this.fx.dust.emit(x0 + f.dir.x * s, 0, z0 + f.dir.z * s, 3, { spread: w, up: 5, out: 8, size: 17, life: 5 });
+    }
+    this.fx.debris.emit(_v.set(x0 + f.dir.x * b.h * 0.6, 4, z0 + f.dir.z * b.h * 0.6), 8, { speed: 18 });
+    const from = _v2.set(x0, 0, z0);
+    for (const o of this.buildings) {
+      if (!o.alive) continue;
+      const t = Math.max(0, Math.min(b.h, (o.x - x0) * f.dir.x + (o.z - z0) * f.dir.z));
+      const d = footDist(o, x0 + f.dir.x * t, z0 + f.dir.z * t);
+      if (d < w) this.hit(o, TOPPLE_DAMAGE, from);
+    }
+    this.events.emit('topple', { b, from: from.clone(), dir: f.dir.clone(), length: b.h, width: w });
+  }
+
+  dustAlong(f, dt, rate) {
+    const b = f.b;
+    for (f.acc += rate * dt; f.acc >= 1; f.acc--) {
+      const a = Math.random() * Math.PI * 2;
+      this.fx.dust.emit(b.x + Math.cos(a) * b.hw, 0, b.z + Math.sin(a) * b.hd, 1,
+        { spread: 3, up: 3 + b.h * 0.04, out: 5, size: 10 + b.h * 0.08, life: 4 });
+    }
+  }
+
+  // Schutt bleibt liegen: auf der Grundfläche oder, bei gekippten Türmen, längs der Fallrichtung
+  addRubble(f) {
+    const b = f.b;
+    if (f.topple) {
+      const len = b.h * 0.95, d = f.edge + len / 2;
+      _v.set(b.x + f.dir.x * d, 0, b.z + f.dir.z * d);
+      _q.setFromAxisAngle(UP, Math.atan2(f.dir.x, f.dir.z));
+      _s.set(Math.min(b.hw, b.hd) * 2, 9 / RUBBLE_H, len);
+    } else {
+      _v.set(b.x, 0, b.z);
+      _q.identity();
+      _s.set(b.hw * 2.3, Math.min(3 + b.h * 0.12, 16) / RUBBLE_H, b.hd * 2.3);
+    }
+    _m.compose(_v, _q, _s);
+    for (const im of this.rubble) {
+      im.setMatrixAt(im.count++, _m);
+      im.instanceMatrix.needsUpdate = true;
+    }
+  }
+}
+
+const TOPPLE_H = 70;          // ab dieser Höhe kippen Gebäude statt einzusinken
+const TOPPLE_FALL = 1.9;      // s bis zum Aufschlag
+const TOPPLE_DAMAGE = 260;    // Schaden für alles, worauf ein Turm fällt
+const CRUSH_DPS = 320;        // Godzillas Körper gegen Gebäude
+const RUBBLE_H = 0.35;        // Höhe des Schuttmodells bei Maßstab 1
+const UP = new THREE.Vector3(0, 1, 0), ONE = new THREE.Vector3(1, 1, 1);
+const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _s = new THREE.Vector3(), _axis = new THREE.Vector3();
+const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _m = new THREE.Matrix4(), _m2 = new THREE.Matrix4();
+
+// Haltbarkeit nach Höhe: Holzhaus ~45, Laden ~70, Büro ~100–170, Hochhaus ~280–400
+function hpFor(h) { return 20 + h * 2.5; }
+
+// Abstand eines Punkts zur Grundfläche (0 = innerhalb)
+function footDist(b, x, z) {
+  const dx = Math.max(Math.abs(x - b.x) - b.hw, 0), dz = Math.max(Math.abs(z - b.z) - b.hd, 0);
+  return Math.hypot(dx, dz);
 }
 
 // Strahl gegen ein Achsenintervall; schränkt [t0, t1] ein, null wenn verfehlt. Ein geteiltes Array, keine Allokation.
