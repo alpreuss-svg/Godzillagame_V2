@@ -33,8 +33,8 @@ const _hb = new THREE.Vector3();
 // unterschiedlich schnell – zuerst der Kopf, dann der Hals, dann der Oberkörper, zuletzt Hüfte und Beine.
 // Zusammen dreht der Kopf bis ~0,85 · LEAD_MAX gegenüber der Hüfte, der Oberkörper davon gut ein Viertel.
 const LEAD = [['spine1', 0.1, 'spine'], ['spine2', 0.14, 'spine'], ['neck1', 0.17, 'neck'], ['neck2', 0.2, 'neck'], ['head', 0.24, 'head']];
-const LEAD_RATE = { head: 6.5, neck: 4.5, spine: 2.8 }; // 1/s
-const LEAD_MAX = 1.3;                                   // rad (~75°) gewünschte Vorausdrehung höchstens
+const LEAD_RATE = { head: 3.4, neck: 2.8, spine: 2.2 }; // 1/s – Kopf führt, aber gemächlich
+const LEAD_MAX = 0.75;                                  // rad: Kopf dreht so bis ~37° zu jeder Seite (gesamt ~75°)
 
 function approach(cur, target, step) { return cur < target ? Math.min(cur + step, target) : Math.max(cur - step, target); }
 function angleDiff(a, b) { return Math.atan2(Math.sin(b - a), Math.cos(b - a)); }
@@ -243,7 +243,7 @@ export class Godzilla {
       this.spun = k;
       if (!this.hitDone && this.t > this.dur * 0.45) {
         this.hitDone = true;
-        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), from: this.position.clone(), radius: 92, damage: TAIL_DAMAGE, height: 12 });
+        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), from: this.position.clone(), radius: 108, damage: TAIL_DAMAGE, height: 12 });
         this.events.emit('shake', 0.8);
       }
     } else if (!this.hitDone && this.t > this.dur * 0.45) {

@@ -33,8 +33,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   dezimiert auf ~26k Dreiecke, Hautrelief per Voronoi-Rauschen, Vertexfarben (`Col`), Augen/Klauen per Raycast,
   Maulhöhle = zwei negative Metaball-Ellipsoide; Zähne (14 oben/14 unten) per senkrechtem Spaltenscan durch die Höhle,
   Rückenplatten (3 Reihen, Material `GZ_Plates`), eigenes Rig + eigene Gewichtung (Distanz zu Knochensegmenten).
-  Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Schwanzspitze 93 m hinter der Hüfte
-  (auf Wunsch 25 % länger), Rumpf etwas schlanker als zuerst.
+  Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Schwanzspitze 105 m hinter der Hüfte (zweimal
+  auf Wunsch verlängert; im letzten Drittel kaum noch verjüngt, Platten bis ans Ende), Rumpf etwas schlanker als zuerst.
 - `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death, turn.
   Klauenhieb: hoch und nach außen ausholen, diagonal über den Körper schlagen, Oberkörper dreht mit (`ARM_OUT`
   = Vorzeichen fürs Abspreizen). `turn`: Treten auf der Stelle (IK), für das Drehen im Stand.
@@ -73,14 +73,15 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   steigt sie in der Phase ein, in der der linke Fuß unter dem Körper steht (`WALK_ENTRY`, sonst rutschen die Füße).
   Drehen: Trägheit (max. 63°/s, `TURN_ACCEL`), gedreht wird um den Standfuß und fast nur, solange ein Fuß in der
   Luft ist; im Stand Trittanimation `turn`; prozedural eilen Kopf, Hals und Oberkörper gestaffelt voraus (`LEAD`,
-  `LEAD_RATE`: Kopf zuerst, dann Hals, dann Oberkörper, zuletzt Hüfte; Kopf bis ~60° gegenüber der Hüfte, gedreht um
+  `LEAD_RATE`: Kopf zuerst, dann Hals, dann Oberkörper, zuletzt Hüfte; Kopf bis ~37° je Seite gegenüber der Hüfte –
+  ~60° war dem Nutzer zu weit und zu schnell; gedreht um
   die echte Senkrechte), im Stand schaut er sich leicht um, der Schwanz schleift nach (`tailLag`). **Achtung:** der AnimationMixer schreibt Knochen nur bei geänderten Werten – prozedurale
   Zusatzdrehungen darum immer über `offset()`/`restorePose()` (sonst addieren sie sich bei gehaltenen Posen auf).
   Atemstrahl: Oberkörper-Clip `breathUpper`, die Beine kommen aus `idleLegs`/`turnLegs` (treten beim Schwenken);
   der Strahl folgt der Kopfrichtung (Maul minus Kopfknochen), reagiert also sofort, der Körper zieht nach.
   Animationsmischung (Einzel-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
-  Körperdrehung, Radius 92 m), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
+  Körperdrehung, Radius 108 m), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
   (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
 - `js/ground.js` – Bodenschäden: `GroundScars` = Schadenskarte über die Stadt (Canvas 1024², ~3 m/px, additiv bemalt,
   max. 4 Uploads/s; R Ruß/Glut, G Staub/Splitt, B Krater/Risse), Boden-Shader `patchGround` liest sie in
