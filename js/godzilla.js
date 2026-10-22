@@ -27,9 +27,14 @@ export const BOUNDS = 1500;
 
 const _dir = new THREE.Vector3(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
 const _fl = new THREE.Vector3(), _fr = new THREE.Vector3(), _tq = new THREE.Quaternion();
-const _Y = new THREE.Vector3(0, 1, 0), _Z = new THREE.Vector3(0, 0, 1);
-// Anteil der Vorausdrehung je Knochen (lokale Y-Achse = Knochenachse, bei Wirbelsäule und Hals etwa senkrecht)
-const LEAD = [['spine1', 0.12], ['spine2', 0.18], ['neck1', 0.16], ['neck2', 0.2]];
+const _Y = new THREE.Vector3(0, 1, 0), _Z = new THREE.Vector3(0, 0, 1), _ax = new THREE.Vector3(), _wq = new THREE.Quaternion();
+const _hb = new THREE.Vector3();
+// Vorausdrehung um die senkrechte Achse: je Knochen Anteil und Gruppe. Die Gruppen folgen der gewünschten Richtung
+// unterschiedlich schnell – zuerst der Kopf, dann der Hals, dann der Oberkörper, zuletzt Hüfte und Beine.
+// Zusammen dreht der Kopf bis ~0,85 · LEAD_MAX gegenüber der Hüfte, der Oberkörper davon gut ein Viertel.
+const LEAD = [['spine1', 0.1, 'spine'], ['spine2', 0.14, 'spine'], ['neck1', 0.17, 'neck'], ['neck2', 0.2, 'neck'], ['head', 0.24, 'head']];
+const LEAD_RATE = { head: 6.5, neck: 4.5, spine: 2.8 }; // 1/s
+const LEAD_MAX = 1.3;                                   // rad (~75°) gewünschte Vorausdrehung höchstens
 
 function approach(cur, target, step) { return cur < target ? Math.min(cur + step, target) : Math.max(cur - step, target); }
 function angleDiff(a, b) { return Math.atan2(Math.sin(b - a), Math.cos(b - a)); }
@@ -84,7 +89,8 @@ export class Godzilla {
     this.turnW = 0;               // Gewicht der Trittanimation
     this.walkW = 0;
     this.pivot = 'L';             // Standfuß, um den gedreht wird
-    this.lead = 0;                // wie weit Oberkörper und Hals der Körperdrehung vorauseilen (rad)
+    this.lead = { head: 0, neck: 0, spine: 0 };   // wie weit Kopf, Hals, Oberkörper der Körperdrehung vorauseilen (rad)
+    this.lookT = 0;               // Uhr für das leichte Umherschauen im Stand
     this.tailLag = 0;             // seitliche Schwanzbiegung durch Trägheit (rad)
     this.wantLead = 0;
     this.basePose = new Map();    // Knochen -> Animationspose ohne prozedurale Zusatzdrehung
@@ -130,7 +136,7 @@ export class Godzilla {
     const d = dir ? angleDiff(this.heading, Math.atan2(dir.x, dir.z)) : 0;
     const want = THREE.MathUtils.clamp(d * 2.2, -maxRate, maxRate);
     this.turnVel = approach(this.turnVel, want, TURN_ACCEL * dt);
-    this.wantLead = THREE.MathUtils.clamp(d, -0.9, 0.9);
+    this.wantLead = THREE.MathUtils.clamp(d, -LEAD_MAX, LEAD_MAX);
     return d;
   }
 
@@ -266,10 +272,13 @@ export class Godzilla {
     }
   }
 
+  // Der Strahl geht dorthin, wohin der Kopf schaut (der dreht beim Schwenken voraus), mit fester Neigung zum Boden
   updateBreathFx(dt) {
     const from = this.mouth.getWorldPosition(new THREE.Vector3());
+    this.bones.head.getWorldPosition(_hb);
+    const yaw = Math.atan2(from.x - _hb.x, from.z - _hb.z);
     const c = Math.cos(BREATH_PITCH);
-    const dir = new THREE.Vector3(Math.sin(this.heading) * c, -Math.sin(BREATH_PITCH), Math.cos(this.heading) * c);
+    const dir = new THREE.Vector3(Math.sin(yaw) * c, -Math.sin(BREATH_PITCH), Math.cos(yaw) * c);
     let max = from.y / Math.sin(BREATH_PITCH);              // bis zum Boden
     if (this.raycast) max = Math.min(max, this.raycast(from, dir, max));
     const end = this.beam.update(dt, this.firing, from, dir, max);
@@ -317,11 +326,20 @@ export class Godzilla {
   // gehaltenen Posen wie dem Atemstrahl). Darum merkt sich addTurnPose die reine Animationspose und restorePose stellt
   // sie vor dem nächsten mixer.update wieder her – sonst addiert sich die Zusatzdrehung Frame für Frame (Korkenzieher).
   addTurnPose(dt) {
-    // beim Atemstrahl kein Vorauseilen: Kopf und Strahl müssen in dieselbe Richtung zeigen
-    const want = this.state === 'breath' ? 0 : this.wantLead;
-    this.lead += (want - this.lead) * (1 - Math.exp(-5 * dt));
+    // im Stand schaut er sich langsam um, damit der Hals nicht steif wirkt
+    this.lookT += dt;
+    const idle = this.state === 'free' && this.speed < 2 && Math.abs(this.turnVel) < 0.1 ? 1 : 0;
+    this.look = (this.look || 0) + (idle * (Math.sin(this.lookT * 0.37) * 0.35 + Math.sin(this.lookT * 0.91) * 0.15) - (this.look || 0)) * (1 - Math.exp(-1.5 * dt));
+    for (const g in this.lead) {
+      const want = this.wantLead + (g === 'spine' ? 0 : this.look);
+      this.lead[g] += (want - this.lead[g]) * (1 - Math.exp(-LEAD_RATE[g] * dt));
+    }
     this.tailLag += (-this.turnVel * 0.35 - this.tailLag) * (1 - Math.exp(-3 * dt));
-    for (const [name, k] of LEAD) this.offset(this.bones[name], _Y, this.lead * k);
+    // um die echte Senkrechte drehen (der Kopfknochen liegt schräg, seine eigene Achse würde ihn kippen)
+    for (const [name, k, g] of LEAD) {
+      const b = this.bones[name];
+      this.offset(b, _ax.copy(_Y).applyQuaternion(b.getWorldQuaternion(_wq).invert()), this.lead[g] * k);
+    }
     for (let i = 1; i <= 7; i++) this.offset(this.bones['tail' + i], _Z, this.tailLag * (0.1 + 0.04 * i));
   }
 

@@ -72,10 +72,12 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/`WALK_SPEED` (Füße bleiben synchron); beim Anlaufen
   steigt sie in der Phase ein, in der der linke Fuß unter dem Körper steht (`WALK_ENTRY`, sonst rutschen die Füße).
   Drehen: Trägheit (max. 63°/s, `TURN_ACCEL`), gedreht wird um den Standfuß und fast nur, solange ein Fuß in der
-  Luft ist; im Stand Trittanimation `turn`; prozedural eilen Wirbelsäule und Hals voraus (`LEAD`), der Schwanz
-  schleift nach (`tailLag`). **Achtung:** der AnimationMixer schreibt Knochen nur bei geänderten Werten – prozedurale
+  Luft ist; im Stand Trittanimation `turn`; prozedural eilen Kopf, Hals und Oberkörper gestaffelt voraus (`LEAD`,
+  `LEAD_RATE`: Kopf zuerst, dann Hals, dann Oberkörper, zuletzt Hüfte; Kopf bis ~60° gegenüber der Hüfte, gedreht um
+  die echte Senkrechte), im Stand schaut er sich leicht um, der Schwanz schleift nach (`tailLag`). **Achtung:** der AnimationMixer schreibt Knochen nur bei geänderten Werten – prozedurale
   Zusatzdrehungen darum immer über `offset()`/`restorePose()` (sonst addieren sie sich bei gehaltenen Posen auf).
-  Atemstrahl: Oberkörper-Clip `breathUpper`, die Beine kommen aus `idleLegs`/`turnLegs` (treten beim Schwenken).
+  Atemstrahl: Oberkörper-Clip `breathUpper`, die Beine kommen aus `idleLegs`/`turnLegs` (treten beim Schwenken);
+  der Strahl folgt der Kopfrichtung (Maul minus Kopfknochen), reagiert also sofort, der Körper zieht nach.
   Animationsmischung (Einzel-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
   Körperdrehung, Radius 92 m), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
