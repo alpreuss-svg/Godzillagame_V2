@@ -35,9 +35,15 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Rückenplatten (3 Reihen, Material `GZ_Plates`), eigenes Rig + eigene Gewichtung (Distanz zu Knochensegmenten).
   Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m.
 - `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death.
+  **Gang und Stand per inverser Kinematik** (`leg_ik`, Seitenebene, Knie nach vorn): Knöchel steht auf Bodenhöhe 5,6 m,
+  ein aufgesetzter Fuß wandert relativ zum Körper mit genau Laufgeschwindigkeit nach hinten. Zyklus 2 s, 30 m
+  (`WALK_DIST / WALK_T` = 15 m/s) – `WALK_SPEED` in `js/godzilla.js` muss dazu passen, sonst gleiten die Füße.
+  Die Hüfte dreht/kippt beim Gehen nicht (sonst wandern die Hüftgelenke), das Wiegen steckt in `spine1`.
 - `blender/city.py` – Gebäudebaukasten mit prozeduralen Fassaden (Tag + leuchtende Nachtfenster als Emission),
   Typen `B_tower_glass`, `B_tower_tri`, `B_tower_slab`, `B_tower_step`, `B_office_a/b/c`, `B_apt_a/b`, `B_shop_a/b`,
   `B_house_a/b`, `B_warehouse`, `B_oiltank`, `B_rubble`. Läuft unter Blender 5.2, Tag- und Nachtvorschau geprüft.
+  Shinjuku-Türme wie 1984 (Sumitomo 210 m, Keio Plaza 178 m): `tower_glass` 214 m, `tower_tri` 210, `tower_step` 172,
+  `tower_slab` 170.
   Custom Property `size` (Breite, Tiefe, Höhe in m) landet als glTF-`extras` im Export.
 - `blender/units.py` – Panzer Typ 74, Raketen-LKW, AH-1 (+ Rotor separat), **Super-X**, Auto, Yamanote-Zug, Frachter,
   Baum, Laterne, Strommast, Trümmer (`U_debris0..2`). Läuft unter Blender 5.2, Vorschau geprüft.
@@ -47,16 +53,20 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
 - `js/main.js` – Renderer (ACES, Schatten nur vom Mond um Godzilla), Nachtlicht (Hemisphäre, Mond als Gegenlicht im
   Norden, kameragebundenes Fülllicht), Laden, Zustände `loading → title → play ⇄ pause`, kleiner Event-Bus
   (`attack`, `stomp`, `roar`, `breath`, `shake`). Qualität per `?q=low|mid|high`.
-- `js/input.js` – Tastatur + Gamepad (Standard-Mapping: A Klaue, X Atomstrahl, Y Brüllen, B Kernpuls, LB/RB Kamera).
-- `js/camera.js` – Kamera schräg von oben (Pitch 0,72 rad), Q/E/rechter Stick drehen, Mausrad zoomt, Erschütterung.
-- `js/godzilla.js` – Bewegung kamerarelativ (dreht träge, geht nur in Blickrichtung), Animationsmischung (Einzel-
+- `js/input.js` – Tastatur + Gamepad (Standard-Mapping: A Klaue, X Atomstrahl, Y Brüllen, B Kernpuls, Start Pause).
+- `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt immer nach Norden – kein
+  Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl). Steuerung ist damit bildschirmbezogen (W = Norden).
+  Mausrad zoomt 320–620 m, Erschütterung bei Treffern.
+- `js/godzilla.js` – Bewegung bildschirmbezogen (dreht träge, geht nur in Blickrichtung), 15 m/s; die Laufanimation
+  ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/15 (Füße bleiben synchron). Animationsmischung (Einzel-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
   Körperdrehung), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
   (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; Staub (ein `Points`-Pool,
   Punktgröße auf 18 % der Bildhöhe gedeckelt – große Staubpunkte kosten auf schwachen GPUs viel Füllrate),
   Trümmer (InstancedMesh aus `U_debris0..2`, Schwerkraft, ein Abpraller).
-- `js/city.js` – Teststadt: Raster 136 m, Zonen (Shinjuku-Türme im Norden, Büros, Wohn-/Ladenviertel, Hafen),
+- `js/city.js` – Teststadt: Raster 136 m, Zonen (Shinjuku-Türme um z = −204, gut 1 km nördlich vom Start, Büros,
+  Wohn-/Ladenviertel, Hafen),
   Bucht südlich `BAY_Z`, ein InstancedMesh pro Typ und Material (~46 Draw Calls bei ~3900 Gebäuden),
   Raycast für den Strahl (ignoriert Gebäude, in denen das Maul steckt). Zerstörung: HP = 20 + 2,5·Höhe;
   `damage()` (Umkreis, optional mit Abfall), `crush()` (Godzillas Körper, 320 Schaden/s, bremst auf 5 bzw. 2,5 m/s),

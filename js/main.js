@@ -131,7 +131,7 @@ function step(dt) {
       game.fx.debris.update(dt);
     }
     if (game.state !== 'pause') game.fx.dust.update(dt, camera, renderer.domElement.height);
-    else if (game.state === 'title') { g.mixer.update(dt); rig.yaw += dt * 0.05; }
+    else if (game.state === 'title') g.mixer.update(dt);
     if (game.state !== 'pause') rig.update(dt, g.position, game.state === 'play' ? input : IDLE);
     moon.position.copy(g.position).add(MOON_OFS);
     moon.target.position.copy(g.position);
@@ -145,7 +145,7 @@ function step(dt) {
   renderer.render(scene, camera);
   input.endFrame();
 }
-const IDLE = { cam: 0, zoom: 0 };
+const IDLE = { zoom: 0 };
 let shownDestroyed = -1;
 game.step = step;
 

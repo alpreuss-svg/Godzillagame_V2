@@ -260,9 +260,9 @@ def building(name):
 
 @building('tower_glass')
 def _(bm, uv):
-    box(bm, uv, 34, 34, 0, 128, 'glass'); box(bm, uv, 28, 28, 128, 12, 'glass')
-    rooftop(bm, uv, 28, 28, 140, 2, False); antenna(bm, uv, 140, 14, 6, 4)
-    return (34, 34, 140)
+    box(bm, uv, 34, 34, 0, 200, 'glass'); box(bm, uv, 28, 28, 200, 14, 'glass')
+    rooftop(bm, uv, 28, 28, 214, 2, False); antenna(bm, uv, 214, 14, 6, 4)
+    return (34, 34, 214)
 
 
 @building('tower_tri')
@@ -277,9 +277,9 @@ def _(bm, uv):   # dreieckiger Turm wie das Sumitomo-Gebäude
             q = V((R * math.cos(b), R * math.sin(b)))
             poly.append(tuple(p.lerp(q, c / (q - p).length * 1.6)))
         poly[-2], poly[-1] = poly[-1], poly[-2]
-    prism(bm, uv, _hull(poly), 0, 152, 'glass', 'roof', STYLES['glass'][1])
-    rooftop(bm, uv, 16, 16, 152, 2, False); antenna(bm, uv, 152, 10)
-    return (46, 46, 152)
+    prism(bm, uv, _hull(poly), 0, 210, 'glass', 'roof', STYLES['glass'][1])
+    rooftop(bm, uv, 16, 16, 210, 2, False); antenna(bm, uv, 210, 10)
+    return (46, 46, 210)
 
 
 def _hull(pts):
@@ -297,16 +297,16 @@ def _hull(pts):
 
 @building('tower_slab')
 def _(bm, uv):   # weiße Hotelscheibe wie das Keio Plaza
-    box(bm, uv, 52, 24, 0, 112, 'office'); box(bm, uv, 64, 34, 0, 14, 'shop', 'roof', 0, 4)
-    rooftop(bm, uv, 52, 24, 112, 4); antenna(bm, uv, 112, 8, -18, 0); antenna(bm, uv, 112, 8, 18, 0)
-    return (64, 38, 112)
+    box(bm, uv, 52, 24, 0, 170, 'office'); box(bm, uv, 64, 34, 0, 14, 'shop', 'roof', 0, 4)
+    rooftop(bm, uv, 52, 24, 170, 4); antenna(bm, uv, 170, 8, -18, 0); antenna(bm, uv, 170, 8, 18, 0)
+    return (64, 38, 170)
 
 
 @building('tower_step')
 def _(bm, uv):
-    box(bm, uv, 32, 32, 0, 88, 'glass'); box(bm, uv, 25, 25, 88, 10, 'glass'); box(bm, uv, 17, 17, 98, 8, 'glass')
-    antenna(bm, uv, 106, 12)
-    return (32, 32, 106)
+    box(bm, uv, 32, 32, 0, 150, 'glass'); box(bm, uv, 25, 25, 150, 12, 'glass'); box(bm, uv, 17, 17, 162, 10, 'glass')
+    antenna(bm, uv, 172, 12)
+    return (32, 32, 172)
 
 
 @building('office_a')

@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { Beam, Shockwave } from './effects.js';
 
-const WALK_SPEED = 11;          // m/s bei vollem Ausschlag
+// Muss zur Laufanimation passen (gz_anim.py: WALK_DIST / WALK_T = 30 m / 2 s), sonst gleiten die Füße
+const WALK_SPEED = 15;          // m/s bei vollem Ausschlag
 const TURN_RATE = 1.4;          // rad/s
 const BREATH_TURN = 0.45;       // rad/s – Strahl langsam schwenken
 const CHARGE_TIME = 1.1;        // s, Platten laden vom Schwanz zum Hals
@@ -237,10 +238,12 @@ export class Godzilla {
     const norm = sum > 1 ? 1 / sum : 1;
     for (const [a, w] of this.layers) a.setEffectiveWeight(w * norm);
     const loco = Math.max(0, 1 - sum);
+    // Schon ab 30 % Tempo nur noch Gehen, dafür langsamer abgespielt: Mischposen aus Stand und Gehen rutschen
     const s = Math.min(1, this.speed / WALK_SPEED);
-    this.actions.idle.setEffectiveWeight(loco * (1 - s));
-    this.actions.walk.setEffectiveWeight(loco * s);
-    this.actions.walk.timeScale = 0.55 + 0.45 * s;
+    const w = Math.min(1, s / 0.3);
+    this.actions.idle.setEffectiveWeight(loco * (1 - w));
+    this.actions.walk.setEffectiveWeight(loco * w);
+    this.actions.walk.timeScale = Math.max(0.1, s);    // Schritttempo folgt exakt der Geschwindigkeit
   }
 
   updateStomp() {

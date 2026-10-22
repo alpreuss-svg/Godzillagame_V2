@@ -35,30 +35,85 @@ def tail(p, amp_z, amp_x=0.0, lag=0.55, base_x=0.0):
     return out
 
 
+# ---------------- Beine per inverser Kinematik (Seitenebene Y/Z, Drehachse Welt-X) ----------------
+# Winkel einer Richtung (dy, dz): 0 = senkrecht nach unten, positiv = nach hinten (+Y). Eine Drehung um +X
+# erhöht diesen Winkel; Kinder erben die Drehung der Eltern, die Winkel addieren sich also entlang der Kette.
+HIP, KNEE, ANKLE, TOE = (3.0, 30.0), (-3.2, 17.0), (2.6, 5.6), (-7.6, 1.9)   # wie godzilla.P (y, z)
+
+
+def _ang(dy, dz):
+    return math.atan2(dy, -dz)
+
+
+L1 = math.hypot(KNEE[0] - HIP[0], KNEE[1] - HIP[1])
+L2 = math.hypot(ANKLE[0] - KNEE[0], ANKLE[1] - KNEE[1])
+A_T0 = _ang(KNEE[0] - HIP[0], KNEE[1] - HIP[1])
+A_S0 = _ang(ANKLE[0] - KNEE[0], ANKLE[1] - KNEE[1])
+A_F0 = _ang(TOE[0] - ANKLE[0], TOE[1] - ANKLE[1])
+
+
+def leg_ik(hip, ankle, foot_pitch=0.0):
+    """Gelenkwinkel (Grad) für Oberschenkel, Schienbein, Fuß, damit der Knöchel auf `ankle` liegt.
+    Knie zeigt nach vorn (-Y). foot_pitch: Fußneigung gegenüber flach (Grad, positiv = Zehen nach unten)."""
+    dy, dz = ankle[0] - hip[0], ankle[1] - hip[1]
+    d = min(math.hypot(dy, dz), (L1 + L2) * 0.999)
+    beta = math.acos(max(-1.0, min(1.0, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))))
+    at = _ang(dy, dz) - beta
+    ky, kz = hip[0] + L1 * S(at), hip[1] - L1 * C(at)
+    a_s = _ang(ankle[0] - ky, ankle[1] - kz)
+    th = at - A_T0
+    sh = a_s - A_S0 - th
+    ft = math.radians(foot_pitch) - th - sh
+    return math.degrees(th), math.degrees(sh), math.degrees(ft)
+
+
+def hips_drop(dz):
+    """Pose-Location der Hüfte für eine rein senkrechte Verschiebung (Knochenachse zeigt schräg nach oben-vorn)."""
+    return (0, 0.949 * dz, -0.316 * dz)
+
+
+# Gang: ein Zyklus = zwei Schritte. Ein aufgesetzter Fuß wandert relativ zum Körper genau mit Laufgeschwindigkeit
+# nach hinten, steht also auf dem Boden still. Das Spiel muss WALK_DIST / WALK_T (= 15 m/s) laufen.
+WALK_T = 2.0          # s pro Zyklus -> ein Schritt pro Sekunde, schwer und gemessen
+STANCE = 0.6          # Anteil Bodenkontakt je Fuß (Doppelstand beim Aufsetzen)
+REACH = 18.0          # m, die ein Fuß relativ zum Körper während des Bodenkontakts zurücklegt
+WALK_DIST = REACH / STANCE
+FOOT_C = 2.0          # Mitte der Fußbahn (y), knapp vor der Hüfte
+LIFT = 6.0            # m Schwunghöhe
+
+
+def foot_path(u):
+    """u = Phase dieses Fußes (0 = Aufsetzen vorn). Rückgabe ((y, z) des Knöchels, Fußneigung)."""
+    if u < STANCE:
+        return (FOOT_C - REACH / 2 + REACH * u / STANCE, ANKLE[1]), 0.0
+    k = (u - STANCE) / (1 - STANCE)
+    return (FOOT_C + REACH / 2 - REACH * ease(k), ANKLE[1] + LIFT * S(PI * k)), 25 * S(PI * k)
+
+
 def pose_walk(t):
     p = 2 * PI * t
     r = {}
-    for side, ph in (('L', 0.0), ('R', PI)):
-        q = p + ph
-        th = -24 * S(q) + 4
-        swing = max(0.0, C(q))
-        sh = 8 + 30 * swing
+    dz = -0.6 - 0.6 * C(4 * PI * (t - 0.05))     # am tiefsten im Doppelstand
+    hip = (HIP[0], HIP[1] + dz)
+    for side, ph in (('L', 0.0), ('R', 0.5)):
+        ankle, pitch = foot_path((t + ph) % 1.0)
+        th, sh, ft = leg_ik(hip, ankle, pitch)
         r['thigh.' + side] = (th, 0, 0)
         r['shin.' + side] = (sh, 0, 0)
-        r['foot.' + side] = (-(th + sh) * 0.75 + 4 * swing, 0, 0)
-        r['upperarm.' + side] = (10 * S(q), 0, 0)
+        r['foot.' + side] = (ft, 0, 0)
+        r['upperarm.' + side] = (-10 * C(p + PI * 2 * ph), 0, 0)   # gegengleich zum Bein derselben Seite
         r['forearm.' + side] = (-18, 0, 0)
         r['hand.' + side] = (-8, 0, 0)
-    r['hips'] = (0, 4 * S(p), 3 * S(p))
-    r['spine1'] = (2, -2 * S(p), -1.5 * S(p))
+    # Die Hüfte bleibt gerade (sonst wandern die Hüftgelenke und die Füße rutschen); Wiegen im Oberkörper
+    r['hips'] = (0, 0, 0)
+    r['spine1'] = (2, 4 * S(p), 2.5 * S(p))
     r['spine2'] = (2, -2 * S(p), -1 * S(p))
     r['neck1'] = (0, 0, 0)
     r['neck2'] = (2 * C(2 * p), 0, 0)
-    r['head'] = (-2 * C(2 * p), 2 * S(p), 0)
+    r['head'] = (-2 * C(2 * p), -3 * S(p), 0)
     r['jaw'] = (2, 0, 0)
     r.update(tail(p, 7, 3))
-    loc = (0, -0.9 + 0.9 * C(2 * p), 0)
-    return r, loc
+    return r, hips_drop(dz)
 
 
 def pose_idle(t):
@@ -69,11 +124,13 @@ def pose_idle(t):
     r['neck2'] = (-1.5 * S(p), 0, 0)
     r['head'] = (2 * S(p + 1), 6 * S(p), 0)
     r['jaw'] = (2 + 1.5 * S(p), 0, 0)
+    dz = -0.6 + 0.25 * S(p)                       # Atmen: Hüfte hebt und senkt sich, Füße bleiben stehen
+    th, sh, ft = leg_ik((HIP[0], HIP[1] + dz), ANKLE)
     for s in 'LR':
-        r['thigh.' + s] = (4, 0, 0); r['shin.' + s] = (8, 0, 0); r['foot.' + s] = (-9, 0, 0)
+        r['thigh.' + s] = (th, 0, 0); r['shin.' + s] = (sh, 0, 0); r['foot.' + s] = (ft, 0, 0)
         r['upperarm.' + s] = (2 * S(p), 0, 0); r['forearm.' + s] = (-20, 0, 0); r['hand.' + s] = (-10, 0, 0)
     r.update(tail(p, 4, 2, 0.45))
-    return r, (0, 0.25 * S(p), 0)
+    return r, hips_drop(dz)
 
 
 def pose_roar(t):  # t in Sekunden, Länge 2.2
@@ -185,7 +242,7 @@ def pose_death(t):  # Länge 3.0: kippt nach hinten
 
 
 ANIMS = [  # Name, Funktion, Länge in s, zyklisch (Funktion bekommt 0..1)
-    ('idle', pose_idle, 3.0, True), ('walk', pose_walk, 1.7, True), ('roar', pose_roar, 2.2, False),
+    ('idle', pose_idle, 3.0, True), ('walk', pose_walk, WALK_T, True), ('roar', pose_roar, 2.2, False),
     ('breath', pose_breath, 0.8, False), ('clawL', lambda t: pose_claw(t, 'L'), 0.75, False),
     ('clawR', lambda t: pose_claw(t, 'R'), 0.75, False), ('tail', pose_tail, 1.1, False),
     ('hit', pose_hit, 0.55, False), ('down', pose_down, 1.6, False), ('death', pose_death, 3.0, False),

@@ -13,7 +13,7 @@ const ZONES = {
   mixed: { lots: 4, types: ['shop_a', 'shop_b', 'apt_b', 'house_a', 'house_b', 'house_a', 'house_b'] },
   port: { lots: 2, types: ['warehouse', 'warehouse', 'oiltank'] },
 };
-const SHINJUKU = new THREE.Vector2(0, -4 * P);
+const SHINJUKU = new THREE.Vector2(0, -1.5 * P);   // nah genug, dass man die Türme vom Hafen aus sieht
 
 function rng(seed) {
   return () => {
