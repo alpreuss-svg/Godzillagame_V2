@@ -1,6 +1,14 @@
+[hidden] { display: none !important; }   /* sonst überschreiben display-Regeln (z. B. #boss) das hidden-Attribut */
 html, body { margin: 0; height: 100%; background: #05070c; overflow: hidden; }
 body { font-family: "Segoe UI", system-ui, sans-serif; color: #d8dde6; user-select: none; }
 #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+/* Filmkorn: kleine Rauschkachel (in main.js erzeugt), springt jedes Bild an eine andere Stelle */
+#grain { position: fixed; inset: -50%; pointer-events: none; opacity: .09; mix-blend-mode: overlay;
+  animation: grain .5s steps(6) infinite; }
+@keyframes grain {
+  0% { transform: translate(0, 0); } 20% { transform: translate(-7%, 4%); } 40% { transform: translate(5%, -6%); }
+  60% { transform: translate(-3%, 8%); } 80% { transform: translate(8%, 2%); } 100% { transform: translate(0, 0); }
+}
 #vignette { position: fixed; inset: 0; pointer-events: none;
   background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, .55) 100%); }
 

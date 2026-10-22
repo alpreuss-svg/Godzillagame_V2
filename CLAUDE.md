@@ -109,6 +109,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   14 s zwei Kadmium-Raketen aufs Maul (`cadmium()`: Godzilla 6 s wehrlos in `down`). Kadmium-Raketen lassen sich mit
   dem Strahl erfassen und abschießen. Gepanzert: Strahl nur 1,5/s. Schwachstelle wie im Film: ein kippendes Hochhaus,
   dessen Fall-Linie unter ihr durchgeht (`topple`-Ereignis), 38 Schaden – drei Türme. Absturz → Sieg → Bewertung.
+- `js/atmosphere.js` – Nachtstimmung: Regen (LineSegments in einem Kasten um den Blickpunkt), 5 Flak-Suchscheinwerfer
+  (additive Kegel auf Kreuzungen um Godzilla, tasten ihn ab), feste Anzahl Punktlichter an den nächsten Bränden
+  (Anzahl je Qualitätsstufe, nie wechselnd – sonst übersetzt Three.js die Shader neu). Filmkorn per CSS (`#grain`).
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
@@ -143,8 +146,7 @@ Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
    feste Kamera, Teststadt, Zerstörung (sichtbarer Schaden, Brände, Einsturz, Teilruinen, Schutt, Bodenschäden).
    (erledigt) Militär mit Wellen, Beschuss, Lebensverlust, Zielerfassung des Strahls; Bossphase Super-X mit
    Kadmium und Hochhaus-Falle; Niederlage/Sieg mit Endbildschirm und Bewertung. Gamepad nicht mit echtem Gerät getestet.
-3. **Nachtstimmung** – teilweise: ACES, Vignette, Brände/Rauch/Glut. Offen: Nebel abstimmen, Regen,
-   Suchscheinwerfer, wenige Punktlichter an Bränden, Filmkorn; die Szene ist insgesamt sehr dunkel.
+3. **Nachtstimmung** – erledigt: ACES, Vignette, Brände/Rauch/Glut, Regen, Flak-Scheinwerfer, Brandlicht, Filmkorn.
 4. **Audio** – offen: `audio.js` aus Teil 1 portieren, Musikmanager (erst `music/`, sonst Synth), Heisei-Stücke.
 5. **HUD und Rahmen** – erledigt: Leben/Energie, Zähler, Ziel, Bossleiste, Kinobalken, Meldungen, Endbildschirm mit
    Bewertung. Offen: Service Worker (PWA).

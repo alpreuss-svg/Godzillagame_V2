@@ -9,14 +9,15 @@ import { Particles, Debris } from './effects.js';
 import { seeThrough } from './buildings.js';
 import { Military } from './military.js';
 import { SuperX } from './boss.js';
+import { Atmosphere } from './atmosphere.js';
 
 // Qualität: ?q=low für schwache Grafik (z. B. Intel UHD 615), ?q=high für mehr Kantenglättung/Schatten
 const Q = new URLSearchParams(location.search).get('q') || 'mid';
 const QUALITY = {
-  low: { ratio: 1, aa: false, shadow: 512, dust: 500, fire: 250 },
-  mid: { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500 },
-  high: { ratio: 2, aa: true, shadow: 2048, dust: 1600, fire: 800 },
-}[Q] || { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500 };
+  low: { ratio: 1, aa: false, shadow: 512, dust: 500, fire: 250, rain: 400, fireLights: 2 },
+  mid: { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500, rain: 1200, fireLights: 4 },
+  high: { ratio: 2, aa: true, shadow: 2048, dust: 1600, fire: 800, rain: 2000, fireLights: 6 },
+}[Q] || { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500, rain: 1200, fireLights: 4 };
 
 class Events {
   constructor() { this.map = new Map(); }
@@ -90,6 +91,7 @@ async function load() {
   game.city = new City(city, scene, fx, events);
   game.military = new Military(units, scene, fx, events);
   game.boss = new SuperX(units, scene, fx, events, game.military);
+  game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
   const g = game.godzilla = new Godzilla(gz, scene, events);
   g.position.set(-1200, 0, BAY_Z + 200);      // kommt im Südwesten der Karte aus der Bucht
   g.raycast = (o, d, max) => game.city.raycast(o, d, max);
@@ -156,6 +158,7 @@ function step(dt) {
     if (game.state !== 'pause') {
       game.fx.dust.update(dt, camera, renderer.domElement.height);
       game.fx.fire.update(dt, camera, renderer.domElement.height);
+      game.atmo.update(dt, camera, g, game.city, rig.target);
       seeThrough.uTime.value += dt;
     }
     if (game.state !== 'pause') rig.update(dt, g.position, game.state === 'play' ? input : IDLE);
@@ -221,6 +224,16 @@ function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 1 / 20);
   if (!game.manual) step(dt);   // game.manual = true: nur noch game.step() von Hand (Tests)
+}
+
+// Filmkorn: Rauschkachel einmal erzeugen
+{
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d'), img = g.createImageData(128, 128);
+  for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+  g.putImageData(img, 0, 0);
+  $('grain').style.backgroundImage = `url(${c.toDataURL()})`;
 }
 
 show('loading');
