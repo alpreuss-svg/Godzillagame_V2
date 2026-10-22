@@ -104,6 +104,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   durch Scheinwerfer mit Lichtkegel bzw. Suchscheinwerfer und Blinklicht. Godzilla zerstört Einheiten mit allen
   Angriffen; der Atomstrahl erfasst beim Laden die nächste Einheit im vorderen Kegel und folgt ihr (`AIM_*`).
   Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab.
+- `js/boss.js` – Super-X: erscheint ab 120 zerstörten Gebäuden (`BOSS_AT` in main.js) mit Kinobalken, neue Wellen
+  stoppen. Schwebt in 130–190 m Abstand auf ~52 m Höhe, zwei echte Suchscheinwerfer auf Godzilla, Bordgeschütz und alle
+  14 s zwei Kadmium-Raketen aufs Maul (`cadmium()`: Godzilla 6 s wehrlos in `down`). Kadmium-Raketen lassen sich mit
+  dem Strahl erfassen und abschießen. Gepanzert: Strahl nur 1,5/s. Schwachstelle wie im Film: ein kippendes Hochhaus,
+  dessen Fall-Linie unter ihr durchgeht (`topple`-Ereignis), 38 Schaden – drei Türme. Absturz → Sieg → Bewertung.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
@@ -136,12 +141,11 @@ Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
 1. **Erledigt** – Modelle: Godzilla geprüft (Maul, Zähne), `city` und `units` gebaut. Offen: Kinnspitze etwas kantig.
 2. **Spiel – in Arbeit.** Erledigt: Spielgerüst, Steuerung (Gang und Drehen per IK, Kombo, Atomstrahl, Kernpuls, Brüllen),
    feste Kamera, Teststadt, Zerstörung (sichtbarer Schaden, Brände, Einsturz, Teilruinen, Schutt, Bodenschäden).
-   (erledigt) Militär mit Wellen, Beschuss, Lebensverlust, Zielerfassung des Strahls. Offen: **Bossphase Super-X**
-   mit Kadmium-Geschossen (Godzilla sackt zusammen → `down`); Schwachstelle wie im Film: ein Hochhaus auf sie kippen
-   (`topple`-Ereignis liefert Fall-Linie und Breite). Gamepad noch nicht mit echtem Gerät getestet.
+   (erledigt) Militär mit Wellen, Beschuss, Lebensverlust, Zielerfassung des Strahls; Bossphase Super-X mit
+   Kadmium und Hochhaus-Falle; Niederlage/Sieg mit Endbildschirm und Bewertung. Gamepad nicht mit echtem Gerät getestet.
 3. **Nachtstimmung** – teilweise: ACES, Vignette, Brände/Rauch/Glut. Offen: Nebel abstimmen, Regen,
    Suchscheinwerfer, wenige Punktlichter an Bränden, Filmkorn; die Szene ist insgesamt sehr dunkel.
 4. **Audio** – offen: `audio.js` aus Teil 1 portieren, Musikmanager (erst `music/`, sonst Synth), Heisei-Stücke.
-5. **HUD und Rahmen** – teilweise: Leben/Energie, Zerstörungszähler. Offen: Ziel, Bossleiste, Boss-Auftritt mit
-   schwarzen Balken, Bewertung, Service Worker (PWA).
+5. **HUD und Rahmen** – erledigt: Leben/Energie, Zähler, Ziel, Bossleiste, Kinobalken, Meldungen, Endbildschirm mit
+   Bewertung. Offen: Service Worker (PWA).
 Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~230k Dreiecke, Partikel).

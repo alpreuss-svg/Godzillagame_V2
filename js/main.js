@@ -8,6 +8,7 @@ import { City, BAY_Z } from './city.js';
 import { Particles, Debris } from './effects.js';
 import { seeThrough } from './buildings.js';
 import { Military } from './military.js';
+import { SuperX } from './boss.js';
 
 // Qualität: ?q=low für schwache Grafik (z. B. Intel UHD 615), ?q=high für mehr Kantenglättung/Schatten
 const Q = new URLSearchParams(location.search).get('q') || 'mid';
@@ -88,11 +89,12 @@ async function load() {
   };
   game.city = new City(city, scene, fx, events);
   game.military = new Military(units, scene, fx, events);
+  game.boss = new SuperX(units, scene, fx, events, game.military);
   const g = game.godzilla = new Godzilla(gz, scene, events);
   g.position.set(-1200, 0, BAY_Z + 200);      // kommt im Südwesten der Karte aus der Bucht
   g.raycast = (o, d, max) => game.city.raycast(o, d, max);
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
-  g.aimTargets = () => game.military.targets();
+  g.aimTargets = () => game.military.targets().concat(game.boss.targets());
   rig.snap(g.position);
 
   // Treffer-Effekte (Brocken, Staub, Brände) erzeugt die Stadt selbst am Einschlagpunkt
@@ -102,7 +104,7 @@ async function load() {
     if (e.kind === 'beam' && e.pos.y < 3 && Math.random() < 0.5) game.city.scars.burn(e.pos.x, e.pos.z, 9);
     if (e.kind === 'pulse') game.city.scars.scorch(e.pos.x, e.pos.z, e.radius * 0.9, 0.6);
   });
-  events.on('beamLine', e => game.military.damageLine(e.from, e.to, 14, e.dps * e.dt));
+  events.on('beamLine', e => { game.military.damageLine(e.from, e.to, 14, e.dps * e.dt); game.boss.beamLine(e.from, e.to, e.dt); });
   events.on('stomp', e => {
     rig.shake(0.35 * e.strength);
     game.military.damage(e.pos, 16, 999, e.pos);
@@ -116,6 +118,11 @@ async function load() {
   events.on('roar', () => rig.shake(1.0));
   events.on('shake', a => rig.shake(a));
   events.on('death', () => { game.endT = 4; game.result = 'lost'; });
+  events.on('bossStart', () => { cinema('SUPER-X', 4.5); $('boss').hidden = false; });
+  events.on('cadmiumWarning', () => toast('KADMIUM-RAKETEN!', 2));
+  events.on('cadmium', () => toast('Godzilla ist betäubt', 2.5));
+  events.on('bossHit', () => toast('Volltreffer!', 1.5));
+  events.on('bossCrash', () => { game.result = 'won'; game.endT = 5; $('boss').hidden = true; cinema('DIE SUPER-X IST BESIEGT', 4); });
 
   game.state = 'title';
   show('title');
@@ -137,8 +144,12 @@ function step(dt) {
       if (game.endT > 0 && (game.endT -= dt) <= 0) endGame();
       g.update(dt, input, rig);
       game.city.update(dt);
-      game.military.updateWaves(dt, g.position, game.city.destroyed);
+      if (!game.boss.active && !game.boss.dead && game.city.destroyed >= BOSS_AT) game.boss.start(g.position);
+      if (!game.boss.active && !game.boss.dead) game.military.updateWaves(dt, g.position, game.city.destroyed);
       game.military.update(dt, g, game.city);
+      game.boss.update(dt, g);
+      $('bossHp').style.width = game.boss.hp + '%';
+      for (const k of ['cinemaT', 'toastT']) if (game[k] > 0 && (game[k] -= dt) <= 0) $(k === 'cinemaT' ? 'cinema' : 'toast').classList.remove('on');
       game.fx.debris.update(dt);
     }
     if (game.state === 'title') g.mixer.update(dt);
@@ -174,7 +185,8 @@ const BOSS_AT = 120;          // zerstörte Gebäude, ab denen die Super-X angre
 
 function objective() {
   const d = game.city.destroyed;
-  return d < BOSS_AT ? `Ziel: Verwüste Tokio (${d} / ${BOSS_AT})` : 'Die Super-X greift an!';
+  if (d < BOSS_AT) return `Ziel: Verwüste Tokio (${d} / ${BOSS_AT})`;
+  return game.boss.dead ? 'Die Super-X ist besiegt' : 'Lass ein Hochhaus auf die Super-X stürzen!';
 }
 
 // Spielende: Bilanz anzeigen, Taste startet neu
@@ -199,6 +211,9 @@ function rating() {
   return score > 90 ? 'S – König der Monster' : score > 65 ? 'A – Zerstörer' : score > 40 ? 'B – Bedrohung' : 'C – Ausreißer';
 }
 game.endGame = endGame;
+
+function cinema(text, sec) { $('cinemaText').textContent = text; $('cinema').classList.add('on'); game.cinemaT = sec; }
+function toast(text, sec) { $('toast').textContent = text; $('toast').classList.add('on'); game.toastT = sec; }
 game.step = step;
 
 const clock = new THREE.Clock();

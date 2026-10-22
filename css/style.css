@@ -36,3 +36,24 @@ h2 { font-size: 42px; letter-spacing: .3em; margin: 0 0 12px; }
   .bar { grid-template-columns: 64px 150px; }
   #goal { display: none; }
 }
+
+/* Bossleiste */
+#boss { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: grid; gap: 6px;
+  text-align: center; font-size: 13px; letter-spacing: .4em; color: #e8ecf2; }
+#boss b { width: min(520px, 80vw); height: 10px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .3); }
+#boss i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #6b7a8a, #c9d6e4); transition: width .3s; }
+
+/* Kinobalken für Auftritte */
+#cinema { position: fixed; inset: 0; pointer-events: none; }
+#cinema i { position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height .9s ease; }
+#cinema i:first-child { top: 0; }
+#cinema i:nth-child(2) { bottom: 0; }
+#cinema.on i { height: 12vh; }
+#cinema p { position: absolute; left: 0; right: 0; bottom: 3vh; margin: 0; text-align: center; font-size: clamp(20px, 3vw, 34px);
+  letter-spacing: .5em; color: #e8ecf2; opacity: 0; transition: opacity .8s; }
+#cinema.on p { opacity: 1; }
+
+/* kurze Meldungen (Kadmium-Warnung, neue Welle) */
+#toast { position: fixed; left: 50%; top: 18vh; transform: translateX(-50%); pointer-events: none; font-size: 18px;
+  letter-spacing: .25em; color: #ffd27a; text-shadow: 0 0 12px rgba(255, 160, 60, .6); opacity: 0; transition: opacity .4s; }
+#toast.on { opacity: 1; }

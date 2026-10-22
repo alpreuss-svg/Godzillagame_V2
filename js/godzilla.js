@@ -13,6 +13,7 @@ const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m vorau
 const BREATH_COST = 20;         // Energie pro Sekunde
 const AIM_CONE = 0.35, AIM_HOLD = 0.6, AIM_RANGE = 420;   // Zielerfassung: Fangkegel, Haltekegel (rad), Reichweite (m)
 const PULSE_COST = 30;
+const CADMIUM_DOWN = 6;         // s wehrlos nach einem Kadmium-Treffer
 const CLAW_DAMAGE = 60, TAIL_DAMAGE = 140, PULSE_DAMAGE = 140, BEAM_DPS = 220;   // TAIL_DAMAGE: dickste Stelle, vorn
 // Schwanzglieder für den Hieb, dick -> dünn: Knochen (Kopf = Gelenk), Trefferradius, Anteil am Schaden
 const TAIL_SEG = [['tail2', 10, 1], ['tail3', 8.5, 0.85], ['tail4', 6.5, 0.6], ['tail5', 4.5, 0.38], ['tail6', 3, 0.22], ['tail7', 2.5, 0.14], ['tail7', 2.2, 0.1]];
@@ -185,6 +186,7 @@ export class Godzilla {
       }
       case 'attack': this.updateAttack(dt, input); break;
       case 'hit': if (this.t > this.dur - FADE) this.finish(); break;
+      case 'down': if (this.t > CADMIUM_DOWN) this.finish(); break;
       case 'dead': break;
       case 'breath': this.updateBreath(dt, input, mag); break;
       case 'roar':
@@ -251,6 +253,18 @@ export class Godzilla {
       this.play('hit');
       this.enter('hit');
     }
+  }
+
+  // Kadmium-Rakete im Maul: Godzilla sackt zusammen und ist eine Weile wehrlos (wie im Film)
+  cadmium() {
+    if (this.state === 'dead') return;
+    this.firing = false;
+    this.lock = null;
+    this.takeDamage(4, this.position);
+    if (this.state === 'dead') return;
+    this.play('down');
+    this.enter('down');
+    this.events.emit('cadmium', {});
   }
 
   // ---------- Klauen-Kombo: J, J, J -> linke Klaue, rechte Klaue, Schwanzdrehung ----------
