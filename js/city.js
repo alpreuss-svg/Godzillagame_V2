@@ -153,17 +153,19 @@ export class City {
   // ---------- Zerstörung ----------
 
   // Schaden im Umkreis (Abstand zur Grundfläche). from = Ursprung des Angriffs (bestimmt Fall- und Neigerichtung),
-  // hy = Höhe des Treffers (Klaue ~45 m, Schwanz ~12 m), falloff: außen nur noch 40 %. Rückgabe: getroffene Gebäude.
-  damage(pos, radius, amount, from = pos, falloff = false, hy = pos.y) {
+  // hy = Höhe des Treffers (Klaue ~45 m, Schwanz ~12 m), falloff: außen nur noch 40 %. hitSet: Gebäude, die dieser
+  // Angriff schon getroffen hat, werden übersprungen (Schwanzhieb trifft jedes nur einmal). Rückgabe: getroffene Gebäude.
+  damage(pos, radius, amount, from = pos, falloff = false, hy = pos.y, hitSet = null) {
     let n = 0;
     for (const b of this.buildings) {
-      if (!b.alive || pos.y > b.h + radius) continue;
+      if (!b.alive || pos.y > b.h + radius || hitSet?.has(b)) continue;
       const d = footDist(b, pos.x, pos.z);
       if (d > radius) continue;
       // Trefferpunkt: auf die Grundfläche geklemmt, also die dem Angriff zugewandte Seite
       _hit.set(THREE.MathUtils.clamp(pos.x, b.x - b.hw, b.x + b.hw), THREE.MathUtils.clamp(hy, 1, b.h - 1),
         THREE.MathUtils.clamp(pos.z, b.z - b.hd, b.z + b.hd));
       this.hit(b, falloff ? amount * (1 - 0.6 * d / radius) : amount, from, _hit);
+      hitSet?.add(b);
       n++;
     }
     return n;

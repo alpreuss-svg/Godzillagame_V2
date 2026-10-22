@@ -14,9 +14,9 @@ P = {
     'pelvis': (0, 3, 31), 'belly': (0, 0, 40), 'chest': (0, -2.5, 50.5), 'shoulder': (0, -4.2, 58.5),
     'neck0': (0, -6.2, 64.5), 'neck1': (0, -8.6, 69.5), 'head0': (0, -10.8, 73.6), 'skull': (0, -14.2, 75.2),
     'snout': (0, -19.6, 74.0), 'jaw0': (0, -12.0, 71.0), 'chin': (0, -18.2, 70.6),
-    # Schwanz wie die 1984er Figur: senkt sich hinter der Hüfte zum Boden und hebt sich zum Ende wieder leicht an;
-    # Spitze ~105 m hinter der Hüfte
-    't1': (0, 14, 25.5), 't2': (0, 27, 16), 't3': (0, 42, 9.5), 't4': (0, 58, 7.0), 't5': (0, 74, 7.5), 't6': (0, 89.5, 10), 't7': (0, 104.5, 13.5),
+    # Schwanz wie die 1984er Figur: senkt sich hinter der Hüfte zum Boden, das Ende biegt sich deutlich nach oben;
+    # Spitze ~100 m hinter der Hüfte, 28 m hoch
+    't1': (0, 14, 25.5), 't2': (0, 27, 16), 't3': (0, 42, 9.5), 't4': (0, 57.5, 8.0), 't5': (0, 72.5, 11.5), 't6': (0, 86.5, 18.5), 't7': (0, 99, 28),
 }
 for s, sx in (('L', 1), ('R', -1)):
     P['hip' + s] = (8.6 * sx, 3, 30)

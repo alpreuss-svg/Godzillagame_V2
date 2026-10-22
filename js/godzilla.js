@@ -12,7 +12,9 @@ const CHARGE_TIME = 1.1;        // s, Platten laden vom Schwanz zum Hals
 const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m voraus
 const BREATH_COST = 20;         // Energie pro Sekunde
 const PULSE_COST = 30;
-const CLAW_DAMAGE = 60, TAIL_DAMAGE = 80, PULSE_DAMAGE = 140, BEAM_DPS = 220;
+const CLAW_DAMAGE = 60, TAIL_DAMAGE = 140, PULSE_DAMAGE = 140, BEAM_DPS = 220;   // TAIL_DAMAGE: dickste Stelle, vorn
+// Schwanzglieder für den Hieb, dick -> dünn: Knochen (Kopf = Gelenk), Trefferradius, Anteil am Schaden
+const TAIL_SEG = [['tail2', 10, 1], ['tail3', 8.5, 0.85], ['tail4', 6.5, 0.6], ['tail5', 4.5, 0.38], ['tail6', 3, 0.22], ['tail7', 2.5, 0.14], ['tail7', 2.2, 0.1]];
 const BODY_RADIUS = 13;          // Körperkreis, der Gebäude beim Gehen zermalmt
 const FADE = 0.15;              // s Überblendzeit der Einzelanimationen
 const COMBO = ['clawL', 'clawR', 'tail'];
@@ -27,7 +29,7 @@ export const BOUNDS = 1500;
 
 const _dir = new THREE.Vector3(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
 const _fl = new THREE.Vector3(), _fr = new THREE.Vector3(), _tq = new THREE.Quaternion();
-const _Y = new THREE.Vector3(0, 1, 0), _Z = new THREE.Vector3(0, 0, 1), _ax = new THREE.Vector3(), _wq = new THREE.Quaternion();
+const _X = new THREE.Vector3(1, 0, 0), _Y = new THREE.Vector3(0, 1, 0), _Z = new THREE.Vector3(0, 0, 1), _ax = new THREE.Vector3(), _wq = new THREE.Quaternion();
 const _hb = new THREE.Vector3();
 // Vorausdrehung um die senkrechte Achse: je Knochen Anteil und Gruppe. Die Gruppen folgen der gewünschten Richtung
 // unterschiedlich schnell – zuerst der Kopf, dann der Hals, dann der Oberkörper, zuletzt Hüfte und Beine.
@@ -231,6 +233,8 @@ export class Godzilla {
     this.play(COMBO[step]);
     this.enter('attack');
     this.spun = 0;
+    this.tailHits = new Set();          // Gebäude, die dieser Schwanzhieb schon getroffen hat
+    this.attackHeading = this.heading;  // vorn = Blickrichtung beim Ausholen
   }
 
   updateAttack(dt, input) {
@@ -241,11 +245,8 @@ export class Godzilla {
       const k = smooth((this.t - 0.1) / (this.dur * 0.8));
       this.heading += (k - this.spun) * Math.PI * 2;
       this.spun = k;
-      if (!this.hitDone && this.t > this.dur * 0.45) {
-        this.hitDone = true;
-        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), from: this.position.clone(), radius: 108, damage: TAIL_DAMAGE, height: 12 });
-        this.events.emit('shake', 0.8);
-      }
+      if (k > 0.08 && k < 0.95) this.tailSweep();
+      if (!this.hitDone && this.t > this.dur * 0.45) { this.hitDone = true; this.events.emit('shake', 0.8); }
     } else if (!this.hitDone && this.t > this.dur * 0.45) {
       this.hitDone = true;
       const pos = this.position.clone().addScaledVector(this.forward(), 24);
@@ -254,6 +255,23 @@ export class Godzilla {
     }
     if (this.queued && this.combo < COMBO.length - 1 && this.t > this.dur * 0.55) this.attack(this.combo + 1);
     else if (this.t > this.dur - FADE) this.finish();
+  }
+
+  // Schwanzhieb trifft dort, wo die Schwanzglieder gerade sind: die dicke Wurzel hart, die Spitze schwach; voller
+  // Schaden nur im 90°-Sektor vor Godzilla, seitlich schwächer und kürzer (das Ende zählt nicht), hinten kaum.
+  tailSweep() {
+    const gx = this.position.x, gz = this.position.z;
+    for (let i = 0; i < TAIL_SEG.length; i++) {
+      const [bone, radius, thick] = TAIL_SEG[i];
+      const b = this.bones[bone];
+      const p = b.getWorldPosition(new THREE.Vector3());
+      if (i === TAIL_SEG.length - 1) p.sub(this.bones.tail6.getWorldPosition(_v)).multiplyScalar(1.6).add(_v);  // Spitze
+      const a = Math.abs(angleDiff(this.attackHeading, Math.atan2(p.x - gx, p.z - gz)));
+      const zone = a < Math.PI / 4 ? 1 : a < 1.9 ? (i <= 3 ? 0.45 : 0) : (i <= 1 ? 0.12 : 0);
+      if (!zone) continue;
+      this.events.emit('attack', { kind: 'tail', pos: p, from: this.position.clone(), radius: radius + 4,
+        damage: TAIL_DAMAGE * thick * zone, height: p.y, hitSet: this.tailHits });
+    }
   }
 
   // ---------- Atomstrahl: K halten -> Platten laden, dann Strahl solange gehalten und Energie da ----------
@@ -340,7 +358,14 @@ export class Godzilla {
       const b = this.bones[name];
       this.offset(b, _ax.copy(_Y).applyQuaternion(b.getWorldQuaternion(_wq).invert()), this.lead[g] * k);
     }
-    for (let i = 1; i <= 7; i++) this.offset(this.bones['tail' + i], _Z, this.tailLag * (0.1 + 0.04 * i));
+    // Schwanz: Trägheit beim Drehen plus eine langsame Welle, die zur Spitze hin größer wird (schlängelt sich)
+    for (let i = 1; i <= 7; i++) {
+      const amp = 0.4 + 0.16 * i, t = this.lookT;
+      const side = this.tailLag * (0.1 + 0.04 * i) + 0.055 * amp * Math.sin(t * 1.3 - i * 0.75);
+      const up = 0.03 * amp * Math.sin(t * 0.9 - i * 0.6 + 1.2);
+      this.offset(this.bones['tail' + i], _Z, side);
+      this.bones['tail' + i].quaternion.multiply(_tq.setFromAxisAngle(_X, up));
+    }
   }
 
   offset(bone, axis, angle) {

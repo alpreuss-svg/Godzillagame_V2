@@ -34,8 +34,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Maulhöhle = zwei negative Metaball-Ellipsoide; Zähne (14 oben/14 unten) per senkrechtem Spaltenscan durch die Höhle,
   Rückenplatten (3 Reihen, Material `GZ_Plates`), eigenes Rig + eigene Gewichtung (Distanz zu Knochensegmenten).
   Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Rumpf etwas schlanker als zuerst. Vorbild für
-  Schwanz und Platten ist die 1984er Figur (Bilder vom Nutzer): Schwanz ~105 m, erstes Viertel fast hüftbreit, im
-  zweiten und dritten stark verjüngt, im letzten kaum noch (Seil), senkt sich zum Boden und hebt sich am Ende leicht.
+  Schwanz und Platten ist die 1984er Figur (Bilder vom Nutzer): Schwanz ~100 m, erstes Viertel fast hüftbreit, im
+  zweiten und dritten stark verjüngt, im letzten kaum noch (Seil), senkt sich zum Boden, Ende biegt sich auf 28 m hoch.
   Plattengröße nach Metern entlang der Wirbelsäule (`bell`): Maximum zwischen Brust und Bauch, zum Hals schnell, zum
   Schwanz langsam kleiner, kleiner Zackenkamm bis ans Ende; Seitenreihen enden in der Schwanzmitte.
 - `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death, turn.
@@ -78,13 +78,15 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Luft ist; im Stand Trittanimation `turn`; prozedural eilen Kopf, Hals und Oberkörper gestaffelt voraus (`LEAD`,
   `LEAD_RATE`: Kopf zuerst, dann Hals, dann Oberkörper, zuletzt Hüfte; Kopf bis ~37° je Seite gegenüber der Hüfte –
   ~60° war dem Nutzer zu weit und zu schnell; gedreht um
-  die echte Senkrechte), im Stand schaut er sich leicht um, der Schwanz schleift nach (`tailLag`). **Achtung:** der AnimationMixer schreibt Knochen nur bei geänderten Werten – prozedurale
+  die echte Senkrechte), im Stand schaut er sich leicht um, der Schwanz schleift nach (`tailLag`) und schlängelt sich
+  ständig mit einer zur Spitze wachsenden Welle. **Achtung:** der AnimationMixer schreibt Knochen nur bei geänderten Werten – prozedurale
   Zusatzdrehungen darum immer über `offset()`/`restorePose()` (sonst addieren sie sich bei gehaltenen Posen auf).
   Atemstrahl: Oberkörper-Clip `breathUpper`, die Beine kommen aus `idleLegs`/`turnLegs` (treten beim Schwenken);
   der Strahl folgt der Kopfrichtung (Maul minus Kopfknochen), reagiert also sofort, der Körper zieht nach.
   Animationsmischung (Einzel-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
-  Körperdrehung, Radius 108 m), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
+  Körperdrehung; Schaden über die echten Positionen der Schwanzglieder `TAIL_SEG`: dicke Wurzel hart, Spitze schwach,
+  voll nur im 90°-Sektor vorn, seitlich schwächer ohne Schwanzende, hinten kaum, jedes Gebäude einmal), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
   (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
 - `js/ground.js` – Bodenschäden: `GroundScars` = Schadenskarte über die Stadt (Canvas 1024², ~3 m/px, additiv bemalt,
   max. 4 Uploads/s; R Ruß/Glut, G Staub/Splitt, B Krater/Risse), Boden-Shader `patchGround` liest sie in
@@ -108,7 +110,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   (zufällige Variante und Drehung, fast gleichmäßig skaliert – gestreckt sah er wie Splitter aus; umgestürzte Türme
   als Kette von Haufen), der 45 s glimmt, anfangs brennt und raucht. Im Schutt leuchten keine Fenster.
   Teilruinen: 45 % der Gebäude ab 12 m brechen nur oben ab (Abbruchhöhe sinkt, Shader verwirft alles darüber mit
-  gezackter, verrußter Kante), jeder zweite gekippte Turm lässt einen Stumpf stehen; innen und daneben liegt Schutt. Schaden: Klaue 60, Schwanz 80 (75 m),
+  gezackter, verrußter Kante), jeder zweite gekippte Turm lässt einen Stumpf stehen; innen und daneben liegt Schutt.
+  Schaden: Klaue 60, Schwanz bis 140 (dickste Stelle, vorn),
   Kernpuls 140 (130 m, Abfall), Strahl 220/s, Stampfer 60 (14 m).
 
 ## Testen
