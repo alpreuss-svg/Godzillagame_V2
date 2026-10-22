@@ -11,6 +11,7 @@ const BREATH_TURN = 0.45;       // rad/s – Strahl langsam schwenken
 const CHARGE_TIME = 1.1;        // s, Platten laden vom Schwanz zum Hals
 const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m voraus
 const BREATH_COST = 20;         // Energie pro Sekunde
+const AIM_CONE = 0.35, AIM_HOLD = 0.6, AIM_RANGE = 420;   // Zielerfassung: Fangkegel, Haltekegel (rad), Reichweite (m)
 const PULSE_COST = 30;
 const CLAW_DAMAGE = 60, TAIL_DAMAGE = 140, PULSE_DAMAGE = 140, BEAM_DPS = 220;   // TAIL_DAMAGE: dickste Stelle, vorn
 // Schwanzglieder für den Hieb, dick -> dünn: Knochen (Kopf = Gelenk), Trefferradius, Anteil am Schaden
@@ -183,6 +184,8 @@ export class Godzilla {
         break;
       }
       case 'attack': this.updateAttack(dt, input); break;
+      case 'hit': if (this.t > this.dur - FADE) this.finish(); break;
+      case 'dead': break;
       case 'breath': this.updateBreath(dt, input, mag); break;
       case 'roar':
         if (!this.roared && this.t > 0.6) { this.roared = true; this.events.emit('roar', { pos: this.position }); }
@@ -226,6 +229,28 @@ export class Godzilla {
     this.wave.update(dt);
     this.updateGlow(dt);
     if (this.state !== 'breath') this.energy = Math.min(100, this.energy + 5 * dt);
+    this.hurt = Math.max(0, (this.hurt || 0) - dt * 4);      // Treffer klingen ab
+    this.calm = (this.calm || 0) + dt;                      // nach 5 s ohne Treffer erholt er sich langsam
+    if (this.calm > 5 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 0.6 * dt);
+  }
+
+  // ---------- Treffer vom Militär ----------
+  takeDamage(amount, at) {
+    if (this.state === 'dead') return;
+    this.hp = Math.max(0, this.hp - amount);
+    this.hurt = (this.hurt || 0) + amount;
+    this.calm = 0;
+    this.events.emit('hurt', { amount, at });
+    if (this.hp <= 0) {
+      this.firing = false;
+      this.play('death');
+      this.enter('dead');
+      this.events.emit('death', {});
+    } else if (this.hurt > 5 && this.state === 'free') {     // mehrere Treffer kurz hintereinander: zuckt zurück
+      this.hurt = 0;
+      this.play('hit');
+      this.enter('hit');
+    }
   }
 
   // ---------- Klauen-Kombo: J, J, J -> linke Klaue, rechte Klaue, Schwanzdrehung ----------
@@ -298,11 +323,33 @@ export class Godzilla {
     const from = this.mouth.getWorldPosition(new THREE.Vector3());
     this.bones.head.getWorldPosition(_hb);
     const yaw = Math.atan2(from.x - _hb.x, from.z - _hb.z);
-    const c = Math.cos(BREATH_PITCH);
-    const dir = new THREE.Vector3(Math.sin(yaw) * c, -Math.sin(BREATH_PITCH), Math.cos(yaw) * c);
-    let max = from.y / Math.sin(BREATH_PITCH);              // bis zum Boden
+    // Zielerfassung: beim Laden wird die nächste Militäreinheit im vorderen Kegel erfasst und gehalten, solange sie
+    // nicht zu weit zur Seite wandert; der Strahl folgt ihr in Höhe und Seite (Hubschrauber oben, Panzer weiter weg
+    // flacher). Ohne Ziel trifft er ~200 m voraus den Boden.
+    const relTo = u => {
+      const t = u.mesh.position, dx = t.x - from.x, dz = t.z - from.z, d = Math.hypot(dx, dz);
+      return { d, off: angleDiff(yaw, Math.atan2(dx, dz)), pitch: Math.atan2(from.y - t.y, d) };
+    };
+    if (this.lock && (this.lock.hp <= 0 || this.state !== 'breath')) this.lock = null;
+    if (this.lock) { const r = relTo(this.lock); if (Math.abs(r.off) > AIM_HOLD || r.d > AIM_RANGE + 60) this.lock = null; }
+    if (!this.lock && this.state === 'breath') {
+      let best = AIM_RANGE;
+      for (const u of this.aimTargets ? this.aimTargets() : []) {
+        const r = relTo(u);
+        if (r.d > 50 && r.d < best && Math.abs(r.off) < AIM_CONE) { best = r.d; this.lock = u; }
+      }
+    }
+    let wantPitch = BREATH_PITCH, wantOff = 0;
+    if (this.lock) { const r = relTo(this.lock); wantPitch = THREE.MathUtils.clamp(r.pitch, -0.5, 0.6); wantOff = r.off; }
+    const k = 1 - Math.exp(-5 * dt);
+    this.beamPitch = (this.beamPitch ?? BREATH_PITCH) + (wantPitch - (this.beamPitch ?? BREATH_PITCH)) * k;
+    this.beamOff = (this.beamOff ?? 0) + (wantOff - (this.beamOff ?? 0)) * k;
+    const pitch = this.beamPitch, c = Math.cos(pitch), by = yaw + this.beamOff;
+    const dir = new THREE.Vector3(Math.sin(by) * c, -Math.sin(pitch), Math.cos(by) * c);
+    let max = pitch > 0.02 ? from.y / Math.sin(pitch) : AIM_RANGE + 100;   // bis zum Boden
     if (this.raycast) max = Math.min(max, this.raycast(from, dir, max));
     const end = this.beam.update(dt, this.firing, from, dir, max);
+    if (this.firing) this.events.emit('beamLine', { from, to: end || from.clone().addScaledVector(dir, this.beam.len), dps: BEAM_DPS, dt });
     if (end) this.events.emit('attack', { kind: 'beam', pos: end, from: this.position, radius: 16, damage: BEAM_DPS * dt });
   }
 

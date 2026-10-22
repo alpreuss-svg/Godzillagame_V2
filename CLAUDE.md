@@ -96,6 +96,14 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Weltkoordinaten (Staubfelder lassen Schutt in den Boden übergehen, frische Strahlspuren glühen). Für scharfe Details
   `Decals` (InstancedMesh-Quadrate mit Canvas-Textur): formlose Einschläge bei jedem Stampfer (keine Fußform – sah
   wie Spinnensymbole aus), Einsturzstellen mit kurzen Rissen und Rußflecken (lange Risslinien wirken wie Spinnenbeine).
+- `js/military.js` – Militär: Panzer Typ 74, Raketen-LKW, AH-1 (Modelle aus `units.glb`, 1,4-fach skaliert, damit man
+  sie sieht). Wellen (`updateWaves`) eskalieren mit Zeit und Zerstörung, max. 14 Einheiten. Bodentruppen fahren
+  L-förmig über das Straßenraster zu einer Kreuzung in Schussweite, Hubschrauber kreisen in ~50 m Höhe. Geschosse
+  (Leuchtspur, Lenkraketen mit Rauch) streuen so, dass etwa die Hälfte danebengeht; Treffer über eine Kapsel um
+  Godzillas Rumpf (`takeDamage`, Zucken bei Trefferserien, nach 5 s ohne Treffer langsame Erholung). Nachts sichtbar
+  durch Scheinwerfer mit Lichtkegel bzw. Suchscheinwerfer und Blinklicht. Godzilla zerstört Einheiten mit allen
+  Angriffen; der Atomstrahl erfasst beim Laden die nächste Einheit im vorderen Kegel und folgt ihr (`AIM_*`).
+  Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
@@ -128,7 +136,7 @@ Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
 1. **Erledigt** – Modelle: Godzilla geprüft (Maul, Zähne), `city` und `units` gebaut. Offen: Kinnspitze etwas kantig.
 2. **Spiel – in Arbeit.** Erledigt: Spielgerüst, Steuerung (Gang und Drehen per IK, Kombo, Atomstrahl, Kernpuls, Brüllen),
    feste Kamera, Teststadt, Zerstörung (sichtbarer Schaden, Brände, Einsturz, Teilruinen, Schutt, Bodenschäden).
-   Offen: **Militär** (Panzer, Raketen-LKW, Hubschrauber greifen an, Godzilla verliert Leben), **Bossphase Super-X**
+   (erledigt) Militär mit Wellen, Beschuss, Lebensverlust, Zielerfassung des Strahls. Offen: **Bossphase Super-X**
    mit Kadmium-Geschossen (Godzilla sackt zusammen → `down`); Schwachstelle wie im Film: ein Hochhaus auf sie kippen
    (`topple`-Ereignis liefert Fall-Linie und Breite). Gamepad noch nicht mit echtem Gerät getestet.
 3. **Nachtstimmung** – teilweise: ACES, Vignette, Brände/Rauch/Glut. Offen: Nebel abstimmen, Regen,

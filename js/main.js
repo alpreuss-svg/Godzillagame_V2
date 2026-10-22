@@ -7,6 +7,7 @@ import { Godzilla } from './godzilla.js';
 import { City, BAY_Z } from './city.js';
 import { Particles, Debris } from './effects.js';
 import { seeThrough } from './buildings.js';
+import { Military } from './military.js';
 
 // Qualität: ?q=low für schwache Grafik (z. B. Intel UHD 615), ?q=high für mehr Kantenglättung/Schatten
 const Q = new URLSearchParams(location.search).get('q') || 'mid';
@@ -86,20 +87,25 @@ async function load() {
     debris: new Debris(scene, [0, 1, 2].map(i => units.scene.getObjectByName('U_debris' + i))),
   };
   game.city = new City(city, scene, fx, events);
+  game.military = new Military(units, scene, fx, events);
   const g = game.godzilla = new Godzilla(gz, scene, events);
   g.position.set(-1200, 0, BAY_Z + 200);      // kommt im Südwesten der Karte aus der Bucht
   g.raycast = (o, d, max) => game.city.raycast(o, d, max);
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
+  g.aimTargets = () => game.military.targets();
   rig.snap(g.position);
 
   // Treffer-Effekte (Brocken, Staub, Brände) erzeugt die Stadt selbst am Einschlagpunkt
   events.on('attack', e => {
     game.city.damage(e.pos, e.radius, e.damage, e.from, e.falloff, e.height ?? e.pos.y, e.hitSet);
+    if (e.kind !== 'beam') game.military.damage(e.pos, e.kind === 'claw' ? e.radius + 12 : e.radius, e.damage, e.from);
     if (e.kind === 'beam' && e.pos.y < 3 && Math.random() < 0.5) game.city.scars.burn(e.pos.x, e.pos.z, 9);
     if (e.kind === 'pulse') game.city.scars.scorch(e.pos.x, e.pos.z, e.radius * 0.9, 0.6);
   });
+  events.on('beamLine', e => game.military.damageLine(e.from, e.to, 14, e.dps * e.dt));
   events.on('stomp', e => {
     rig.shake(0.35 * e.strength);
+    game.military.damage(e.pos, 16, 999, e.pos);
     game.city.damage(e.pos, 14, 60, e.pos, false, 3);
     game.city.decals.add('impact', e.pos.x, e.pos.z, Math.random() * 6.3, 16 + Math.random() * 10);
     game.city.scars.blob(e.pos.x, e.pos.z, 12, [0, 0.3, 0.1]);
@@ -127,14 +133,16 @@ function step(dt) {
     if (game.state === 'play') {
       g.update(dt, input, rig);
       game.city.update(dt);
+      game.military.updateWaves(dt, g.position, game.city.destroyed);
+      game.military.update(dt, g, game.city);
       game.fx.debris.update(dt);
     }
+    if (game.state === 'title') g.mixer.update(dt);
     if (game.state !== 'pause') {
       game.fx.dust.update(dt, camera, renderer.domElement.height);
       game.fx.fire.update(dt, camera, renderer.domElement.height);
       seeThrough.uTime.value += dt;
     }
-    else if (game.state === 'title') g.mixer.update(dt);
     if (game.state !== 'pause') rig.update(dt, g.position, game.state === 'play' ? input : IDLE);
     seeThrough.uCam.value.copy(camera.position);
     seeThrough.uFocus.value.copy(g.position).setY(40);
