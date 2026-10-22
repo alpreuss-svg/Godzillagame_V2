@@ -95,8 +95,9 @@ const FRAG_CLIP = /* glsl */`
     // Schutt (Modell ist nur 1x1 groß, darum Rauschen in Weltkoordinaten): verkohlte Flecken und Glutnester,
     // die mit vDmg.x (1 -> 0,12) verglimmen
     float w = gzNoise(vWorld * 0.22) * 0.7 + gzNoise(vWorld * 0.8) * 0.3;
-    gzBurn = smoothstep(0.5, 0.7, w) * 0.7;
-    gzEmber = (1.0 - smoothstep(0.0, 0.05, abs(w - 0.64))) * vDmg.x;
+    gzBurn = smoothstep(0.45, 0.7, w) * 0.75;
+    float nest = gzNoise(vWorld * 0.12 + 4.0);                               // wenige, verstreute Glutnester
+    gzEmber = smoothstep(0.72, 0.8, w) * smoothstep(0.55, 0.7, nest) * vDmg.x;
   } else if (vDmg.x > 0.01) {
     float d = vDmg.x;
     // am Einschlag: Delle, Löcher, Ruß
@@ -104,13 +105,14 @@ const FRAG_CLIP = /* glsl */`
     gzMask = r - min(d, 1.0) * 0.95 + (n - 0.5) * 0.7;
     if (d > 0.3 && gzMask < -0.2) discard;                                   // Loch
     gzBurn = 1.0 - smoothstep(-0.2, 0.45, gzMask);
-    gzEmber = (1.0 - smoothstep(0.0, 0.07, abs(gzMask + 0.2))) * smoothstep(0.35, 0.6, d);
+    float broken = smoothstep(0.4, 0.6, gzNoise(vLocal * 0.7 + 2.0));        // Glutränder unterbrochen
+    gzEmber = (1.0 - smoothstep(0.0, 0.06, abs(gzMask + 0.2))) * smoothstep(0.35, 0.6, d) * broken;
     // verteilt über das ganze Gebäude (auch auf der abgewandten Seite sichtbar): Ruß- und Rissflecken, deren
     // Anteil mit dem Schaden wächst, glühende Ränder ab mittlerem Schaden
     float n2 = gzNoise(vLocal * 0.085 + 3.1) * 0.75 + gzNoise(vLocal * 0.3) * 0.25;
     float th = 0.8 - min(d, 1.0) * 0.6;
     gzBurn = max(gzBurn, smoothstep(th, th + 0.04, n2) * 0.9);
-    gzEmber = max(gzEmber, (1.0 - smoothstep(0.0, 0.02, abs(n2 - th))) * smoothstep(0.4, 0.7, d));
+    gzEmber = max(gzEmber, (1.0 - smoothstep(0.0, 0.02, abs(n2 - th))) * smoothstep(0.4, 0.7, d) * broken * 0.6);
     gzLights = 1.0 - 0.6 * min(d, 1.0);                                       // Strom fällt nach und nach aus
   }
 }
@@ -118,15 +120,17 @@ const FRAG_CLIP = /* glsl */`
 
 const FRAG_COLOR = /* glsl */`
 #include <map_fragment>
+if (vFx.x < -0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.34, 0.31, 0.27), 0.55);   // Schutt: staubig
 diffuseColor.rgb *= mix(1.0, 0.1, gzBurn);
 if (!gl_FrontFacing) diffuseColor.rgb *= 0.12;                               // Innenwände durch Löcher sichtbar
 `;
 
 const FRAG_EMIT = /* glsl */`
 #include <emissivemap_fragment>
-totalEmissiveRadiance *= (1.0 - gzBurn) * gzLights * (gl_FrontFacing ? 1.0 : 0.0);   // Fenster erlöschen
+// Fenster erlöschen im Ruß und mit dem Schaden; im Schutt leuchtet nur noch Glut
+totalEmissiveRadiance *= vFx.x < -0.5 ? 0.0 : (1.0 - gzBurn) * gzLights * (gl_FrontFacing ? 1.0 : 0.0);
 float flick = 0.7 + 0.3 * sin(uTime * 9.0 + vLocal.x * 0.7 + vLocal.y * 1.3);
-totalEmissiveRadiance += vec3(1.0, 0.32, 0.06) * gzEmber * 2.4 * flick;
+totalEmissiveRadiance += vec3(1.0, 0.32, 0.06) * gzEmber * 1.8 * flick;
 `;
 
 const patched = new WeakSet();

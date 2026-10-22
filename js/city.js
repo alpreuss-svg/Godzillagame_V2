@@ -1,12 +1,14 @@
 // Stadt aus city.glb: ein InstancedMesh pro Gebäudetyp und Material, Straßenraster, Bucht im Süden, Zerstörung
 import * as THREE from 'three';
 import { patchBuildingMaterial, addInstanceAttributes } from './buildings.js';
+import { GroundScars, patchGround, Decals } from './ground.js';
 
 const P = 136;                 // Rastermaß: Blockmitten liegen auf Vielfachen von P
 const ROAD = 26;
 const BLOCK = P - ROAD;
 const N = 10;                  // Blöcke in jede Richtung
 export const BAY_Z = 7.5 * P;  // südlich davon Wasser
+const GROUND_SIZE = P * 2 * (N + 2);
 
 const ZONES = {
   tower: { lots: 2, types: ['tower_glass', 'tower_tri', 'tower_step', 'office_b', 'tower_glass', 'office_a'] },
@@ -45,7 +47,9 @@ export class City {
     }
     this.buildings = this.layout(rng(seed));
     this.instanced = this.instantiate(scene);
-    scene.add(makeGround(), makeWater());
+    this.scars = new GroundScars(GROUND_SIZE);
+    this.decals = new Decals(scene);
+    scene.add(makeGround(this.scars), makeWater());
     this.fx = fx;
     this.events = events;
     this.time = 0;
@@ -57,14 +61,14 @@ export class City {
     // Schutthaufen: zwei Varianten, je ein Pool so groß wie die Stadt, wächst über count
     this.rubble = ['rubble', 'rubble_b'].map(name => {
       const meshes = this.types[name].meshes.map(src => {
-        const im = new THREE.InstancedMesh(src.geometry, src.material, this.buildings.length);
+        const im = new THREE.InstancedMesh(src.geometry, src.material, this.buildings.length * 2);
         im.count = 0;
         im.receiveShadow = true;
         im.frustumCulled = false;
         scene.add(im);
         return im;
       });
-      return { meshes, attrs: addInstanceAttributes(meshes.map(m => m.geometry), this.buildings.length, [-1, 0, 0, 0]) };
+      return { meshes, attrs: addInstanceAttributes(meshes.map(m => m.geometry), this.buildings.length * 2, [-1, 0, 0, 0]) };
     });
   }
 
@@ -243,6 +247,7 @@ export class City {
 
   update(dt) {
     this.time += dt;
+    this.scars.update(dt);
     for (const b of this.shaking) {
       b.shakeT -= dt;
       const a = Math.max(0, b.shakeT) / 0.3 * 0.6;
@@ -383,35 +388,41 @@ export class City {
     }
   }
 
-  // Schutt bleibt liegen: auf der Grundfläche oder, bei gekippten Türmen, längs der Fallrichtung; glüht und raucht
+  // Schutt bleibt liegen: ein Haufen auf der Grundfläche oder, bei gekippten Türmen, eine Kette von Haufen längs
+  // der Fallrichtung. Fast gleichmäßig skaliert (nur flacher), damit Platten und Brocken nicht zu Splittern verzerren.
   addRubble(f) {
     const b = f.b;
-    let r;
     if (f.topple) {
-      const len = b.h * 1.0, d = f.edge + len / 2;
-      _v.set(b.x + f.dir.x * d, 0, b.z + f.dir.z * d);
-      _q.setFromAxisAngle(UP, Math.atan2(f.dir.x, f.dir.z));
-      _s.set(Math.min(b.hw, b.hd) * 2.6, 12 / RUBBLE_H, len);
-      r = len / 2;
+      const w = Math.min(b.hw, b.hd) * 2, step = w * 0.85, len = b.h;
+      for (let s = step * 0.5; s < len; s += step) {
+        const d = f.edge + s, j = (Math.random() - 0.5) * w * 0.3;
+        const x = b.x + f.dir.x * d - f.dir.z * j, z = b.z + f.dir.z * d + f.dir.x * j;
+        this.placeRubble(x, z, w * (1.1 + Math.random() * 0.4), s < step);
+        this.decals.add('crack', x, z, Math.random() * 6.3, w * 2.4);
+      }
+      this.scars.line(b.x + f.dir.x * f.edge, b.z + f.dir.z * f.edge, f.dir, len, w * 1.3);
     } else {
-      const turn = Math.floor(Math.random() * 4);
-      _v.set(b.x, 0, b.z);
-      _q.setFromAxisAngle(UP, turn * Math.PI / 2);
-      const [sx, sz] = turn % 2 ? [b.hd, b.hw] : [b.hw, b.hd];
-      _s.set(sx * 2.5, Math.min(4 + b.h * 0.14, 18) / RUBBLE_H, sz * 2.5);
-      r = Math.max(b.hw, b.hd);
+      const r = Math.max(b.hw, b.hd);
+      this.placeRubble(b.x, b.z, r * 2.4, true);
+      this.decals.add('crack', b.x, b.z, Math.random() * 6.3, r * 4);
+      this.scars.collapse(b.x, b.z, r);
     }
-    _m.compose(_v, _q, _s);
+  }
+
+  placeRubble(x, z, size, smolder) {
+    _q.setFromAxisAngle(UP, Math.random() * Math.PI * 2);
+    _m.compose(_v.set(x, 0, z), _q, _s.set(size, size * RUBBLE_FLAT, size));
     const pool = this.rubble[Math.random() < 0.5 ? 0 : 1];
     const idx = pool.meshes[0].count;
+    if (idx >= pool.meshes[0].instanceMatrix.count) return;
     for (const im of pool.meshes) {
       im.setMatrixAt(idx, _m);
       im.count = idx + 1;
       im.instanceMatrix.needsUpdate = true;
     }
-    pool.attrs.dmg.setX(idx, 1);
+    pool.attrs.dmg.setX(idx, smolder ? 1 : 0.4);
     pool.attrs.dmg.needsUpdate = true;
-    this.smolder.push({ attrs: pool.attrs, idx, t: 0, x: _v.x, z: _v.z, r });
+    if (smolder) this.smolder.push({ attrs: pool.attrs, idx, t: 0, x, z, r: size * 0.4 });
   }
 }
 
@@ -419,7 +430,7 @@ const TOPPLE_H = 70;          // ab dieser Höhe kippen Gebäude statt einzusink
 const TOPPLE_FALL = 2.1;      // s bis zum Aufschlag
 const TOPPLE_DAMAGE = 260;    // Schaden für alles, worauf ein Turm fällt
 const CRUSH_DPS = 320;        // Godzillas Körper gegen Gebäude
-const RUBBLE_H = 0.35;        // Höhe des Schuttmodells bei Maßstab 1
+const RUBBLE_FLAT = 0.55;     // Schutt in der Höhe gestaucht (Modell: 1 breit, 0,35 hoch)
 const MAX_FIRES = 40;         // gleichzeitig brennende Gebäude (älteste erlöschen)
 const SMOLDER_TIME = 45;      // s, bis die Glut im Schutt verloschen ist
 const SMOKE = { spread: 4, up: 7, out: 2, size: 20, life: 7, color: [0.06, 0.06, 0.065] };
@@ -450,11 +461,11 @@ function slab(o, d, lo, hi, t0, t1) {
 }
 
 // Boden: eine Kachel = ein Block samt halber Straße ringsum
-function makeGround() {
+function makeGround(scars) {
   const S = 512, px = S / P, c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d');
-  g.fillStyle = '#16171a'; g.fillRect(0, 0, S, S);                       // Asphalt
+  g.fillStyle = '#1e1f22'; g.fillRect(0, 0, S, S);                       // Asphalt
   const r = ROAD / 2 * px, sw = 4 * px;
   g.fillStyle = '#3a3a3c'; g.fillRect(r, r, S - 2 * r, S - 2 * r);        // Gehweg
   g.fillStyle = '#2a2b2c'; g.fillRect(r + sw, r + sw, S - 2 * (r + sw), S - 2 * (r + sw));
@@ -473,11 +484,12 @@ function makeGround() {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.anisotropy = 4;
-  const size = P * 2 * (N + 2);
+  const size = GROUND_SIZE;
   tex.repeat.set(size / P, size / P);
   tex.offset.set(0.5, 0.5);
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92 }));
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92 });
+  patchGround(mat, scars);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(size, size), mat);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   return ground;

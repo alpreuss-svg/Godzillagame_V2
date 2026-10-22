@@ -2,8 +2,8 @@
 import * as THREE from 'three';
 import { Beam, Shockwave } from './effects.js';
 
-// Muss zur Laufanimation passen (gz_anim.py: WALK_DIST / WALK_T = 30 m / 2 s), sonst gleiten die Füße
-const WALK_SPEED = 15;          // m/s bei vollem Ausschlag
+// Muss zur Laufanimation passen (gz_anim.py: WALK_DIST / WALK_T = 35 m / 1,95 s), sonst gleiten die Füße
+const WALK_SPEED = 35 / 1.95;   // ~18 m/s bei vollem Ausschlag
 const TURN_RATE = 1.4;          // rad/s
 const BREATH_TURN = 0.45;       // rad/s – Strahl langsam schwenken
 const CHARGE_TIME = 1.1;        // s, Platten laden vom Schwanz zum Hals
@@ -250,7 +250,7 @@ export class Godzilla {
     for (const side of ['L', 'R']) {
       const y = this.bones['foot' + side].getWorldPosition(_v).y;   // GLTFLoader entfernt den Punkt aus "foot.L"
       if (this.speed > 1.5 && this.footY[side] > STOMP_Y && y <= STOMP_Y) {
-        this.events.emit('stomp', { pos: _v.clone().setY(0), strength: this.speed / WALK_SPEED });
+        this.events.emit('stomp', { pos: _v.clone().setY(0), strength: this.speed / WALK_SPEED, heading: this.heading });
       }
       this.footY[side] = y;
     }

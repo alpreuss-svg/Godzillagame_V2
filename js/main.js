@@ -93,10 +93,16 @@ async function load() {
   rig.snap(g.position);
 
   // Treffer-Effekte (Brocken, Staub, Brände) erzeugt die Stadt selbst am Einschlagpunkt
-  events.on('attack', e => game.city.damage(e.pos, e.radius, e.damage, e.from, e.falloff, e.height ?? e.pos.y));
+  events.on('attack', e => {
+    game.city.damage(e.pos, e.radius, e.damage, e.from, e.falloff, e.height ?? e.pos.y);
+    if (e.kind === 'beam' && e.pos.y < 3 && Math.random() < 0.5) game.city.scars.burn(e.pos.x, e.pos.z, 9);
+    if (e.kind === 'pulse') game.city.scars.scorch(e.pos.x, e.pos.z, e.radius * 0.9, 0.6);
+  });
   events.on('stomp', e => {
     rig.shake(0.35 * e.strength);
     game.city.damage(e.pos, 14, 60, e.pos, false, 3);
+    game.city.decals.add('foot', e.pos.x, e.pos.z, e.heading, 24);
+    game.city.scars.blob(e.pos.x, e.pos.z, 12, [0, 0.3, 0.1]);
     fx.dust.emit(e.pos.x, 0, e.pos.z, 3, { spread: 6, up: 1.5, out: 6, size: 12, life: 2 });
   });
   events.on('collapse', e => rig.shake(e.topple ? 0.6 : 0.25));

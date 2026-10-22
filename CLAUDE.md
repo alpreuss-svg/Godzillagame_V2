@@ -36,8 +36,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m.
 - `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death.
   **Gang und Stand per inverser Kinematik** (`leg_ik`, Seitenebene, Knie nach vorn): Knöchel steht auf Bodenhöhe 5,6 m,
-  ein aufgesetzter Fuß wandert relativ zum Körper mit genau Laufgeschwindigkeit nach hinten. Zyklus 2 s, 30 m
-  (`WALK_DIST / WALK_T` = 15 m/s) – `WALK_SPEED` in `js/godzilla.js` muss dazu passen, sonst gleiten die Füße.
+  ein aufgesetzter Fuß wandert relativ zum Körper mit genau Laufgeschwindigkeit nach hinten. Zyklus 1,95 s, 35 m
+  (`WALK_DIST / WALK_T` ≈ 18 m/s) – `WALK_SPEED` in `js/godzilla.js` muss dazu passen, sonst gleiten die Füße.
   Die Hüfte dreht/kippt beim Gehen nicht (sonst wandern die Hüftgelenke), das Wiegen steckt in `spine1`.
 - `blender/city.py` – Gebäudebaukasten mit prozeduralen Fassaden (Tag + leuchtende Nachtfenster als Emission),
   Typen `B_tower_glass`, `B_tower_tri`, `B_tower_slab`, `B_tower_step`, `B_office_a/b/c`, `B_apt_a/b`, `B_shop_a/b`,
@@ -64,11 +64,15 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Delle + Bröseln im Vertex-Shader, Löcher mit dunklen Innenwänden, Ruß und Glutränder am Einschlag, verteilte
   Ruß-/Rissflecken und ausfallende Fenster überall (damit man den Schaden von jeder Seite sieht), `aFx` (−1 = Schutt,
   Bruchhöhe, Knickwinkel, Knickachse) für das Knicken kippender Türme und verglimmende Glut im Schutt.
-- `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), 15 m/s; die Laufanimation
-  ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/15 (Füße bleiben synchron). Animationsmischung (Einzel-
+- `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), ~18 m/s; die Laufanimation
+  ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/`WALK_SPEED` (Füße bleiben synchron). Animationsmischung (Einzel-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
   Körperdrehung), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
   (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
+- `js/ground.js` – Bodenschäden: `GroundScars` = Schadenskarte über die Stadt (Canvas 1024², ~3 m/px, additiv bemalt,
+  max. 4 Uploads/s; R Ruß/Glut, G Staub/Splitt, B Krater/Risse), Boden-Shader `patchGround` liest sie in
+  Weltkoordinaten (Staubfelder lassen Schutt in den Boden übergehen, frische Strahlspuren glühen). Für scharfe Details
+  `Decals` (InstancedMesh-Quadrate mit Canvas-Textur): Fußabdrücke bei jedem Stampfer, Rissnetze unter Ruinen.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
@@ -83,7 +87,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Stockwerk um Stockwerk zusammen, kippt leicht, sinkt in die eigene Staubwolke, Brocken fallen von oben, eine
   Staubwalze rollt über die Straßen. Ab 70 m kippt es weg vom Angreifer und knickt an einer Bruchstelle; der Aufschlag
   zerschlägt alles darunter (Kettenreaktion) und meldet `topple` (für den Super-X-Boss gedacht). Danach Schutthaufen
-  (zufällige Variante und Drehung), der 45 s glimmt, anfangs brennt und raucht. Schaden: Klaue 60, Schwanz 80 (75 m),
+  (zufällige Variante und Drehung, fast gleichmäßig skaliert – gestreckt sah er wie Splitter aus; umgestürzte Türme
+  als Kette von Haufen), der 45 s glimmt, anfangs brennt und raucht. Im Schutt leuchten keine Fenster. Schaden: Klaue 60, Schwanz 80 (75 m),
   Kernpuls 140 (130 m, Abfall), Strahl 220/s, Stampfer 60 (14 m).
 
 ## Testen
