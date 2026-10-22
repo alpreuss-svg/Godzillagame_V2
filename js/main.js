@@ -61,7 +61,7 @@ const game = { state: 'loading', events, scene, renderer, camera, rig, input };
 window.game = game;   // zum Ausprobieren in der Konsole
 
 function show(id) {
-  for (const s of ['loading', 'title', 'paused']) $(s).hidden = s !== id;
+  for (const s of ['loading', 'title', 'paused', 'over']) $(s).hidden = s !== id;
   $('screen').classList.toggle('off', !id);
   $('hud').hidden = !(game.state === 'play' || game.state === 'pause');
 }
@@ -115,6 +115,7 @@ async function load() {
   events.on('topple', () => rig.shake(1.6));
   events.on('roar', () => rig.shake(1.0));
   events.on('shake', a => rig.shake(a));
+  events.on('death', () => { game.endT = 4; game.result = 'lost'; });
 
   game.state = 'title';
   show('title');
@@ -126,11 +127,14 @@ function step(dt) {
   const g = game.godzilla;
 
   if (game.state === 'title' && input.any) { game.state = 'play'; show(null); }
+  else if (game.state === 'over' && (game.overT += dt) > 1.5 && input.any) location.reload();   // neues Spiel
   else if (game.state === 'play' && input.pressed('pause')) { game.state = 'pause'; show('paused'); }
   else if (game.state === 'pause' && input.pressed('pause')) { game.state = 'play'; show(null); }
 
   if (g) {
     if (game.state === 'play') {
+      game.stats.time += dt;
+      if (game.endT > 0 && (game.endT -= dt) <= 0) endGame();
       g.update(dt, input, rig);
       game.city.update(dt);
       game.military.updateWaves(dt, g.position, game.city.destroyed);
@@ -154,12 +158,47 @@ function step(dt) {
     $('hp').style.width = g.hp + '%';
     $('en').style.width = g.energy + '%';
     if (game.city.destroyed !== shownDestroyed) $('destroyed').textContent = shownDestroyed = game.city.destroyed;
+    if (game.military.destroyed !== shownUnits) $('units').textContent = shownUnits = game.military.destroyed;
+    const obj = objective();
+    if (obj !== shownObjective) $('objective').textContent = shownObjective = obj;
   }
   renderer.render(scene, camera);
   input.endFrame();
 }
 const IDLE = { zoom: 0 };
-let shownDestroyed = -1;
+let shownDestroyed = -1, shownUnits = -1, shownObjective = '';
+game.stats = { time: 0 };
+game.endT = 0;
+game.overT = 0;
+const BOSS_AT = 120;          // zerstörte Gebäude, ab denen die Super-X angreift
+
+function objective() {
+  const d = game.city.destroyed;
+  return d < BOSS_AT ? `Ziel: Verwüste Tokio (${d} / ${BOSS_AT})` : 'Die Super-X greift an!';
+}
+
+// Spielende: Bilanz anzeigen, Taste startet neu
+function endGame() {
+  game.state = 'over';
+  game.overT = 0;
+  const won = game.result === 'won';
+  $('overTitle').textContent = won ? 'TOKIO LIEGT IN TRÜMMERN' : 'GODZILLA FÄLLT';
+  $('overSub').textContent = won ? 'Die Super-X ist besiegt' : 'Die Selbstverteidigungsstreitkräfte haben gesiegt';
+  const t = game.stats.time, mm = Math.floor(t / 60), ss = Math.floor(t % 60);
+  const rows = [['Zeit', `${mm}:${String(ss).padStart(2, '0')}`], ['Gebäude zerstört', game.city.destroyed],
+    ['Einheiten zerstört', game.military.destroyed]];
+  if (won) rows.push(['Bewertung', rating()]);
+  $('overStats').innerHTML = rows.map(([a, b]) => `<tr><td>${b}</td><td>${a}</td></tr>`).join('');
+  show('over');
+}
+
+// Bewertung nach Zerstörung pro Minute und verbliebenem Leben
+function rating() {
+  const g = game.godzilla, perMin = (game.city.destroyed + game.military.destroyed * 2) / Math.max(1, game.stats.time / 60);
+  const score = perMin * 0.6 + g.hp * 0.4;
+  return score > 90 ? 'S – König der Monster' : score > 65 ? 'A – Zerstörer' : score > 40 ? 'B – Bedrohung' : 'C – Ausreißer';
+}
+game.endGame = endGame;
 game.step = step;
 
 const clock = new THREE.Clock();
