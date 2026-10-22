@@ -4,7 +4,9 @@ import { Beam, Shockwave } from './effects.js';
 
 // Muss zur Laufanimation passen (gz_anim.py: WALK_DIST / WALK_T = 35 m / 1,95 s), sonst gleiten die Füße
 const WALK_SPEED = 35 / 1.95;   // ~18 m/s bei vollem Ausschlag
-const TURN_RATE = 1.4;          // rad/s
+const TURN_RATE = 1.1;          // rad/s höchste Drehgeschwindigkeit (~63°/s)
+const TURN_ACCEL = 2.6;         // rad/s² – ein schwerer Körper kommt nur langsam in Drehung und wieder heraus
+const TURN_SPEED = 0.85 / 1.3;  // rad/s, bei dem die Trittanimation (gz_anim: turn, 1,3 s) in Originaltempo läuft
 const BREATH_TURN = 0.45;       // rad/s – Strahl langsam schwenken
 const CHARGE_TIME = 1.1;        // s, Platten laden vom Schwanz zum Hals
 const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m voraus
@@ -14,12 +16,19 @@ const CLAW_DAMAGE = 60, TAIL_DAMAGE = 80, PULSE_DAMAGE = 140, BEAM_DPS = 220;
 const BODY_RADIUS = 13;          // Körperkreis, der Gebäude beim Gehen zermalmt
 const FADE = 0.15;              // s Überblendzeit der Einzelanimationen
 const COMBO = ['clawL', 'clawR', 'tail'];
+const LOOPS = ['idle', 'walk', 'turn'];
+const WALK_ENTRY = 0.3;   // Phase der Laufanimation, in der der linke Fuß unter dem Körper steht (gz_anim: foot_path)
 const MOUTH = new THREE.Vector3(0, 72.9, 19.4);   // Maulspitze im Modell (Bind-Pose, glTF: +Z vorn)
 const PLATE_TOP = 74;                              // höchste Platte (Bind-Pose y)
+const GROUND_Y = 5.9;                              // Knöchelhöhe, bis zu der ein Fuß als aufgesetzt gilt
 const STOMP_Y = 7.0;                               // Knöchelhöhe, unter der ein Fuß als aufgesetzt gilt (steht bei 6,6)
 export const BOUNDS = 1500;
 
 const _dir = new THREE.Vector3(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
+const _fl = new THREE.Vector3(), _fr = new THREE.Vector3(), _tq = new THREE.Quaternion();
+const _Y = new THREE.Vector3(0, 1, 0), _Z = new THREE.Vector3(0, 0, 1);
+// Anteil der Vorausdrehung je Knochen (lokale Y-Achse = Knochenachse, bei Wirbelsäule und Hals etwa senkrecht)
+const LEAD = [['spine1', 0.12], ['spine2', 0.18], ['neck1', 0.16], ['neck2', 0.2]];
 
 function approach(cur, target, step) { return cur < target ? Math.min(cur + step, target) : Math.max(cur - step, target); }
 function angleDiff(a, b) { return Math.atan2(Math.sin(b - a), Math.cos(b - a)); }
@@ -53,15 +62,21 @@ export class Godzilla {
     this.actions = {};
     for (const clip of gltf.animations) {
       const a = this.mixer.clipAction(clip);
-      if (clip.name !== 'idle' && clip.name !== 'walk') { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
+      if (!LOOPS.includes(clip.name)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
       this.actions[clip.name] = a;
     }
-    this.actions.idle.play();
-    this.actions.walk.play();
+    for (const n of LOOPS) this.actions[n].play();
     this.layers = new Map();      // laufende Einzelanimation -> Gewicht
     this.current = null;
 
     this.heading = Math.PI;       // 0 = schaut nach +Z (Süden), PI = Norden
+    this.turnVel = 0;             // rad/s
+    this.turnW = 0;               // Gewicht der Trittanimation
+    this.walkW = 0;
+    this.pivot = 'L';             // Standfuß, um den gedreht wird
+    this.lead = 0;                // wie weit Oberkörper und Hals der Körperdrehung vorauseilen (rad)
+    this.tailLag = 0;             // seitliche Schwanzbiegung durch Trägheit (rad)
+    this.wantLead = 0;
     this.speed = 0;
     this.state = 'free';
     this.t = 0;
@@ -98,10 +113,32 @@ export class Godzilla {
 
   finish() { this.current = null; this.enter('free'); }
 
-  turnToward(dir, maxStep) {
-    const d = angleDiff(this.heading, Math.atan2(dir.x, dir.z));
-    this.heading += Math.max(-maxStep, Math.min(maxStep, d));
+  // Drehen mit Trägheit: die Drehgeschwindigkeit folgt der gewünschten (langsamer kurz vor dem Ziel) nur mit
+  // begrenzter Beschleunigung. Rückgabe: verbleibende Winkeldifferenz.
+  turnToward(dir, maxRate, dt) {
+    const d = dir ? angleDiff(this.heading, Math.atan2(dir.x, dir.z)) : 0;
+    const want = THREE.MathUtils.clamp(d * 2.2, -maxRate, maxRate);
+    this.turnVel = approach(this.turnVel, want, TURN_ACCEL * dt);
+    this.wantLead = THREE.MathUtils.clamp(d, -0.9, 0.9);
     return d;
+  }
+
+  // Dreht den Körper um den Standfuß (der bleibt so am Boden stehen, statt zu rutschen). Der Drehpunkt wechselt erst,
+  // wenn der andere Fuß deutlich tiefer steht – sonst würde er im Doppelstand hin- und herspringen.
+  applyTurn(da) {
+    if (!da) return;
+    const yl = this.bones.footL.getWorldPosition(_fl).y, yr = this.bones.footR.getWorldPosition(_fr).y;
+    if (this.pivot === 'L' && yr < yl - 0.08) this.pivot = 'R';
+    else if (this.pivot !== 'L' && yl < yr - 0.08) this.pivot = 'L';
+    // Stehen beide Füße, würde einer zwangsläufig rutschen: dann kaum drehen, dafür etwas mehr, solange ein Fuß in der
+    // Luft ist (so wendet ein schweres Tier Schritt für Schritt). Beim Gehen ist ohnehin fast immer ein Fuß oben.
+    const both = yl < GROUND_Y && yr < GROUND_Y;
+    da *= both ? 0.15 : 1.35;
+    const pv = this.pivot === 'L' ? _fl : _fr, p = this.position;
+    const ox = p.x - pv.x, oz = p.z - pv.z, c = Math.cos(da), s = Math.sin(da);
+    p.x = pv.x + ox * c + oz * s;
+    p.z = pv.z - ox * s + oz * c;
+    this.heading += da;
   }
 
   update(dt, input, rig) {
@@ -113,10 +150,8 @@ export class Godzilla {
 
     switch (this.state) {
       case 'free': {
-        if (mag > 0.15) {
-          const d = this.turnToward(_dir, TURN_RATE * dt);
-          targetSpeed = WALK_SPEED * mag * Math.max(0, Math.cos(d)) ** 2;
-        }
+        const d = this.turnToward(mag > 0.15 ? _dir : null, TURN_RATE, dt);
+        if (mag > 0.15) targetSpeed = WALK_SPEED * mag * Math.max(0, Math.cos(d)) ** 2;
         if (input.pressed('claw')) this.attack(0);
         else if (input.pressed('breath') && this.energy > 10) { this.firing = false; this.play('breath'); this.enter('breath'); }
         else if (input.pressed('roar')) { this.play('roar'); this.enter('roar'); this.roared = false; }
@@ -153,12 +188,15 @@ export class Godzilla {
       if (block > 0) this.speed = Math.min(this.speed, block > 60 ? 2.5 : 5);
     }
     p.addScaledVector(this.forward(), this.speed * dt);
+    if (this.state === 'free' || this.state === 'breath') this.applyTurn(this.turnVel * dt);
+    else { this.turnVel = approach(this.turnVel, 0, TURN_ACCEL * dt); this.wantLead = 0; }
     p.x = THREE.MathUtils.clamp(p.x, -BOUNDS, BOUNDS);
     p.z = THREE.MathUtils.clamp(p.z, -BOUNDS, BOUNDS);
     this.root.rotation.y = this.heading;
 
     this.updateWeights(dt);
     this.mixer.update(dt);
+    this.addTurnPose(dt);
     this.root.updateMatrixWorld(true);
     this.updateStomp();
     this.updateBreathFx(dt);
@@ -187,7 +225,7 @@ export class Godzilla {
       this.spun = k;
       if (!this.hitDone && this.t > this.dur * 0.45) {
         this.hitDone = true;
-        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), from: this.position.clone(), radius: 75, damage: TAIL_DAMAGE, height: 12 });
+        this.events.emit('attack', { kind: 'tail', pos: this.position.clone(), from: this.position.clone(), radius: 92, damage: TAIL_DAMAGE, height: 12 });
         this.events.emit('shake', 0.8);
       }
     } else if (!this.hitDone && this.t > this.dur * 0.45) {
@@ -202,7 +240,7 @@ export class Godzilla {
 
   // ---------- Atomstrahl: K halten -> Platten laden, dann Strahl solange gehalten und Energie da ----------
   updateBreath(dt, input, mag) {
-    if (mag > 0.15) this.turnToward(_dir, BREATH_TURN * dt);
+    this.turnToward(mag > 0.15 ? _dir : null, BREATH_TURN, dt);
     const held = input.down('breath');
     this.glow = 1;
     if (!this.firing) {
@@ -241,9 +279,29 @@ export class Godzilla {
     // Schon ab 30 % Tempo nur noch Gehen, dafür langsamer abgespielt: Mischposen aus Stand und Gehen rutschen
     const s = Math.min(1, this.speed / WALK_SPEED);
     const w = Math.min(1, s / 0.3);
-    this.actions.idle.setEffectiveWeight(loco * (1 - w));
+    // Drehen im Stand: Treten auf der Stelle statt Stehen, Tempo nach Drehgeschwindigkeit
+    const spin = Math.abs(this.turnVel);
+    // Beim Anlaufen in der Phase einsteigen, in der der linke Fuß mitten im Bodenkontakt unter dem Körper steht
+    // (wie im Stand) und der rechte schwingt – sonst rutschen die Füße beim Überblenden an ihre neue Stelle.
+    if (this.walkW < 0.02 && w > 0) this.actions.walk.time = WALK_ENTRY * this.actions.walk.getClip().duration;
+    this.walkW = w;
+    const tw = spin > 0.12 && w < 0.5 ? 1 : 0;
+    if (this.turnW < 0.02 && tw) this.actions.turn.time = 0;     // Phase 0: beide Füße stehen
+    this.turnW = approach(this.turnW, tw, dt * 4);
+    this.actions.idle.setEffectiveWeight(loco * (1 - w) * (1 - this.turnW));
+    this.actions.turn.setEffectiveWeight(loco * (1 - w) * this.turnW);
+    this.actions.turn.timeScale = THREE.MathUtils.clamp(spin / TURN_SPEED, 0.6, 1.4);
     this.actions.walk.setEffectiveWeight(loco * w);
     this.actions.walk.timeScale = Math.max(0.1, s);    // Schritttempo folgt exakt der Geschwindigkeit
+  }
+
+  // Prozedurale Schicht über der Animation: Oberkörper und Hals drehen schon in die gewünschte Richtung, bevor die
+  // Hüfte folgt; der Schwanz bleibt durch seine Trägheit zurück und biegt sich zur Außenseite der Drehung.
+  addTurnPose(dt) {
+    this.lead += (this.wantLead - this.lead) * (1 - Math.exp(-5 * dt));
+    this.tailLag += (-this.turnVel * 0.35 - this.tailLag) * (1 - Math.exp(-3 * dt));
+    for (const [name, k] of LEAD) this.bones[name].quaternion.multiply(_tq.setFromAxisAngle(_Y, this.lead * k));
+    for (let i = 1; i <= 7; i++) this.bones['tail' + i].quaternion.multiply(_tq.setFromAxisAngle(_Z, this.tailLag * (0.1 + 0.04 * i)));
   }
 
   updateStomp() {

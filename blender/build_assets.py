@@ -26,13 +26,18 @@ if 'godzilla' in WHAT:
         common.preview(os.path.join(PRE, 'godzilla_top.png'), target=(0, 10, 40), dist=260, elev=55, azim=-120, color='VERTEX')
         common.preview(os.path.join(PRE, 'godzilla_head.png'), target=(0, -14, 72), dist=40, elev=8, azim=-60, color='VERTEX')
         common.preview(os.path.join(PRE, 'godzilla_mouth.png'), target=(0, -17, 72.5), dist=26, elev=4, azim=-90, color='VERTEX')
-        # Atemstrahl-Pose (Maul weit offen) zur Kontrolle von Kiefer und Gewichtung
-        act = bpy.data.actions['breath']
-        arm.animation_data.action = act
-        if hasattr(arm.animation_data, 'action_slot') and act.slots:
-            arm.animation_data.action_slot = act.slots[0]
-        bpy.context.scene.frame_set(20)
-        common.preview(os.path.join(PRE, 'godzilla_breath.png'), target=(0, -16, 70), dist=60, elev=6, azim=-40, color='VERTEX')
+        # Posen zur Kontrolle von Kiefer, Armen und Gewichtung (Aktion, Frame, Datei, Kamera)
+        front = dict(target=(0, -8, 52), dist=110, elev=8, azim=-90)
+        for act_name, frame, fname, cam in (
+                ('breath', 20, 'godzilla_breath.png', dict(target=(0, -16, 70), dist=60, elev=6, azim=-40)),
+                ('clawL', 6, 'godzilla_clawL_wind.png', front), ('clawL', 10, 'godzilla_clawL_hit.png', front),
+                ('clawR', 10, 'godzilla_clawR_hit.png', front), ('roar', 30, 'godzilla_roar.png', front)):
+            act = bpy.data.actions[act_name]
+            arm.animation_data.action = act
+            if hasattr(arm.animation_data, 'action_slot') and act.slots:
+                arm.animation_data.action_slot = act.slots[0]
+            bpy.context.scene.frame_set(frame)
+            common.preview(os.path.join(PRE, fname), color='VERTEX', **cam)
         arm.animation_data.action = None
 
 if 'city' in WHAT:

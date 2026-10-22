@@ -33,8 +33,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   dezimiert auf ~26k Dreiecke, Hautrelief per Voronoi-Rauschen, Vertexfarben (`Col`), Augen/Klauen per Raycast,
   Maulhöhle = zwei negative Metaball-Ellipsoide; Zähne (14 oben/14 unten) per senkrechtem Spaltenscan durch die Höhle,
   Rückenplatten (3 Reihen, Material `GZ_Plates`), eigenes Rig + eigene Gewichtung (Distanz zu Knochensegmenten).
-  Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m.
-- `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death.
+  Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Schwanzspitze 93 m hinter der Hüfte
+  (auf Wunsch 25 % länger), Rumpf etwas schlanker als zuerst.
+- `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death, turn.
+  Klauenhieb: hoch und nach außen ausholen, diagonal über den Körper schlagen, Oberkörper dreht mit (`ARM_OUT`
+  = Vorzeichen fürs Abspreizen). `turn`: Treten auf der Stelle (IK), für das Drehen im Stand.
   **Gang und Stand per inverser Kinematik** (`leg_ik`, Seitenebene, Knie nach vorn): Knöchel steht auf Bodenhöhe 5,6 m,
   ein aufgesetzter Fuß wandert relativ zum Körper mit genau Laufgeschwindigkeit nach hinten. Zyklus 1,95 s, 35 m
   (`WALK_DIST / WALK_T` ≈ 18 m/s) – `WALK_SPEED` in `js/godzilla.js` muss dazu passen, sonst gleiten die Füße.
@@ -66,9 +69,13 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Ruß-/Rissflecken und ausfallende Fenster überall (damit man den Schaden von jeder Seite sieht), `aFx` (−1 = Schutt,
   Bruchhöhe, Knickwinkel, Knickachse) für das Knicken kippender Türme und verglimmende Glut im Schutt.
 - `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), ~18 m/s; die Laufanimation
-  ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/`WALK_SPEED` (Füße bleiben synchron). Animationsmischung (Einzel-
+  ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/`WALK_SPEED` (Füße bleiben synchron); beim Anlaufen
+  steigt sie in der Phase ein, in der der linke Fuß unter dem Körper steht (`WALK_ENTRY`, sonst rutschen die Füße).
+  Drehen: Trägheit (max. 63°/s, `TURN_ACCEL`), gedreht wird um den Standfuß und fast nur, solange ein Fuß in der
+  Luft ist; im Stand Trittanimation `turn`; prozedural eilen Wirbelsäule und Hals voraus (`LEAD`), der Schwanz
+  schleift nach (`tailLag`). Animationsmischung (Einzel-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
-  Körperdrehung), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
+  Körperdrehung, Radius 92 m), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
   (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
 - `js/ground.js` – Bodenschäden: `GroundScars` = Schadenskarte über die Stadt (Canvas 1024², ~3 m/px, additiv bemalt,
   max. 4 Uploads/s; R Ruß/Glut, G Staub/Splitt, B Krater/Risse), Boden-Shader `patchGround` liest sie in
@@ -104,7 +111,7 @@ und `requestAnimationFrame` pausiert), Tasten lassen sich per `dispatchEvent(new
 ## Stand und Fahrplan
 Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
 1. **Erledigt** – Modelle: Godzilla geprüft (Maul, Zähne), `city` und `units` gebaut. Offen: Kinnspitze etwas kantig.
-2. **Spiel – in Arbeit.** Erledigt: Spielgerüst, Steuerung (Gang per IK, Kombo, Atomstrahl, Kernpuls, Brüllen),
+2. **Spiel – in Arbeit.** Erledigt: Spielgerüst, Steuerung (Gang und Drehen per IK, Kombo, Atomstrahl, Kernpuls, Brüllen),
    feste Kamera, Teststadt, Zerstörung (sichtbarer Schaden, Brände, Einsturz, Teilruinen, Schutt, Bodenschäden).
    Offen: **Militär** (Panzer, Raketen-LKW, Hubschrauber greifen an, Godzilla verliert Leben), **Bossphase Super-X**
    mit Kadmium-Geschossen (Godzilla sackt zusammen → `down`); Schwachstelle wie im Film: ein Hochhaus auf sie kippen

@@ -142,10 +142,10 @@ def pose_roar(t):  # t in Sekunden, Länge 2.2
     r['neck2'] = (-16 * e, 0, 0)
     r['head'] = (-22 * e + 3 * S(t * 30) * e, 0, 0)
     r['jaw'] = (2 + 38 * e, 0, 0)
-    for s in 'LR':
-        r['upperarm.' + s] = (-38 * e, 0, 0)
+    for s, sg in (('L', 1), ('R', -1)):
+        r['upperarm.' + s] = (-38 * e, 0, ARM_OUT * sg * 22 * e)   # Arme spreizen sich drohend
         r['forearm.' + s] = (-30 * e - 15, 0, 0)
-        r['hand.' + s] = (-10 - 20 * e, 0, 0)
+        r['hand.' + s] = (-10 - 20 * e, 0, ARM_OUT * sg * -10 * e)
     r.update(tail(t * 4, 6 * e, 0, 0.5, 8 * e))
     return r, (0, 0.5 * e, 0)
 
@@ -166,22 +166,33 @@ def pose_breath(t):  # Länge 0.8: Kopf nach vorn, Maul weit offen, Haltepositio
     return r, (0, -0.6 * e, 0)
 
 
+ARM_OUT = 1   # Vorzeichen: positive Z-Drehung am Oberarm spreizt den linken Arm nach außen (rechts gespiegelt)
+
+
 def pose_claw(t, side):  # Länge 0.75
+    """Prankenhieb: hoch und nach außen ausholen (Ellbogen stark gebeugt, Oberkörper dreht weg), dann diagonal
+    über den Körper nach unten innen schlagen, Arm streckt sich, Oberkörper dreht kräftig mit; der andere Arm
+    gleicht aus, der Schwanz schwingt gegen."""
     other = 'R' if side == 'L' else 'L'
-    wind = env(t, 0.0, 0.18, 0.2, 0.3)
-    hit = env(t, 0.18, 0.32, 0.42, 0.75)
-    r, loc = pose_idle(0)
     sg = 1 if side == 'L' else -1
-    r['spine1'] = (6 * hit, sg * (10 * wind - 18 * hit), 0)
-    r['spine2'] = (8 * hit, sg * (8 * wind - 14 * hit), 0)
-    r['head'] = (4 * hit, -sg * 10 * hit, 0)
-    r['jaw'] = (2 + 18 * hit, 0, 0)
-    r['upperarm.' + side] = (30 * wind - 75 * hit, 0, 0)
-    r['forearm.' + side] = (-40 * wind + 10 * hit - 20, 0, 0)
-    r['hand.' + side] = (-30 * hit - 10, 0, 0)
-    r['upperarm.' + other] = (8 * hit, 0, 0)
-    r.update(tail(t * 6, 5, 0))
-    return r, (0, 0, 0)
+    wind = env(t, 0.0, 0.2, 0.22, 0.34)
+    hit = env(t, 0.2, 0.33, 0.42, 0.75)
+    r, loc = pose_idle(0)
+    twist = sg * (16 * wind - 26 * hit)
+    r['spine1'] = (5 * hit - 2 * wind, twist * 0.45, -sg * 3 * hit)
+    r['spine2'] = (8 * hit - 3 * wind, twist * 0.55, -sg * 4 * hit)
+    r['neck2'] = (-4 * wind, -twist * 0.25, 0)
+    r['head'] = (6 * hit - 5 * wind, -twist * 0.35, 0)
+    r['jaw'] = (2 + 10 * wind + 16 * hit, 0, 0)
+    out = ARM_OUT * sg
+    r['upperarm.' + side] = (-60 * wind - 65 * hit, 0, out * (45 * wind - 30 * hit))
+    r['forearm.' + side] = (-20 - 55 * wind + 30 * hit, 0, 0)
+    r['hand.' + side] = (-10 + 30 * wind - 40 * hit, 0, out * -20 * hit)
+    r['upperarm.' + other] = (-12 * wind + 14 * hit, 0, -out * 12 * hit)
+    r['forearm.' + other] = (-25 - 10 * hit, 0, 0)
+    for i in range(1, 8):
+        r['tail%d' % i] = (0, 0, -twist * (0.12 + 0.03 * i))
+    return r, (0, -0.4 * hit, 0)
 
 
 def pose_tail(t):  # Länge 1.1: Schwanz holt weit aus (das Spiel dreht den Körper)
@@ -241,11 +252,38 @@ def pose_death(t):  # Länge 3.0: kippt nach hinten
     return r, (0, -9.5 - 6 * e, 3 * e)
 
 
+TURN_T = 1.3   # s pro Zyklus (zwei Schritte)
+
+
+def pose_turn(t):
+    """Treten auf der Stelle: die Füße heben sich abwechselnd und setzen am selben Platz wieder auf. Das Spiel dreht
+    den Körper dabei um den gerade aufgesetzten Fuß, so wendet ein schweres Tier statt auf beiden Füßen zu rutschen."""
+    p = 2 * PI * t
+    r, loc = pose_idle(0)
+    dz = -0.8 - 0.35 * C(4 * PI * (t - 0.04))
+    hip = (HIP[0], HIP[1] + dz)
+    for side, ph in (('L', 0.0), ('R', 0.5)):
+        u = (t + ph) % 1.0
+        if u < 0.55:
+            ankle, pitch = ANKLE, 0.0
+        else:
+            k = (u - 0.55) / 0.45
+            ankle, pitch = (ANKLE[0] - 1.5 * S(PI * k), ANKLE[1] + 4.5 * S(PI * k)), 18 * S(PI * k)
+        th, sh, ft = leg_ik(hip, ankle, pitch)
+        r['thigh.' + side] = (th, 0, 0); r['shin.' + side] = (sh, 0, 0); r['foot.' + side] = (ft, 0, 0)
+        r['upperarm.' + side] = (-6 * C(p + PI * 2 * ph), 0, 0)
+    r['spine1'] = (1.5, 3 * S(p), 2 * S(p))
+    r['spine2'] = (1.5, -1.5 * S(p), -1 * S(p))
+    r.update(tail(p, 5, 2))
+    return r, hips_drop(dz)
+
+
 ANIMS = [  # Name, Funktion, Länge in s, zyklisch (Funktion bekommt 0..1)
     ('idle', pose_idle, 3.0, True), ('walk', pose_walk, WALK_T, True), ('roar', pose_roar, 2.2, False),
     ('breath', pose_breath, 0.8, False), ('clawL', lambda t: pose_claw(t, 'L'), 0.75, False),
     ('clawR', lambda t: pose_claw(t, 'R'), 0.75, False), ('tail', pose_tail, 1.1, False),
     ('hit', pose_hit, 0.55, False), ('down', pose_down, 1.6, False), ('death', pose_death, 3.0, False),
+    ('turn', pose_turn, TURN_T, True),
 ]
 
 

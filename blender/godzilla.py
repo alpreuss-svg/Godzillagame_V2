@@ -14,7 +14,8 @@ P = {
     'pelvis': (0, 3, 31), 'belly': (0, 0, 40), 'chest': (0, -2.5, 50.5), 'shoulder': (0, -4.2, 58.5),
     'neck0': (0, -6.2, 64.5), 'neck1': (0, -8.6, 69.5), 'head0': (0, -10.8, 73.6), 'skull': (0, -14.2, 75.2),
     'snout': (0, -19.6, 74.0), 'jaw0': (0, -12.0, 71.0), 'chin': (0, -18.2, 70.6),
-    't1': (0, 11, 27), 't2': (0, 20, 21), 't3': (0, 30, 14.5), 't4': (0, 41, 8.5), 't5': (0, 53, 4.6), 't6': (0, 64, 2.7), 't7': (0, 75, 1.6),
+    # Schwanz: 25 % länger als zuerst (Spitze 93 m hinter der Hüfte)
+    't1': (0, 13, 27), 't2': (0, 23.2, 21), 't3': (0, 36.7, 14.5), 't4': (0, 50.5, 8.5), 't5': (0, 65, 4.6), 't6': (0, 78.7, 2.7), 't7': (0, 92.5, 1.4),
 }
 for s, sx in (('L', 1), ('R', -1)):
     P['hip' + s] = (8.6 * sx, 3, 30)
@@ -28,12 +29,12 @@ for s, sx in (('L', 1), ('R', -1)):
     P['fi' + s] = (12.0 * sx, -18.2, 46.8)
 
 RAD = {
-    'pelvis': 11.5, 'belly': 12.6, 'chest': 11.6, 'shoulder': 9.6, 'neck0': 7.9, 'neck1': 6.3, 'head0': 5.3,
+    'pelvis': 10.7, 'belly': 11.7, 'chest': 10.8, 'shoulder': 9.1, 'neck0': 7.6, 'neck1': 6.3, 'head0': 5.3,   # Rumpf ~7 % schlanker
     'skull': 4.9, 'snout': 2.9, 'jaw0': 3.3, 'chin': 1.9,
-    't1': 10, 't2': 8.5, 't3': 6.9, 't4': 5.3, 't5': 3.9, 't6': 2.6, 't7': 1.0,
+    't1': 9.4, 't2': 8.2, 't3': 6.8, 't4': 5.3, 't5': 3.9, 't6': 2.6, 't7': 0.9,
 }
 for s in 'LR':
-    RAD.update({'hip' + s: 8.6, 'knee' + s: 7.0, 'ankle' + s: 5.0, 'foot' + s: 4.6, 'toe' + s: 3.0,
+    RAD.update({'hip' + s: 8.1, 'knee' + s: 6.6, 'ankle' + s: 5.0, 'foot' + s: 4.6, 'toe' + s: 3.0,
                 'sh' + s: 4.4, 'el' + s: 3.6, 'wr' + s: 2.8, 'fi' + s: 1.9})
 
 EDGES = [('pelvis', 'belly'), ('belly', 'chest'), ('chest', 'shoulder'), ('shoulder', 'neck0'), ('neck0', 'neck1'),
@@ -110,8 +111,8 @@ def build_body(target_tris=26000):
     ell((0, -13.6, 72.5), (2.9, 3.0, 0.7), rot=(-4, 0, 0), neg=True)
     # Brust und Oberschenkel kräftiger
     for sx in (1, -1):
-        ell((sx * 5.0, -7.5, 51), (5.0, 3.0, 5.5))
-        ell((sx * 9.6, 0.5, 24), (7.8, 7.5, 9.5), rot=(-15, 0, 0))
+        ell((sx * 4.7, -7.3, 51), (4.6, 2.8, 5.3))
+        ell((sx * 9.4, 0.5, 24), (7.2, 7.0, 9.2), rot=(-15, 0, 0))
     dg = bpy.context.evaluated_depsgraph_get()
     raw = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
     bpy.data.objects.remove(ob)
@@ -310,7 +311,7 @@ def build():
     # --- Rückenplatten (eigenes Material, leuchten im Spiel)
     plate_verts = []
     chain, pts, rads, lens = spine_path()
-    nC = 17
+    nC = 20
     for i in range(nC):
         s = 0.02 + 0.96 * i / (nC - 1)
         c, r, T, N = sample_path(s)
@@ -321,7 +322,7 @@ def build():
         vs = add_plate(bm, base, up, -T, h, 0.16 + 0.05 * h)
         plate_verts.append((vs, s))
     for sx in (1, -1):
-        nS = 13
+        nS = 15
         for i in range(nS):
             s = 0.06 + 0.82 * i / (nS - 1)
             c, r, T, N = sample_path(s)
