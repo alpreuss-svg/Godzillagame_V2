@@ -43,6 +43,25 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg (Repo `godzilla-
   Baum, Laterne, Strommast, Trümmer (`U_debris0..2`). Läuft unter Blender 5.2, Vorschau geprüft.
 - `vendor/three/` – Three.js 0.170.0 (build + GLTFLoader, BufferGeometryUtils, SkeletonUtils), per Importmap.
 - `assets/models/godzilla.glb`, `city.glb`, `units.glb` – aktuelle Exporte.
+- `index.html` + `css/style.css` – Importmap, HUD (Leben/Energie), Lade-, Titel- und Pausenbildschirm, Vignette.
+- `js/main.js` – Renderer (ACES, Schatten nur vom Mond um Godzilla), Nachtlicht (Hemisphäre, Mond als Gegenlicht im
+  Norden, kameragebundenes Fülllicht), Laden, Zustände `loading → title → play ⇄ pause`, kleiner Event-Bus
+  (`attack`, `stomp`, `roar`, `breath`, `shake`). Qualität per `?q=low|mid|high`.
+- `js/input.js` – Tastatur + Gamepad (Standard-Mapping: A Klaue, X Atomstrahl, Y Brüllen, B Kernpuls, LB/RB Kamera).
+- `js/camera.js` – Kamera schräg von oben (Pitch 0,72 rad), Q/E/rechter Stick drehen, Mausrad zoomt, Erschütterung.
+- `js/godzilla.js` – Bewegung kamerarelativ (dreht träge, geht nur in Blickrichtung), Animationsmischung (Einzel-
+  animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
+  Körperdrehung), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
+  (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
+- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes.
+- `js/city.js` – Teststadt: Raster 136 m, Zonen (Shinjuku-Türme im Norden, Büros, Wohn-/Ladenviertel, Hafen),
+  Bucht südlich `BAY_Z`, ein InstancedMesh pro Typ und Material (~46 Draw Calls bei ~3900 Gebäuden),
+  Raycast für den Strahl, `damage()` – zerstörte Gebäude werden vorerst nur ausgeblendet.
+
+## Testen
+Server starten (`tools\serve.ps1`, auch als `.claude/launch.json` für die Browser-Vorschau). Mit `?debug` läuft der
+Renderer mit `preserveDrawingBuffer`; `game.step(dt)` rechnet einen Frame von Hand (auch wenn das Fenster verborgen ist
+und `requestAnimationFrame` pausiert), Tasten lassen sich per `dispatchEvent(new KeyboardEvent('keydown', {code}))` simulieren.
 
 ## Stand
 Erledigt: Repo, Three.js eingebunden, Godzilla-Modell + Rig + Animationen exportiert. Auf dem zweiten PC (Blender 5.2.3)
@@ -52,10 +71,10 @@ keine API-Fehler. Kleinigkeit offen: Kinnspitze bei offenem Maul etwas kantig.
 
 Nächste Schritte für den Prototyp „Tokio 1984 – Die Rückkehr“:
 1. (erledigt) Godzilla-Vorschau prüfen, `city` und `units` bauen.
-2. Spiel: `index.html` (Importmap), `js/main.js` (Laden, Schleife, Zustände), Godzilla-Steuerung
-   (WASD kamerarelativ, J Klauen-Kombo, K halten = Atomstrahl, Platten laden vom Schwanz zum Hals per Shader auf
-   Basis der Bind-Pose-Position z, L Brüllen, R Kernpuls, Q/E Kamera drehen, Gamepad), Stadt aus InstancedMesh,
-   Zerstörung (Einsinken + Kippen + Staub + Schuttmodell), Militär (Panzer, LKW, Hubschrauber),
+2. Spiel: (erledigt) `index.html`, `js/main.js`, Godzilla-Steuerung mit Kombo, Atomstrahl, Kernpuls, Brüllen,
+   Kamera, Gamepad-Belegung (Gamepad noch nicht mit echtem Gerät getestet), Teststadt aus InstancedMesh.
+   Offen: Zerstörung (Einsinken + Kippen + Staub + Schuttmodell; Godzilla soll beim Gehen Gebäude einreißen,
+   Balance der Gebäude-HP), Militär (Panzer, LKW, Hubschrauber),
    Bossphase **Super-X** mit Kadmium-Geschossen (Godzilla sackt zusammen → `down`) – Schwachstelle wie im Film:
    ein einstürzendes Hochhaus auf sie fallen lassen.
 3. Nachtstimmung: Nebel, Regen, Suchscheinwerfer, Brände mit wenigen Punktlichtern, ACES-Tonemapping, Filmkorn/Vignette per CSS.

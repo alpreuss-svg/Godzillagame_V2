@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05070c">
+<title>Godzilla – Heisei</title>
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/build/three.module.min.js",
+  "three/addons/": "./vendor/three/addons/"
+} }
+</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="vignette"></div>
+
+<div id="hud" hidden>
+  <div class="bars">
+    <div class="bar hp"><span>LEBEN</span><b><i id="hp"></i></b></div>
+    <div class="bar en"><span>ENERGIE</span><b><i id="en"></i></b></div>
+  </div>
+  <div id="goal">Tokio 1984 – Die Rückkehr</div>
+</div>
+
+<div id="screen">
+  <div id="loading">
+    <h1>GODZILLA</h1>
+    <p class="sub">HEISEI</p>
+    <div class="progress"><i id="progress"></i></div>
+    <p id="loadtext">Lade Modelle …</p>
+  </div>
+  <div id="title" hidden>
+    <h1>GODZILLA</h1>
+    <p class="sub">HEISEI</p>
+    <p class="level">1984 · Die Rückkehr</p>
+    <table class="keys">
+      <tr><td>W A S D</td><td>Gehen</td></tr>
+      <tr><td>J</td><td>Klauen-Kombo</td></tr>
+      <tr><td>K halten</td><td>Atomstrahl</td></tr>
+      <tr><td>L</td><td>Brüllen</td></tr>
+      <tr><td>R</td><td>Kernpuls</td></tr>
+      <tr><td>Q / E</td><td>Kamera drehen</td></tr>
+      <tr><td>Esc</td><td>Pause</td></tr>
+    </table>
+    <p class="blink">Taste drücken</p>
+  </div>
+  <div id="paused" hidden>
+    <h2>PAUSE</h2>
+    <p class="blink">Esc zum Weiterspielen</p>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
