@@ -17,6 +17,7 @@ const BODY_RADIUS = 13;          // Körperkreis, der Gebäude beim Gehen zermal
 const FADE = 0.15;              // s Überblendzeit der Einzelanimationen
 const COMBO = ['clawL', 'clawR', 'tail'];
 const LOOPS = ['idle', 'walk', 'turn'];
+const LEG_TRACK = /^(hips|thigh|shin|foot)[LR]?\./;   // Spuren der Beinknochen (GLTFLoader-Namen ohne Punkt)
 const WALK_ENTRY = 0.3;   // Phase der Laufanimation, in der der linke Fuß unter dem Körper steht (gz_anim: foot_path)
 const MOUTH = new THREE.Vector3(0, 72.9, 19.4);   // Maulspitze im Modell (Bind-Pose, glTF: +Z vorn)
 const PLATE_TOP = 74;                              // höchste Platte (Bind-Pose y)
@@ -65,7 +66,16 @@ export class Godzilla {
       if (!LOOPS.includes(clip.name)) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; }
       this.actions[clip.name] = a;
     }
-    for (const n of LOOPS) this.actions[n].play();
+    // Beim Atemstrahl laufen Oberkörper und Beine getrennt: der Oberkörper hält die Strahlpose, die Beine stehen
+    // oder treten beim Schwenken auf der Stelle (sonst müsste der ganze Körper auf festen Füßen rutschen).
+    const legs = t => LEG_TRACK.test(t.name);
+    const sub = (name, src, keep) => this.mixer.clipAction(new THREE.AnimationClip(name, src.duration, src.tracks.filter(keep)));
+    this.actions.idleLegs = sub('idleLegs', this.actions.idle.getClip(), legs);
+    this.actions.turnLegs = sub('turnLegs', this.actions.turn.getClip(), legs);
+    this.actions.breathUpper = sub('breathUpper', this.actions.breath.getClip(), t => !legs(t));
+    this.actions.breathUpper.setLoop(THREE.LoopOnce, 1);
+    this.actions.breathUpper.clampWhenFinished = true;
+    for (const n of [...LOOPS, 'idleLegs', 'turnLegs']) { this.actions[n].setEffectiveWeight(0); this.actions[n].play(); }
     this.layers = new Map();      // laufende Einzelanimation -> Gewicht
     this.current = null;
 
@@ -77,6 +87,7 @@ export class Godzilla {
     this.lead = 0;                // wie weit Oberkörper und Hals der Körperdrehung vorauseilen (rad)
     this.tailLag = 0;             // seitliche Schwanzbiegung durch Trägheit (rad)
     this.wantLead = 0;
+    this.basePose = new Map();    // Knochen -> Animationspose ohne prozedurale Zusatzdrehung
     this.speed = 0;
     this.state = 'free';
     this.t = 0;
@@ -153,7 +164,7 @@ export class Godzilla {
         const d = this.turnToward(mag > 0.15 ? _dir : null, TURN_RATE, dt);
         if (mag > 0.15) targetSpeed = WALK_SPEED * mag * Math.max(0, Math.cos(d)) ** 2;
         if (input.pressed('claw')) this.attack(0);
-        else if (input.pressed('breath') && this.energy > 10) { this.firing = false; this.play('breath'); this.enter('breath'); }
+        else if (input.pressed('breath') && this.energy > 10) { this.firing = false; this.play('breathUpper'); this.enter('breath'); }
         else if (input.pressed('roar')) { this.play('roar'); this.enter('roar'); this.roared = false; }
         else if (input.pressed('pulse') && this.energy >= PULSE_COST) {
           this.energy -= PULSE_COST; this.play('roar', 1.5); this.enter('pulse'); this.released = false;
@@ -195,6 +206,7 @@ export class Godzilla {
     this.root.rotation.y = this.heading;
 
     this.updateWeights(dt);
+    this.restorePose();
     this.mixer.update(dt);
     this.addTurnPose(dt);
     this.root.updateMatrixWorld(true);
@@ -285,23 +297,43 @@ export class Godzilla {
     // (wie im Stand) und der rechte schwingt – sonst rutschen die Füße beim Überblenden an ihre neue Stelle.
     if (this.walkW < 0.02 && w > 0) this.actions.walk.time = WALK_ENTRY * this.actions.walk.getClip().duration;
     this.walkW = w;
-    const tw = spin > 0.12 && w < 0.5 ? 1 : 0;
-    if (this.turnW < 0.02 && tw) this.actions.turn.time = 0;     // Phase 0: beide Füße stehen
+    const tw = spin > 0.12 && (w < 0.5 || this.state === 'breath') ? 1 : 0;
+    if (this.turnW < 0.02 && tw) this.actions.turn.time = this.actions.turnLegs.time = 0;   // Phase 0: beide Füße stehen
     this.turnW = approach(this.turnW, tw, dt * 4);
+    // Beine unter dem Oberkörper-Clip des Atemstrahls
+    const upper = this.layers.has(this.actions.breathUpper) ? this.actions.breathUpper.getEffectiveWeight() : 0;
+    this.actions.idleLegs.setEffectiveWeight(upper * (1 - this.turnW));
+    this.actions.turnLegs.setEffectiveWeight(upper * this.turnW);
     this.actions.idle.setEffectiveWeight(loco * (1 - w) * (1 - this.turnW));
     this.actions.turn.setEffectiveWeight(loco * (1 - w) * this.turnW);
-    this.actions.turn.timeScale = THREE.MathUtils.clamp(spin / TURN_SPEED, 0.6, 1.4);
+    this.actions.turn.timeScale = this.actions.turnLegs.timeScale = THREE.MathUtils.clamp(spin / TURN_SPEED, 0.6, 1.4);
     this.actions.walk.setEffectiveWeight(loco * w);
     this.actions.walk.timeScale = Math.max(0.1, s);    // Schritttempo folgt exakt der Geschwindigkeit
   }
 
   // Prozedurale Schicht über der Animation: Oberkörper und Hals drehen schon in die gewünschte Richtung, bevor die
   // Hüfte folgt; der Schwanz bleibt durch seine Trägheit zurück und biegt sich zur Außenseite der Drehung.
+  // Wichtig: der AnimationMixer schreibt einen Knochen nur, wenn sich der Animationswert geändert hat (z. B. nicht bei
+  // gehaltenen Posen wie dem Atemstrahl). Darum merkt sich addTurnPose die reine Animationspose und restorePose stellt
+  // sie vor dem nächsten mixer.update wieder her – sonst addiert sich die Zusatzdrehung Frame für Frame (Korkenzieher).
   addTurnPose(dt) {
-    this.lead += (this.wantLead - this.lead) * (1 - Math.exp(-5 * dt));
+    // beim Atemstrahl kein Vorauseilen: Kopf und Strahl müssen in dieselbe Richtung zeigen
+    const want = this.state === 'breath' ? 0 : this.wantLead;
+    this.lead += (want - this.lead) * (1 - Math.exp(-5 * dt));
     this.tailLag += (-this.turnVel * 0.35 - this.tailLag) * (1 - Math.exp(-3 * dt));
-    for (const [name, k] of LEAD) this.bones[name].quaternion.multiply(_tq.setFromAxisAngle(_Y, this.lead * k));
-    for (let i = 1; i <= 7; i++) this.bones['tail' + i].quaternion.multiply(_tq.setFromAxisAngle(_Z, this.tailLag * (0.1 + 0.04 * i)));
+    for (const [name, k] of LEAD) this.offset(this.bones[name], _Y, this.lead * k);
+    for (let i = 1; i <= 7; i++) this.offset(this.bones['tail' + i], _Z, this.tailLag * (0.1 + 0.04 * i));
+  }
+
+  offset(bone, axis, angle) {
+    let base = this.basePose.get(bone);
+    if (!base) this.basePose.set(bone, base = new THREE.Quaternion());
+    base.copy(bone.quaternion);
+    bone.quaternion.multiply(_tq.setFromAxisAngle(axis, angle));
+  }
+
+  restorePose() {
+    for (const [bone, q] of this.basePose) bone.quaternion.copy(q);
   }
 
   updateStomp() {
