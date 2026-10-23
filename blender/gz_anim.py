@@ -102,8 +102,8 @@ def pose_walk(t):
         r['shin.' + side] = (sh, 0, 0)
         r['foot.' + side] = (ft, 0, 0)
         r['upperarm.' + side] = (-10 * C(p + PI * 2 * ph), 0, 0)   # gegengleich zum Bein derselben Seite
-        r['forearm.' + side] = (-18, 0, 0)
-        r['hand.' + side] = (-8, 0, 0)
+        r['forearm.' + side] = (-12, 0, 0)
+        r['hand.' + side] = (-6, 0, 0)
     # Die Hüfte bleibt gerade (sonst wandern die Hüftgelenke und die Füße rutschen); Wiegen im Oberkörper
     r['hips'] = (0, 0, 0)
     r['spine1'] = (2, 4 * S(p), 2.5 * S(p))
@@ -128,7 +128,7 @@ def pose_idle(t):
     th, sh, ft = leg_ik((HIP[0], HIP[1] + dz), ANKLE)
     for s in 'LR':
         r['thigh.' + s] = (th, 0, 0); r['shin.' + s] = (sh, 0, 0); r['foot.' + s] = (ft, 0, 0)
-        r['upperarm.' + s] = (2 * S(p), 0, 0); r['forearm.' + s] = (-20, 0, 0); r['hand.' + s] = (-10, 0, 0)
+        r['upperarm.' + s] = (2 * S(p), 0, 0); r['forearm.' + s] = (-12, 0, 0); r['hand.' + s] = (-8, 0, 0)
     r.update(tail(p, 4, 2, 0.45))
     return r, hips_drop(dz)
 
@@ -166,7 +166,8 @@ def pose_breath(t):  # Länge 0.8: Kopf nach vorn, Maul weit offen, Haltepositio
     return r, (0, -0.6 * e, 0)
 
 
-ARM_OUT = 1   # Vorzeichen: positive Z-Drehung am Oberarm spreizt den linken Arm nach außen (rechts gespiegelt)
+ARM_OUT = -1  # Vorzeichen: negative Z-Drehung am Oberarm hebt den linken Arm seitlich nach außen (rechts gespiegelt);
+              # seit die Arme frei vom Körper stehen (Ellbogen außen/hinten), ist es umgekehrt wie früher
 
 
 def pose_claw(t, side):  # Länge 0.75
@@ -185,11 +186,13 @@ def pose_claw(t, side):  # Länge 0.75
     r['head'] = (6 * hit - 5 * wind, -twist * 0.35, 0)
     r['jaw'] = (2 + 10 * wind + 16 * hit, 0, 0)
     out = ARM_OUT * sg
-    r['upperarm.' + side] = (-60 * wind - 65 * hit, 0, out * (45 * wind - 30 * hit))
-    r['forearm.' + side] = (-20 - 55 * wind + 30 * hit, 0, 0)
-    r['hand.' + side] = (-10 + 30 * wind - 40 * hit, 0, out * -20 * hit)
-    r['upperarm.' + other] = (-12 * wind + 14 * hit, 0, -out * 12 * hit)
-    r['forearm.' + other] = (-25 - 10 * hit, 0, 0)
+    # ausholen: Arm seitlich weit nach außen und oben, Ellbogen stark gebeugt, Pranke zurückgeklappt;
+    # zuschlagen: von außen schräg nach unten innen, Arm streckt sich, Pranke reißt durch
+    r['upperarm.' + side] = (-12 * wind - 42 * hit, 0, out * (78 * wind - 32 * hit))
+    r['forearm.' + side] = (-12 - 70 * wind + 8 * hit, 0, 0)
+    r['hand.' + side] = (-8 + 30 * wind - 36 * hit, 0, 0)
+    r['upperarm.' + other] = (-12 * wind + 18 * hit, 0, out * 10 * hit)
+    r['forearm.' + other] = (-15 - 12 * hit, 0, 0)
     for i in range(1, 8):
         r['tail%d' % i] = (0, 0, -twist * (0.12 + 0.03 * i))
     return r, (0, -0.4 * hit, 0)
@@ -252,6 +255,8 @@ def pose_death(t):  # Länge 3.0: kippt nach hinten
     return r, (0, -9.5 - 6 * e, 3 * e)
 
 
+POSTURE = {'spine2': (3, 0, 0), 'neck1': (5, 0, 0), 'neck2': (4, 0, 0), 'head': (7, 0, 0)}   # wird in animate() addiert
+
 TURN_T = 1.3   # s pro Zyklus (zwei Schritte)
 
 
@@ -303,6 +308,8 @@ def animate(arm):
             rot, loc = fn(x)
             for pb in arm.pose.bones:
                 e = rot.get(pb.name, (0, 0, 0))
+                if pb.name in POSTURE:
+                    e = tuple(a + b for a, b in zip(e, POSTURE[pb.name]))
                 pb.rotation_euler = (rad(e[0]), rad(e[1]), rad(e[2]))
                 pb.keyframe_insert('rotation_euler', frame=f)
                 if pb.name == 'hips':

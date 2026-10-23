@@ -25,20 +25,24 @@ for s, sx in (('L', 1), ('R', -1)):
     P['ankle' + s] = (10.4 * sx, 2.6, 5.6)
     P['foot' + s] = (10.6 * sx, -2.6, 2.6)
     P['toe' + s] = (10.8 * sx, -7.6, 1.9)
-    P['sh' + s] = (8.8 * sx, -5.2, 57.5)
-    P['el' + s] = (12.8 * sx, -8.4, 50.2)
-    P['wr' + s] = (12.4 * sx, -14.8, 47.8)
-    P['fi' + s] = (12.0 * sx, -18.2, 46.8)
+    # Arme frei vom Körper: Schulter breit, Ellbogen außen und etwas hinten, Unterarm nach vorn (Oberarm ~12 m,
+    # Unterarm ~10 m, große Hand) – vorher steckte der Ellbogen im Rumpf und verschmolz mit ihm
+    P['sh' + s] = (10.2 * sx, -5.0, 58.5)
+    P['el' + s] = (16.6 * sx, -2.2, 48.6)
+    P['wr' + s] = (17.0 * sx, -11.6, 45.6)
+    P['fi' + s] = (16.4 * sx, -16.2, 44.6)
 
 RAD = {
-    'pelvis': 10.7, 'belly': 11.7, 'chest': 10.8, 'shoulder': 9.1, 'neck0': 7.6, 'neck1': 6.3, 'head0': 5.3,   # Rumpf ~7 % schlanker
+    # breitere Brust und Schultern, schlankerer Hals (der Kopf setzt sich ab)
+    'pelvis': 10.7, 'belly': 11.7, 'chest': 11.4, 'shoulder': 10.0, 'neck0': 8.4, 'neck1': 6.6, 'head0': 5.3,
     'skull': 4.9, 'snout': 2.9, 'jaw0': 3.3, 'chin': 1.9,
     # erstes Viertel sehr dick (fast hüftbreit), im zweiten und dritten stark verjüngt, im letzten kaum noch (Seil)
     't1': 11.5, 't2': 10.0, 't3': 8.0, 't4': 5.8, 't5': 3.9, 't6': 2.9, 't7': 2.3,
 }
 for s in 'LR':
-    RAD.update({'hip' + s: 8.1, 'knee' + s: 6.6, 'ankle' + s: 5.0, 'foot' + s: 4.6, 'toe' + s: 3.0,
-                'sh' + s: 4.4, 'el' + s: 3.6, 'wr' + s: 2.8, 'fi' + s: 1.9})
+    # Beine: Oberschenkel weniger ballonartig, sichtbares Knie, säulenartiges Schienbein, großer Fuß
+    RAD.update({'hip' + s: 7.6, 'knee' + s: 5.6, 'ankle' + s: 5.6, 'foot' + s: 5.4, 'toe' + s: 3.9,
+                'sh' + s: 4.6, 'el' + s: 3.7, 'wr' + s: 3.1, 'fi' + s: 2.5})
 
 EDGES = [('pelvis', 'belly'), ('belly', 'chest'), ('chest', 'shoulder'), ('shoulder', 'neck0'), ('neck0', 'neck1'),
          ('neck1', 'head0'), ('head0', 'skull'), ('skull', 'snout'), ('neck1', 'jaw0'), ('jaw0', 'chin'),
@@ -96,9 +100,65 @@ def tail_ring(p):
 
 MB_K = 1.0 / 0.575   # sichtbarer Radius einer einzelnen Metaball-Kugel ~ 0.575 * Radius
 HEAD_EDGES = {('neck1', 'head0'), ('head0', 'skull'), ('skull', 'snout'), ('neck1', 'jaw0'), ('jaw0', 'chin')}
+ARM_PTS = ('sh', 'el', 'wr', 'fi')
+HEAD_PIVOT = V((0, -10.8, 73.6))   # Kopfansatz: der Kopf wird nach dem Bau um diesen Punkt vergrößert
+HEAD_SCALE = 1.18
 
 
-def build_body(target_tris=32000):
+def is_arm_edge(a, b):
+    return a.startswith(ARM_PTS) or b.startswith(ARM_PTS)
+
+
+def mesh_from_mb(ob, target_tris, label):
+    dg = bpy.context.evaluated_depsgraph_get()
+    raw = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+    bpy.data.objects.remove(ob)
+    tmp = link(bpy.data.objects.new(label + '_tmp', raw))
+    tris = sum(len(p.vertices) - 2 for p in raw.polygons)
+    if tris > target_tris:
+        d = tmp.modifiers.new('dec', 'DECIMATE'); d.ratio = target_tris / tris
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(tmp.evaluated_get(dg))
+    bpy.data.objects.remove(tmp)
+    print('%s: %d -> %d Dreiecke' % (label, tris, sum(len(p.vertices) - 2 for p in me.polygons)))
+    return me
+
+
+def build_arms(target_tris=5200):
+    """Arme als eigener Metaball-Körper (anderer Name = eigene Familie), damit sie nicht mit dem Rumpf verschmelzen;
+    die Schulterkugel steckt im Rumpf und dreht sich beim Heben um das Gelenk, es entsteht keine Lücke."""
+    mb = bpy.data.metaballs.new('gzarm_mb')
+    mb.resolution = mb.render_resolution = 0.6
+    mb.threshold = 0.6
+    ob = link(bpy.data.objects.new('gzarm_mb', mb))
+
+    def ball(co, r):
+        e = mb.elements.new(type='BALL'); e.co = co; e.radius = r * MB_K * 0.8; e.stiffness = 2.0
+
+    for s, sx in (('L', 1), ('R', -1)):
+        for a, b in (('sh', 'el'), ('el', 'wr'), ('wr', 'fi')):
+            pa, pb = V(P[a + s]), V(P[b + s])
+            ra, rb = RAD[a + s], RAD[b + s]
+            n = max(2, int((pa - pb).length / (min(ra, rb) * 0.26)) + 1)
+            for i in range(n + 1):
+                k = i / n
+                ball(pa.lerp(pb, k), ra + (rb - ra) * k)
+        # Oberarmmuskel und Unterarm etwas kräftiger, Hand breit mit vier Fingern
+        ball(V(P['sh' + s]).lerp(V(P['el' + s]), 0.4) + V((0, -1.2, 0)), 4.4)
+        ball(V(P['el' + s]).lerp(V(P['wr' + s]), 0.3), 3.6)
+        wr, fi = V(P['wr' + s]), V(P['fi' + s])
+        fwd = (fi - wr).normalized()
+        side = V((1, 0, 0))
+        for k in range(4):
+            off = side * sx * (k - 1.5) * 1.25
+            base = fi + off * 0.6
+            tip = fi + off + fwd * 2.6 + V((0, 0, -0.9))
+            for j in range(4):
+                ball(base.lerp(tip, j / 3), 1.15 - 0.15 * j)
+    return mesh_from_mb(ob, target_tris, 'Godzilla-Arme')
+
+
+def build_body(target_tris=30000):
     """Körper aus Metaballs: Kugelketten entlang der Skelettkanten verschmelzen weich (Muskeln, Übergänge),
     Kopf aus Ellipsoiden, ein negatives Ellipsoid schneidet das Maul auf."""
     mb = bpy.data.metaballs.new('gz_mb')
@@ -118,7 +178,7 @@ def build_body(target_tris=32000):
         e.stiffness = 2.0
 
     for a, b in EDGES:
-        if (a, b) in HEAD_EDGES:
+        if (a, b) in HEAD_EDGES or is_arm_edge(a, b):
             continue
         pa, pb = V(P[a]), V(P[b])
         ra, rb = RAD[a], RAD[b]
@@ -142,10 +202,10 @@ def build_body(target_tris=32000):
     # Kopf: flacher Schädel, lange Schnauze, schwere Brauen, Kaumuskeln, Unterkiefer
     ell((0, -10.5, 72.6), (5.6, 4.6, 4.8))
     ell((0, -13.8, 75.0), (4.5, 5.2, 3.3), rot=(-6, 0, 0))
-    ell((0, -18.0, 74.4), (3.0, 3.6, 2.1), rot=(8, 0, 0))
+    ell((0, -17.8, 74.6), (3.3, 3.4, 2.5), rot=(8, 0, 0))     # stumpfe, hohe Schnauze
     for sx in (1, -1):
-        ell((sx * 2.7, -15.4, 76.4), (1.3, 2.0, 0.9))
-        ell((sx * 3.6, -12.2, 72.6), (2.0, 3.0, 2.4))
+        ell((sx * 2.9, -15.2, 76.6), (1.7, 2.6, 1.25))          # schwere Brauenwülste
+        ell((sx * 3.9, -12.2, 72.6), (2.3, 3.2, 2.6))           # Kaumuskeln, kantiger Kiefer
     ell((0, -15.8, 71.6), (3.1, 4.4, 1.35), rot=(-4, 0, 0))
     ell((0, -11.8, 71.6), (3.6, 2.6, 1.9))
     # Maulhöhle bis zu den Mundwinkeln, damit der Kiefer sich öffnen kann und Zähne Platz haben
@@ -153,22 +213,12 @@ def build_body(target_tris=32000):
     ell((0, -13.6, 72.5), (2.9, 3.0, 0.7), rot=(-4, 0, 0), neg=True)
     # Brust und Oberschenkel kräftiger
     for sx in (1, -1):
-        ell((sx * 4.7, -7.3, 51), (4.6, 2.8, 5.3))
-        ell((sx * 9.4, 0.5, 24), (7.2, 7.0, 9.2), rot=(-15, 0, 0))
+        ell((sx * 5.2, -8.0, 51.5), (5.4, 3.4, 5.6))            # Brustmuskeln
+        ell((sx * 6.6, -2.6, 59.5), (4.4, 4.4, 3.6), rot=(0, sx * 25, 0))   # Schultern, schräg zum Hals (Nackenmuskel)
+        ell((sx * 9.2, 0.5, 25.5), (6.3, 6.3, 8.0), rot=(-15, 0, 0))   # Oberschenkel, schlanker; Knie bleibt sichtbar
     # Schwanzwurzel geht ohne Einbuchtung aus dem Becken hervor, ihre Unterseite reicht hinter den Fersen fast zum Boden
     ell((0, 9.5, 17.5), (8.6, 9.5, 8.2), rot=(25, 0, 0))
-    dg = bpy.context.evaluated_depsgraph_get()
-    raw = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
-    bpy.data.objects.remove(ob)
-    tmp = link(bpy.data.objects.new('gz_tmp', raw))
-    tris = sum(len(p.vertices) - 2 for p in raw.polygons)
-    if tris > target_tris:
-        d = tmp.modifiers.new('dec', 'DECIMATE'); d.ratio = target_tris / tris
-    dg = bpy.context.evaluated_depsgraph_get()
-    body = bpy.data.meshes.new_from_object(tmp.evaluated_get(dg))
-    bpy.data.objects.remove(tmp)
-    print('Godzilla-Körper: %d -> %d Dreiecke' % (tris, sum(len(p.vertices) - 2 for p in body.polygons)))
-    return body
+    return mesh_from_mb(ob, target_tris, 'Godzilla-Körper')
 
 
 def skin_detail(bm):
@@ -179,10 +229,10 @@ def skin_detail(bm):
     for v in bm.verts:
         p, n = v.co.copy(), v.normal.copy()
         head = p.y < -9 and p.z > 66
-        amp = 0.22 if head else 0.42
+        amp = 0.2 if head else 0.3
         if n.y < -0.35 and abs(p.x) < 8 and 28 < p.z < 62:
             amp *= 0.45  # Bauch glatter, gerippt
-        bump = noise.noise(p * 0.32, noise_basis='VORONOI_F2F1') * 1.4 + noise.noise(p * 0.9) * 0.35
+        bump = noise.noise(p * 0.5, noise_basis='VORONOI_F2F1') * 1.2 + noise.noise(p * 1.3) * 0.4   # feinere Borke
         ridge = 0.0
         if n.y < -0.35 and abs(p.x) < 8 and 28 < p.z < 62:
             ridge = 0.18 * math.sin(p.z * 1.6)  # Bauchquerfalten
@@ -240,7 +290,7 @@ def add_plate(bm, base, up, fwd, h, thick):
     side = fwd.cross(up).normalized()
     top, bot = [], []
     for (u, w) in PLATE_OUTLINE:
-        c = base + fwd * (u * h * 0.9) + up * (w * h)
+        c = base + fwd * (u * h * 1.15) + up * (w * h)          # breites Ahornblatt
         taper = thick * (1 - 0.75 * w)
         top.append(bm.verts.new(c + side * taper))
         bot.append(bm.verts.new(c - side * taper))
@@ -284,8 +334,13 @@ def sample_path(s):
 
 def build():
     body_me = build_body()
+    arm_me = build_arms()
     bm = bmesh.new(); bm.from_mesh(body_me)
-    bpy.data.meshes.remove(body_me)
+    n_torso = len(bm.verts)
+    bm.from_mesh(arm_me)                     # hängt die Arme an (eigene Inseln)
+    arm_range = (n_torso, len(bm.verts))
+    print('Rumpf/Arme Punkte:', n_torso, arm_range[1] - n_torso)
+    bpy.data.meshes.remove(body_me); bpy.data.meshes.remove(arm_me)
     bm.normal_update()
     cols = skin_detail(bm)
     mouth_color(bm, cols)
@@ -347,16 +402,18 @@ def build():
             tag(vs + [ctr], 'head', eye)
     # --- Klauen an Händen und Zehen
     for s, sx in (('L', 1), ('R', -1)):
-        fi = V(P['fi' + s])
+        wr, fi = V(P['wr' + s]), V(P['fi' + s])
+        fwd = (fi - wr).normalized()
         for k in range(4):
-            off = V((sx * (k - 1.5) * 0.9, -1.1, -0.4 - abs(k - 1.5) * 0.2))
-            vs = add_cone(bm, fi + off, V((0, -0.6, -1)), 0.35, 1.6, 4)
+            off = V((sx * (k - 1.5) * 1.25, 0, 0))
+            tip = fi + off + fwd * 2.6 + V((0, 0, -0.9))
+            vs = add_cone(bm, tip + fwd * 0.6, (fwd + V((0, 0, -0.9))).normalized(), 0.55, 2.4, 5)   # gebogene Kralle
             tag(vs, 'hand.' + s, ivory)
         toe = V(P['toe' + s])
         for k in range(4):
-            dx = (k - 1.5) * 1.9
-            o = V((toe.x + dx * sx * -1, toe.y - 2.6 + abs(k - 1.5) * 0.7, 1.0))
-            vs = add_cone(bm, o, V((0, -1, -0.25)), 0.6, 1.9, 4)
+            dx = (k - 1.5) * 2.3
+            o = V((toe.x + dx * sx * -1, toe.y - 3.0 + abs(k - 1.5) * 0.8, 1.2))
+            vs = add_cone(bm, o, V((0, -1, -0.3)), 0.85, 2.8, 5)
             tag(vs, 'foot.' + s, ivory)
 
     # --- Rückenplatten (eigenes Material, leuchten im Spiel). Größe nach Metern entlang der Wirbelsäule: am größten
@@ -373,7 +430,7 @@ def build():
 
     L = 1.0
     while L < total - 1.5:
-        h = 2.6 + 11.4 * bell(L, 13, 62)      # Kamm am Schwanz bleibt bis zur Spitze sichtbar
+        h = 3.0 + 14.5 * bell(L, 13, 62)      # Kamm am Schwanz bleibt bis zur Spitze sichtbar; groß wie bei der Figur
         c, r, T, N = sample_path(L / total)
         up = (N * 0.9 - T * 0.25).normalized()
         base = c + N * (r * 0.96 - 0.4)
@@ -384,7 +441,7 @@ def build():
     for sx in (1, -1):
         L = 4.0
         while L < tail_end:
-            h = 1.5 + 6.8 * bell(L, 12, 48)
+            h = 2.0 + 9.5 * bell(L, 12, 48)
             c, r, T, N = sample_path(L / total)
             side = V((sx, 0, 0))
             dirn = (N * 0.78 + side * 0.5).normalized()
@@ -395,7 +452,7 @@ def build():
             L += max(3.0, h * 0.6)
     for vs, s in plate_verts:
         for v in vs:
-            extra[v] = (None, V((0.72, 0.68, 0.58)) * (0.75 + 0.25 * (1 - s)))
+            extra[v] = (None, V((0.8, 0.77, 0.68)) * (0.78 + 0.22 * (1 - s)))
     bm.verts.index_update()
     bm.faces.ensure_lookup_table()
     plate_set = set(v for vs, _ in plate_verts for v in vs)
@@ -405,6 +462,18 @@ def build():
             f.smooth = False
         elif f.verts[0] in extra:
             f.smooth = False
+
+    # Kopf größer: alles vor und über dem Kopfansatz wird um HEAD_PIVOT skaliert, weich zum Hals ausblendend
+    for v in bm.verts:
+        p = v.co
+        k = max(0.0, min(1.0, (p.z - 64.5) / 5.0)) * max(0.0, min(1.0, (-p.y - 7.0) / 3.5))
+        if k > 0:
+            v.co = HEAD_PIVOT + (p - HEAD_PIVOT) * (1 + (HEAD_SCALE - 1) * k)
+    for n in ('skull', 'snout', 'jaw0', 'chin'):
+        P[n] = tuple(HEAD_PIVOT + (V(P[n]) - HEAD_PIVOT) * HEAD_SCALE)
+    mt = HEAD_PIVOT + (V((0, -19.4, 72.9)) - HEAD_PIVOT) * HEAD_SCALE
+    print('Maulspitze (glTF, MOUTH in godzilla.js): (0, %.1f, %.1f)' % (mt.z, -mt.y))
+    print('höchste Platte (glTF y, PLATE_TOP):', round(max(v.co.z for vs, _ in plate_verts for v in vs), 1))
 
     # Vertexfarben schreiben
     me = bpy.data.meshes.new('Godzilla')
@@ -420,7 +489,7 @@ def build():
     ca.data.foreach_set('color', lin.astype(np.float32).ravel())
     me.color_attributes.active_color = ca
     body_mat = material('GZ_Body', rough=0.82, vcol=True)
-    plate_mat = material('GZ_Plates', color=(0.7, 0.66, 0.56), rough=0.6, vcol=True)
+    plate_mat = material('GZ_Plates', color=(0.8, 0.77, 0.68), rough=0.6, vcol=True)
     me.materials.append(body_mat); me.materials.append(plate_mat)
     ob = link(bpy.data.objects.new('Godzilla', me))
 
@@ -436,7 +505,7 @@ def build():
     bm.free()
 
     arm = build_armature()
-    weight(ob, arm, nbody, fixed, plate_bone)
+    weight(ob, arm, nbody, fixed, plate_bone, arm_range)
     ob.parent = arm
     mod = ob.modifiers.new('arm', 'ARMATURE'); mod.object = arm
     import gz_anim
@@ -474,7 +543,7 @@ def build_armature():
     return arm
 
 
-def weight(ob, arm, nbody, fixed, plate_s):
+def weight(ob, arm, nbody, fixed, plate_s, arm_range):
     me = ob.data
     pts = np.array([v.co[:] for v in me.vertices])
     names = [b[0] for b in BONES]
@@ -485,6 +554,8 @@ def weight(ob, arm, nbody, fixed, plate_s):
         d, _ = _segdist(pts, *segs[n])
         D[:, j] = np.maximum(d - radius[n] * 0.6, 0.05)
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
+    idx = np.arange(len(pts))
+    is_arm = (idx >= arm_range[0]) & (idx < arm_range[1])
     BIG = 1e6
     for j, n in enumerate(names):
         mask = np.zeros(len(pts), bool)
@@ -492,8 +563,15 @@ def weight(ob, arm, nbody, fixed, plate_s):
             sgn = 1 if n.endswith('L') else -1
             mask |= (x * sgn < 1.5) | (z > 36)
         if n.startswith(('upperarm', 'forearm', 'hand')):
+            # Armknochen bewegen nur die Arm-Inseln der eigenen Seite, nie die Rumpfhaut (sonst Hautlappen)
             sgn = 1 if n.endswith('L') else -1
-            mask |= (x * sgn < 6.5) | (z > 61) | (z < 42)
+            mask |= ~is_arm | (x * sgn < 0)
+        elif n != 'spine2':
+            mask |= is_arm
+        else:
+            # Schulterwurzel: die Armpunkte nahe dem Gelenk folgen ein wenig dem Oberkörper
+            dsh = np.minimum(np.linalg.norm(pts - np.array(P['shL']), axis=1), np.linalg.norm(pts - np.array(P['shR']), axis=1))
+            mask |= is_arm & (dsh > RAD['shL'] * 1.1)
         if n.startswith('tail'):
             mask |= (y < 4) & (z > 20)
         if n in ('head', 'jaw'):

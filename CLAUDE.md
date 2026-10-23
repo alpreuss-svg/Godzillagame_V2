@@ -33,6 +33,14 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   dezimiert auf ~26k Dreiecke, Hautrelief per Voronoi-Rauschen, Vertexfarben (`Col`), Augen/Klauen per Raycast,
   Maulhöhle = zwei negative Metaball-Ellipsoide; Zähne (14 oben/14 unten) per senkrechtem Spaltenscan durch die Höhle,
   Rückenplatten (3 Reihen, Material `GZ_Plates`), eigenes Rig + eigene Gewichtung (Distanz zu Knochensegmenten).
+  **Überarbeitung nach Figurenbildern des Nutzers:** Arme als eigener Metaball-Körper (`build_arms`, verschmilzt
+  nicht mit dem Rumpf; Oberarm ~12 m, Unterarm ~10 m, Ellbogen außen/hinten, Hand mit vier Fingern und gebogenen
+  Krallen); Armknochen bewegen nur die Arm-Inseln (`arm_range` in `weight`), nie die Rumpfhaut – vorher zog der
+  Arm einen Hautlappen von der Brust mit. Kopf nach dem Bau um `HEAD_PIVOT` 1,18-fach vergrößert (samt Zähnen und
+  Augen, `P` der Kopfpunkte mitskaliert), kantiger mit Brauenwülsten und hoher, stumpfer Schnauze; kräftiger Hals,
+  breitere Brust mit Brustmuskeln, Schultern schräg zum Nacken; Oberschenkel schlanker (Knie sichtbar), dicke
+  Schienbeine, große Füße mit großen hellen Krallen – die Beingelenke (`P`) sind unverändert, damit die Gang-IK passt.
+  Platten 1,3-fach größer, breiter (Ahornblatt), heller; Haut feiner (Borke statt grober Beulen).
   Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Rumpf etwas schlanker als zuerst. Vorbild für
   Schwanz und Platten ist die 1984er Figur (zwei Bilder vom Nutzer): Schwanz ~100 m, wächst tief und ohne Einbuchtung
   aus dem Becken, erstes Viertel fast hüftbreit und hochoval (Ellipsoid-Kette), im zweiten und dritten stark verjüngt,
@@ -41,8 +49,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Plattengröße nach Metern entlang der Wirbelsäule (`bell`): Maximum zwischen Brust und Bauch, zum Hals schnell, zum
   Schwanz langsam kleiner, kleiner Zackenkamm bis ans Ende; Seitenreihen enden in der Schwanzmitte.
 - `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death, turn.
-  Klauenhieb: hoch und nach außen ausholen, diagonal über den Körper schlagen, Oberkörper dreht mit (`ARM_OUT`
-  = Vorzeichen fürs Abspreizen). `turn`: Treten auf der Stelle (IK), für das Drehen im Stand.
+  Klauenhieb: seitlich auf Schulterhöhe ausholen (Ellbogen gebeugt, Pranke hinter dem Kopf), dann nach vorn unten
+  vor die Brust durchschlagen, Oberkörper dreht mit (`ARM_OUT` = −1: negative Z-Drehung hebt den Arm seitlich – seit
+  den freien Armen umgekehrt). `POSTURE`: Oberkörper, Hals und Kopf leicht nach vorn, Blick geradeaus (in allen
+  Animationen addiert). `turn`: Treten auf der Stelle (IK), für das Drehen im Stand.
   **Gang und Stand per inverser Kinematik** (`leg_ik`, Seitenebene, Knie nach vorn): Knöchel steht auf Bodenhöhe 5,6 m,
   ein aufgesetzter Fuß wandert relativ zum Körper mit genau Laufgeschwindigkeit nach hinten. Zyklus 1,75 s, 35 m
   (`WALK_DIST / WALK_T` = 20 m/s) – `WALK_SPEED` in `js/godzilla.js` muss dazu passen, sonst gleiten die Füße.

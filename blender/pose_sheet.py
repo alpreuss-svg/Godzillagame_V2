@@ -28,8 +28,8 @@ SHEETS = {
         ('idle', 0, dict(target=(0, -14, 72), dist=48, elev=8, azim=-60)),   # Kopf
     ],
     # Klauenhieb links als Bildfolge (Anteil der Animationslänge), oben von vorn, unten von der Seite
-    'sheet_klaue': [('clawL', k, dict(FRONT, elev=6, azim=-90)) for k in (0.0, 0.2, 0.35, 0.5)]
-                 + [('clawL', k, dict(SIDE)) for k in (0.0, 0.2, 0.35, 0.5)],
+    'sheet_klaue': [('clawL', k, dict(FRONT, elev=6, azim=-90)) for k in (0.0, 0.27, 0.5, 0.7)]
+                 + [('clawL', k, dict(SIDE)) for k in (0.0, 0.27, 0.5, 0.7)],
     'sheet_angriffe': [
         ('clawR', 0.2, dict(FRONT, elev=6, azim=-90)),      # rechte Klaue holt aus
         ('clawR', 0.35, dict(FRONT, elev=6, azim=-90)),     # rechte Klaue trifft
@@ -57,6 +57,13 @@ def setup():
 
 
 def pose(arm, name, frame):
+    if isinstance(name, dict):                   # freie Pose zum Ausprobieren: {Knochen: (x, y, z) in Grad}
+        arm.animation_data.action = None
+        for pb in arm.pose.bones:
+            pb.rotation_mode = 'XYZ'
+            pb.rotation_euler = [math.radians(a) for a in name.get(pb.name, (0, 0, 0))]
+        bpy.context.view_layer.update()
+        return
     act = next((a for a in bpy.data.actions if a.name == name or a.name.startswith(name + '_') or a.name.startswith(name + '.')), None)
     if act is None:
         raise RuntimeError('Aktion fehlt: %s (%s)' % (name, [a.name for a in bpy.data.actions]))
@@ -98,7 +105,8 @@ def build_sheet(arm, name, tiles, cols=3, gap=6):
     print('Bilderbogen:', img.filepath_raw)
 
 
-os.makedirs(PRE, exist_ok=True)
-arm = setup()
-for name, tiles in SHEETS.items():
-    build_sheet(arm, name, tiles)
+if __name__ == '__main__':
+    os.makedirs(PRE, exist_ok=True)
+    arm = setup()
+    for name, tiles in SHEETS.items():
+        build_sheet(arm, name, tiles)
