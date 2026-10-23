@@ -262,7 +262,7 @@ export class Godzilla {
     else if (this.state !== 'breath') this.energy = Math.min(100, this.energy + ENERGY_REGEN * dt);
     this.hurt = Math.max(0, (this.hurt || 0) - dt * 4);      // Treffer klingen ab
     this.calm = (this.calm || 0) + dt;                      // nach 3 s ohne Treffer erholt er sich
-    if (this.calm > 3 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 2.2 * dt);
+    if (this.calm > 3 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 1.5 * dt);
   }
 
   // ---------- Treffer vom Militär ----------

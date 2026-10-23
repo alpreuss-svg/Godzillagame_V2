@@ -150,10 +150,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Godzillas Rumpf (`takeDamage`, Zucken bei Trefferserien, nach 3 s ohne Treffer Erholung 1,5/s). Nachts sichtbar
   durch Scheinwerfer mit Lichtkegel bzw. Suchscheinwerfer und Blinklicht. Godzilla zerstört Einheiten mit allen
   Angriffen; der Atomstrahl erfasst beim Laden die nächste Einheit im vorderen Kegel und folgt ihr (`AIM_*`).
-  Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab. **Atomtransporter** (`nuke`, LKW mit leuchtender grüner
-  Fracht, schießt nicht, fährt nah heran, auf der Mini-Map grün): kommt mit jeder Welle und in Bosskämpfen alle 22 s
-  (main.js `supplyT`); zerstört gibt er +18 Leben und +40 Energie – Heilung ohne Rückzug zu heilen Gebäuden
-  (Wunsch des Nutzers). Andere Einheiten heilen 2, ohne Treffer erholt sich Godzilla mit 2,2/s.
+  Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab. (Ein Atomtransporter zum Heilen gefiel dem Nutzer nicht und
+  wurde zurückgebaut – Heilen ohne Rückzug ist noch offen.)
 - `js/boss.js` – Super-X: erscheint ab 120 zerstörten Gebäuden (`BOSS_AT` in main.js) mit Kinobalken, neue Wellen
   stoppen. Fliegt über den Hochhäusern an (`ALT_TRAVEL`, sonst blieb sie an Umeda hängen), schwebt dann in 130–190 m
   Abstand auf ~68 m Höhe, weicht Hochhäusern aus (`avoid`; beim Anstoßen kreist sie schneller weiter), feuert nur mit freier Sicht
@@ -211,11 +209,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (Hochhäuser am Bahnhof im Norden, Ōdōri-Park als Blockreihe quer durch die Stadt, Susukino als `neon`, Hafen;
   King Ghidorah, danach Mecha-King Ghidorah). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
   `finalGone`.
-- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes. Atomstrahl (`Beam`):
-  Kern + Hülle mit nach vorn rasenden Energiepulsen und ausfransendem Rand, zwei rotierende Spiralbänder (Band-Geometrie,
-  im Vertex-Shader um die Achse gewickelt), Funken-Pool `beam.sparks` (main.js aktualisiert ihn), Lichtblitz am Maul,
-  flackernder Einschlag mit wachsendem Druckring; `setColors()` für den goldenen Rückstrahl der Super-X2 (ohne
-  Spiralen/Funken). `Lightning`: Ghidorahs Blitze (dickes Band, vier Nebenarme); `Particles` (ein
+- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes (eine aufwendigere Strahl-
+  Optik mit Spiralen, Pulsen und Funken gefiel dem Nutzer nicht und wurde zurückgebaut). `Lightning`: Ghidorahs Blitze
+  (schlankes Band, zwei Nebenarme – dicker gefiel nicht; „zu schwach“ meinte den Schaden); `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
   Trümmer (InstancedMesh aus `U_debris0..2`, Schwerkraft, ein Abpraller).

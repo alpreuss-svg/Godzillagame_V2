@@ -13,7 +13,7 @@ void main() {
   gl_Position = projectionMatrix * mv;
 }`;
 
-// Strahl: Mitte hell, Ränder weich; helle Energiepulse rasen vom Maul weg, der Rand franst flackernd aus
+// Strahl: Mitte hell, Ränder weich, Wellen laufen vom Maul weg
 const BEAM_FS = /* glsl */`
 uniform float uTime, uLen, uAlpha;
 uniform vec3 uColor;
@@ -21,42 +21,11 @@ varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vV;
 void main() {
+  float core = pow(abs(dot(vN, vV)), 1.6);
   float d = vUv.y * uLen;
-  float edge = abs(dot(vN, vV));
-  float fray = 0.75 + 0.25 * sin(vUv.x * 40.0 + d * 0.3 - uTime * 70.0) * sin(vUv.x * 17.0 - uTime * 23.0);
-  float core = pow(edge, 1.4 + 0.8 * (1.0 - fray));
   float wave = 0.7 + 0.3 * sin(d * 0.22 - uTime * 46.0) * sin(d * 0.05 - uTime * 11.0);
-  float pulse = pow(max(0.0, sin(d * 0.06 - uTime * 32.0)), 18.0);           // helle Pakete, die nach vorn rasen
   float start = smoothstep(0.0, 6.0, d);
-  vec3 col = uColor * core * wave + vec3(0.8, 0.9, 1.0) * pulse * core * 1.6;
-  gl_FragColor = vec4(col * start * uAlpha, 1.0);
-}`;
-
-// Spiralband um den Strahl: die Geometrie ist ein flaches Band (x = Seite -1/1, z = 0..1), der Vertex-Shader wickelt
-// es mit uLen Metern Länge als Schraube um die Achse und lässt es rotieren
-const SPIRAL_VS = /* glsl */`
-uniform float uTime, uLen, uR, uPhase;
-varying float vZ;
-varying float vSide;
-void main() {
-  float z = position.z * uLen;
-  float a = z * 0.075 - uTime * 14.0 + uPhase;
-  float r = uR * (0.75 + 0.25 * sin(z * 0.04 - uTime * 6.0));
-  vec3 c = vec3(cos(a) * r, sin(a) * r, z);
-  vec3 t = vec3(-sin(a), cos(a), 0.0);
-  vZ = z;
-  vSide = position.x;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(c + t * position.x * 1.3, 1.0);
-}`;
-const SPIRAL_FS = /* glsl */`
-uniform float uTime, uAlpha;
-uniform vec3 uColor;
-varying float vZ;
-varying float vSide;
-void main() {
-  float soft = 1.0 - vSide * vSide;
-  float flick = 0.6 + 0.4 * sin(vZ * 0.5 - uTime * 50.0);
-  gl_FragColor = vec4(uColor * soft * flick * smoothstep(0.0, 10.0, vZ) * uAlpha, 1.0);
+  gl_FragColor = vec4(uColor * core * wave * start * uAlpha, 1.0);
 }`;
 
 // Leuchtkugel: uPow <= 1 -> Mitte hell (Einschlag), sonst heller Rand (Fresnel, Kernpuls-Welle)
@@ -80,8 +49,7 @@ function additive(fs, uniforms) {
 }
 
 export class Beam {
-  // spiral/sparks: Spiralbänder und Funken (Godzillas Strahl); der zurückgeworfene Strahl der Super-X2 kommt ohne aus
-  constructor(scene, { spiral = true, sparks = true } = {}) {
+  constructor(scene) {
     const geo = new THREE.CylinderGeometry(1, 1, 1, 16, 1, true);
     geo.rotateX(Math.PI / 2).translate(0, 0, 0.5);       // Achse 0..1 entlang +Z
     this.group = new THREE.Group();
@@ -96,52 +64,15 @@ export class Beam {
       this.group.add(m);
       return m;
     });
-    // zwei gegenläufig versetzte Spiralbänder
-    this.spirals = [];
-    if (spiral) {
-      const N = 160, pos = [], idx = [];
-      for (let i = 0; i <= N; i++) pos.push(-1, 0, i / N, 1, 0, i / N);
-      for (let i = 0; i < N; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
-      const sg = new THREE.BufferGeometry();
-      sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      sg.setIndex(idx);
-      this.spirals = [0, Math.PI].map(ph => {
-        const m = new THREE.Mesh(sg, new THREE.ShaderMaterial({
-          vertexShader: SPIRAL_VS, fragmentShader: SPIRAL_FS, transparent: true, depthWrite: false,
-          blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-          uniforms: { uTime: { value: 0 }, uLen: { value: 1 }, uR: { value: 6.5 }, uPhase: { value: ph }, uAlpha: { value: 1 },
-            uColor: { value: new THREE.Color(0.35, 0.65, 1.6) } } }));
-        m.frustumCulled = false;
-        this.group.add(m);
-        return m;
-      });
-    }
     this.impact = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12),
       additive(RIM_FS, { uAlpha: { value: 1 }, uPow: { value: 1 }, uColor: { value: new THREE.Color(0.5, 0.75, 1.6) } }));
-    // Druckring am Einschlag und Lichtblitz am Maul
-    this.ring = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12),
-      additive(RIM_FS, { uAlpha: { value: 1 }, uPow: { value: 4 }, uColor: { value: new THREE.Color(0.4, 0.7, 1.8) } }));
-    this.flare = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10),
-      additive(RIM_FS, { uAlpha: { value: 1 }, uPow: { value: 1 }, uColor: { value: new THREE.Color(0.6, 0.85, 1.8) } }));
-    for (const m of [this.impact, this.ring, this.flare]) m.frustumCulled = false;
     this.light = new THREE.PointLight(0x6fa8ff, 0, 320, 1);
     this.mouthLight = new THREE.PointLight(0x7fb8ff, 0, 160, 1);
-    this.group.visible = this.impact.visible = this.ring.visible = this.flare.visible = false;
-    scene.add(this.group, this.impact, this.ring, this.flare, this.light, this.mouthLight);
-    // Funken: eigener Partikel-Pool, main.js aktualisiert ihn (braucht die Kamera)
-    this.sparks = sparks ? new Particles(scene, 400, { ramp: [[0.75, 0.9, 1.6], [0.1, 0.3, 1.0]], additive: true, opacity: 0.95, grow: -0.6 }) : null;
+    this.group.visible = this.impact.visible = false;
+    scene.add(this.group, this.impact, this.light, this.mouthLight);
     this.len = 0;
     this.time = 0;
-    this.ringT = 0;
     this.end = new THREE.Vector3();
-  }
-
-  // Farben (Kern, Hülle, Einschlag), z. B. für den goldenen Rückstrahl der Super-X2
-  setColors(outer, core, impact) {
-    this.layers[0].material.uniforms.uColor.value.setRGB(...outer);
-    this.layers[1].material.uniforms.uColor.value.setRGB(...core);
-    for (const m of [this.impact, this.ring, this.flare]) m.material.uniforms.uColor.value.setRGB(...impact);
-    for (const m of this.spirals) m.material.uniforms.uColor.value.setRGB(...outer);
   }
 
   // from/dir in Weltkoordinaten, maxLen = Abstand bis zum ersten Hindernis
@@ -149,10 +80,10 @@ export class Beam {
     this.time += dt;
     this.len = on ? Math.min(maxLen, this.len + dt * 1800) : 0;
     const vis = on && this.len > 0.5;
-    this.group.visible = this.impact.visible = this.flare.visible = vis;
+    this.group.visible = this.impact.visible = vis;
     this.light.intensity = vis ? 900 * (0.8 + 0.2 * Math.random()) : 0;
     this.mouthLight.intensity = vis ? 500 : 0;
-    if (!vis) { this.ring.visible = false; return null; }
+    if (!vis) return null;
     const flick = 0.85 + 0.15 * Math.sin(this.time * 63.0);
     this.group.position.copy(from);
     this.group.lookAt(this.end.copy(from).add(dir));
@@ -162,27 +93,11 @@ export class Beam {
       m.material.uniforms.uTime.value = this.time;
       m.material.uniforms.uLen.value = this.len;
     }
-    for (const m of this.spirals) { m.material.uniforms.uTime.value = this.time; m.material.uniforms.uLen.value = this.len; }
     this.end.copy(from).addScaledVector(dir, this.len);
     const hit = this.len >= maxLen - 1;
     this.impact.visible = hit;
     this.impact.position.copy(this.end);
-    this.impact.scale.setScalar(18 + 9 * Math.random());
-    // Druckring: wächst immer wieder vom Einschlag aus
-    this.ringT = (this.ringT + dt * 2.2) % 1;
-    this.ring.visible = hit;
-    this.ring.position.copy(this.end);
-    this.ring.scale.setScalar(10 + 38 * this.ringT);
-    this.ring.material.uniforms.uAlpha.value = 1 - this.ringT;
-    this.flare.position.copy(from);
-    this.flare.scale.setScalar(7 + 3 * Math.random());
-    if (this.sparks) {
-      for (let k = 0; k < 3; k++) {                      // Funken entlang des Strahls
-        const t = Math.random() * this.len;
-        this.sparks.emit(from.x + dir.x * t, from.y + dir.y * t, from.z + dir.z * t, 1, { spread: 3, up: 4, out: 10, size: 4, life: 0.5 });
-      }
-      if (hit) this.sparks.emit(this.end.x, this.end.y, this.end.z, 6, { spread: 4, up: 14, out: 26, size: 6, life: 0.9 });
-    }
+    this.impact.scale.setScalar(14 + 5 * Math.random());
     this.light.position.copy(this.end).addScaledVector(dir, -12);
     this.mouthLight.position.copy(from);
     return hit ? this.end : null;
@@ -375,7 +290,7 @@ const _q = new THREE.Quaternion(), _mat = new THREE.Matrix4(), _s = new THREE.Ve
 
 // Blitz: zuckender Zickzack-Strahl mit Nebenarmen als Band, das zur Kamera zeigt (Glühen + heller Kern). Der Pfad wird
 // alle paar Hundertstelsekunden neu gewürfelt (Ghidorahs Gravitationsstrahlen).
-const LN = 30, BN = 10, BRANCHES = 4;
+const LN = 26, BN = 9, BRANCHES = 2;
 export class Lightning {
   constructor(scene, color) {
     this.strips = [LN + 1, ...Array(BRANCHES).fill(BN + 1)];
@@ -388,7 +303,7 @@ export class Lightning {
       o += n;
     }
     const c = new THREE.Color(...color);
-    this.layers = [[13, c.clone().multiplyScalar(1.5), 0.5], [3.6, new THREE.Color(1, 0.97, 0.9).lerp(c, 0.2).multiplyScalar(2.2), 1]]
+    this.layers = [[4.5, c.clone().multiplyScalar(1.3), 0.55], [1.4, new THREE.Color(1, 0.97, 0.9).lerp(c, 0.25).multiplyScalar(1.6), 1]]   // schlank
       .map(([w, col, op]) => {
         const geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(total * 6), 3).setUsage(THREE.DynamicDrawUsage));

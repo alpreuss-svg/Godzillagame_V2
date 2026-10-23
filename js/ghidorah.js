@@ -21,13 +21,13 @@ const MAX_HOLES = 8;
 
 const KINDS = {
   king: {
-    hp: 100, alt: 78, range: [150, 210], beamEvery: 2.6, beamDur: 2.0, beamDps: 4.2, trioEvery: 12, wander: 30,
+    hp: 100, alt: 78, range: [150, 210], beamEvery: 3.0, beamDur: 1.8, beamDps: 6.5, trioEvery: 12, wander: 30,
     landEvery: 20, landDur: 11, grabEvery: 14, grabDps: 3.0, grabMax: 6, grabRange: 120,
     dmg: { beam: 4, head: 6, claw: 4, tail: 6, pulse: 8, free: 6 },
     colors: [[1.0, 0.72, 0.18], [1.0, 0.72, 0.18], [1.0, 0.72, 0.18]],
   },
   mecha: {
-    hp: 100, alt: 70, range: [140, 200], beamEvery: 2.3, beamDur: 2.0, beamDps: 4.2, trioEvery: 10, wander: 24,
+    hp: 100, alt: 70, range: [140, 200], beamEvery: 2.6, beamDur: 1.8, beamDps: 6.5, trioEvery: 10, wander: 24,
     landEvery: 26, landDur: 9, grabEvery: 18, grabDps: 2.4, grabMax: 8, grabRange: 230,
     dmg: { beam: 2.5, head: 4, claw: 3, tail: 4.5, pulse: 6, free: 8 },
     colors: [[0.35, 0.6, 1.0], [1.0, 0.72, 0.18], [1.0, 0.72, 0.18]],

@@ -151,14 +151,7 @@ async function load() {
   // Heilen durch Zerstörung: Hochhäuser geben am meisten zurück, Häuser kaum
   const healFx = n => { if (n > 0) { $('hpBar').classList.remove('heal'); void $('hpBar').offsetWidth; $('hpBar').classList.add('heal'); } };
   events.on('collapse', e => healFx(g.heal(e.b.h > 70 ? HEAL.tower : e.b.h > 25 ? HEAL.mid : HEAL.small)));
-  events.on('unitDestroyed', e => {
-    if (e.type !== 'nuke') { healFx(g.heal(HEAL.unit)); return; }
-    // Atomtransporter: die Strahlung fließt in Godzilla (Leben und Energie), grünes Leuchten steigt auf
-    healFx(g.heal(HEAL.nuke));
-    g.energy = Math.min(100, g.energy + HEAL.nukeEnergy);
-    fx.glow.emit(e.pos.x, e.pos.y + 4, e.pos.z, 40, { spread: 10, up: 22, out: 8, size: 10, life: 2.2, color: [0.4, 1, 0.7] });
-    toast('Radioaktive Ladung aufgenommen!', 2);
-  });
+  events.on('unitDestroyed', () => healFx(g.heal(HEAL.unit)));
   events.on('topple', () => rig.shake(1.6));
   events.on('roar', () => rig.shake(1.0));
   events.on('shake', a => rig.shake(a));
@@ -218,11 +211,6 @@ function step(dt) {
       game.city.update(dt);
       if (!game.boss.active && !game.boss.dead && game.city.destroyed >= BOSS_AT) game.boss.start(g.position);
       if (!game.boss.active && !game.boss.dead) game.military.updateWaves(dt, g.position, game.city.destroyed);
-      // Während der Bosskämpfe rücken keine Wellen an – Atomtransporter kommen trotzdem regelmäßig (Heilung ohne Rückzug)
-      else if (game.state === 'play' && (game.supplyT = (game.supplyT ?? 12) - dt) <= 0) {
-        game.supplyT = 22;
-        if (!game.military.units.some(u => u.type === 'nuke')) game.military.spawn('nuke', g.position);
-      }
       game.military.update(dt, g, game.city);
       game.boss.update(dt, g, game.city);
       if (game.finalT > 0 && (game.finalT -= dt) <= 0) { game.final.start(g.position, game.city); Music.play('final'); }
@@ -237,7 +225,6 @@ function step(dt) {
       game.fx.dust.update(dt, camera, renderer.domElement.height);
       game.fx.fire.update(dt, camera, renderer.domElement.height);
       game.fx.glow.update(dt, camera, renderer.domElement.height);
-      if (g.beam.sparks) g.beam.sparks.update(dt, camera, renderer.domElement.height);
       game.atmo.update(dt, camera, g, game.city, rig.target);
       seeThrough.uTime.value += dt;
     }
@@ -265,7 +252,7 @@ game.stats = { time: 0 };
 game.endT = 0;
 game.overT = 0;
 const BOSS_AT = 120;
-const HEAL = { tower: 6, mid: 1.5, small: 0.4, unit: 2, nuke: 18, nukeEnergy: 40 };   // Leben pro zerstörtem Gebäude bzw. Einheit          // zerstörte Gebäude, ab denen die Super-X angreift
+const HEAL = { tower: 6, mid: 1.5, small: 0.4, unit: 1 };   // Leben pro zerstörtem Gebäude bzw. Einheit          // zerstörte Gebäude, ab denen die Super-X angreift
 
 function objective() {
   const d = game.city.destroyed;
