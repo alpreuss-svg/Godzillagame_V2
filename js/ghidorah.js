@@ -212,6 +212,7 @@ class GhidorahBase {
     if (this.state === 'land' && p.y < 3 && !this.landed) {
       this.landed = true;
       this.events.emit('shake', 1.2);
+      this.events.emit('ghidorahLand', {});
       this.fx.dust.emit(p.x, 0, p.z, 24, { spread: 50, up: 6, out: 18, size: 30, life: 4 });
       if (this.city) this.city.damage(p.clone(), 40, 200, p.clone(), true, 20);
     }
@@ -417,12 +418,13 @@ class GhidorahBase {
     this.hp = Math.max(0, this.hp - n);
     // alle 11 Lebenspunkte ein Loch mehr in den Flügeln
     for (let k = Math.floor((100 - before) / 11); k < Math.floor((100 - this.hp) / 11); k++) this.addHole();
-    if (big) { this.military.boom(this.bodyTarget.mesh.position, 0.8); this.events.emit('bossHit', {}); }
+    if (big) { this.military.boom(this.bodyTarget.mesh.position, 0.8); this.events.emit('bossHit', {}); this.events.emit('ghidorahHurt', {}); }
     if (this.hp <= 0) this.down();
   }
 
   down() {
     this.dead = true;
+    this.events.emit('ghidorahHurt', {});                  // Todesschrei
     this.vy = 0;
     if (this.hold) this.release(this.g, 'timeout');
     for (const b of this.bolts) b.t = 0;
@@ -501,6 +503,7 @@ export class MechaKingGhidorah extends GhidorahBase {
   start(gz, city) {
     this.appear(gz, city);
     this.events.emit('finalRise', { title: 'MECHA-KING GHIDORAH' });
+    this.events.emit('ghidorahArrive', {});
   }
 
   update(dt, g) {

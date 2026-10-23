@@ -492,27 +492,32 @@ export const Sound = (function () {
     roarBufs[kind] = buf;
     return buf;
   }
-  // Eigene Schrei-Aufnahmen für Godzilla aus music/ (roar1, roar2 …; bleiben lokal wie die Musik). Fehlen sie, schreit
-  // der Synthesizer. Die 404-Meldungen beim Suchen sind gewollt.
-  var roarFiles = [], roarNext = 0;
+  // Eigene Schrei-Aufnahmen aus music/ (bleiben lokal wie die Musik): roar1… für Godzilla, kg1… für King Ghidorah.
+  // Fehlen sie, schreit der Synthesizer. Die 404-Meldungen beim Suchen sind gewollt.
+  var VOICES = { godzilla: ['roar1', 'roar2', 'roar3'], kg: ['kg1', 'kg2', 'kg3', 'kg4', 'kg5', 'kg6'] };
+  var roarFiles = { godzilla: [], kg: [] }, roarNext = { godzilla: 0, kg: 0 };
   function loadRoarFiles() {
-    ['roar1', 'roar2', 'roar3'].forEach(function (n) {
-      ['ogg', 'mp3', 'm4a', 'wav'].reduce(function (p, ext) {
-        return p.then(function (done) {
-          if (done) return true;
-          return fetch('music/' + n + '.' + ext).then(function (r) { return r.ok ? r.arrayBuffer() : null; })
-            .then(function (ab) { return ab ? ctx.decodeAudioData(ab).then(function (b) { roarFiles.push(b); return true; }) : false; })
-            .catch(function () { return false; });
-        });
-      }, Promise.resolve(false));
-    });
+    Object.keys(VOICES).forEach(function (v) { VOICES[v].forEach(function (n) { loadVoice(v, n); }); });
+  }
+  function loadVoice(v, n) {                               // erste passende Endung gewinnt
+    ['ogg', 'mp3', 'm4a', 'wav'].reduce(function (p, ext) {
+      return p.then(function (done) {
+        if (done) return true;
+        return fetch('music/' + n + '.' + ext).then(function (r) { return r.ok ? r.arrayBuffer() : null; })
+          .then(function (ab) { return ab ? ctx.decodeAudioData(ab).then(function (b) { roarFiles[v].push(b); return true; }) : false; })
+          .catch(function () { return false; });
+      });
+    }, Promise.resolve(false));
   }
 
-  function roar(kind, pitch) {
+  // voice: welche eigenen Aufnahmen ('godzilla' = Standard für kind 'godzilla', 'kg' für King Ghidorah)
+  function roar(kind, pitch, voice) {
     kind = ROARS[kind] ? kind : 'godzilla';
-    if (kind === 'godzilla' && roarFiles.length) {         // eigene Aufnahme, abwechselnd
+    voice = voice || (kind === 'godzilla' ? 'godzilla' : null);
+    var list = voice && roarFiles[voice];
+    if (list && list.length) {                              // eigene Aufnahme, der Reihe nach
       var t0 = ctx.currentTime, s0 = ctx.createBufferSource(), g0 = ctx.createGain();
-      s0.buffer = roarFiles[roarNext++ % roarFiles.length];
+      s0.buffer = list[roarNext[voice]++ % list.length];
       s0.playbackRate.value = pitch || 1;
       g0.gain.value = 0.55;
       s0.connect(g0); g0.connect(sfx);
@@ -532,7 +537,7 @@ export const Sound = (function () {
   }
 
   var fx = {
-    roar: function (a) { roar(a && a.kind, a && a.pitch); },
+    roar: function (a) { roar(a && a.kind, a && a.pitch, a && a.voice); },
     boom: function (big) {
       var t = ctx.currentTime;
       noise(t, big ? 1.1 : 0.5, 'lowpass', big ? 1800 : 2600, 60, big ? 0.9 : 0.5, 0, 0.4);
