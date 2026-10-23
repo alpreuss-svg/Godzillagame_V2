@@ -134,6 +134,10 @@ async function load() {
     fx.dust.emit(e.pos.x, 0, e.pos.z, 3, { spread: 6, up: 1.5, out: 6, size: 12, life: 2 });
   });
   events.on('collapse', e => rig.shake(e.topple ? 0.6 : 0.25));
+  // Heilen durch Zerstörung: Hochhäuser geben am meisten zurück, Häuser kaum
+  const healFx = n => { if (n > 0) { $('hpBar').classList.remove('heal'); void $('hpBar').offsetWidth; $('hpBar').classList.add('heal'); } };
+  events.on('collapse', e => healFx(g.heal(e.b.h > 70 ? HEAL.tower : e.b.h > 25 ? HEAL.mid : HEAL.small)));
+  events.on('unitDestroyed', () => healFx(g.heal(HEAL.unit)));
   events.on('topple', () => rig.shake(1.6));
   events.on('roar', () => rig.shake(1.0));
   events.on('shake', a => rig.shake(a));
@@ -229,7 +233,8 @@ let shownDestroyed = -1, shownUnits = -1, shownObjective = '';
 game.stats = { time: 0 };
 game.endT = 0;
 game.overT = 0;
-const BOSS_AT = 120;          // zerstörte Gebäude, ab denen die Super-X angreift
+const BOSS_AT = 120;
+const HEAL = { tower: 6, mid: 1.5, small: 0.4, unit: 1 };   // Leben pro zerstörtem Gebäude bzw. Einheit          // zerstörte Gebäude, ab denen die Super-X angreift
 
 function objective() {
   const d = game.city.destroyed;

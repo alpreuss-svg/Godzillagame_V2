@@ -13,7 +13,7 @@ const TOPPLE_DAMAGE = 38;          // drei Hochhäuser holen sie herunter
 const BEAM_DPS = 1.5;              // Panzerung: der Strahl kratzt nur
 const CADMIUM_EVERY = 18;          // s; Kadmium nur, wenn Godzilla im Hochhausviertel ist
 const GUN_EVERY = 2.0;
-const SALVO_DAMAGE = 2.5;          // Raketen der Super-X2 (betäuben nicht)
+const SALVO_DAMAGE = 2;          // Raketen der Super-X2 (betäuben nicht)
 
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _d = new THREE.Vector3();
 
@@ -249,7 +249,7 @@ export class SuperX {
 // überhitzt der Spiegel und schmilzt (wie im Film) – danach trifft der Strahl voll. Hochhäuser holen sie weiterhin herunter.
 const MELT = 4.0;                  // s Atomstrahl auf den Spiegel bis zum Schmelzen
 const COOL = 0.25;                 // Abkühlung pro s ohne Strahl
-const REFLECT_DPS = 4;             // Schaden des zurückgeworfenen Strahls an Godzilla
+const REFLECT_DPS = 3;             // Schaden des zurückgeworfenen Strahls an Godzilla
 const MELTED_DPS = 8;              // Strahlschaden nach dem Schmelzen
 const MIRROR = [0, 1, 16.6];       // Spiegelmitte im Modell
 

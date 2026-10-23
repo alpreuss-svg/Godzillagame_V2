@@ -17,8 +17,8 @@ const FORMS = {
       const r = Math.PI / 180 * a, R = 13 - h * 0.06;   // Grad in Blender-XY, vorn = 270°
       return { root: [Math.cos(r) * R, h, -Math.sin(r) * R], dir: [Math.cos(r), 0.35, -Math.sin(r)] };
     }),
-    attackEvery: 2.8, hitDamage: 2.5, grabDps: 1.0, grabChance: 0.25,
-    acidEvery: 9, acidDur: 1.8, acidDps: 1.6, acidRange: 330,
+    attackEvery: 3.0, hitDamage: 2, grabDps: 0.8, grabChance: 0.2,
+    acidEvery: 10, acidDur: 1.8, acidDps: 1.2, acidRange: 330,
     dmg: { beam: 7, core: 2, claw: 6, tail: 9, pulse: 10, vine: 3 },
   },
   beast: {
@@ -26,8 +26,8 @@ const FORMS = {
     core: [0, 40, 23.5], mouth: [0, 75, 44], chest: 45,
     vines: [[24, 48, -8], [-24, 48, -8], [30, 40, 8], [-30, 40, 8], [18, 60, 16], [-18, 60, 16], [34, 30, -14], [-34, 30, -14]]
       .map(([x, h, y]) => ({ root: [x, h, -y], dir: [Math.sign(x) * 0.9, 0.55, -y / 30] })),
-    attackEvery: 2.0, hitDamage: 3, grabDps: 1.4, grabChance: 0.25,
-    acidEvery: 8, acidDur: 2.0, acidDps: 2.2, acidRange: 340,
+    attackEvery: 2.3, hitDamage: 2.4, grabDps: 1.0, grabChance: 0.2,
+    acidEvery: 9, acidDur: 2.0, acidDps: 1.6, acidRange: 340,
     dmg: { beam: 5, core: 2.2, claw: 5, tail: 8, pulse: 8, vine: 3 },
   },
 };

@@ -4,10 +4,10 @@ const KEYS = {
   KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
   KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
   KeyJ: 'claw', KeyK: 'breath', KeyL: 'roar', KeyR: 'pulse',
-  Escape: 'pause', KeyP: 'pause', KeyM: 'mute',
+  Escape: 'pause', KeyP: 'pause', KeyM: 'mute', ShiftLeft: 'sprint', ShiftRight: 'sprint',
 };
-// Standard-Mapping, Xbox-Belegung: A Klaue, B Kernpuls, X Atomstrahl, Y Brüllen, Start Pause
-const PAD = { 0: 'claw', 1: 'pulse', 2: 'breath', 3: 'roar', 9: 'pause' };
+// Standard-Mapping, Xbox-Belegung: A Klaue, B Kernpuls, X Atomstrahl, Y Brüllen, LB/RB/linker Stick Sprint, Start Pause
+const PAD = { 0: 'claw', 1: 'pulse', 2: 'breath', 3: 'roar', 4: 'sprint', 5: 'sprint', 10: 'sprint', 9: 'pause' };
 const DEAD = 0.18;
 
 function dead(v) { return Math.abs(v) < DEAD ? 0 : (v - Math.sign(v) * DEAD) / (1 - DEAD); }

@@ -13,6 +13,9 @@ const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m vorau
 const BREATH_COST = 20;         // Energie pro Sekunde
 const AIM_CONE = 0.35, AIM_HOLD = 0.6, AIM_RANGE = 420;   // Zielerfassung: Fangkegel, Haltekegel (rad), Reichweite (m)
 const PULSE_COST = 30;
+const SPRINT = 1.65;            // Sprint (Shift): Tempo-Faktor, kostet Energie und lädt solange nichts nach
+const SPRINT_COST = 14;         // Energie pro Sekunde
+const ENERGY_REGEN = 6;         // Energie pro Sekunde, wenn weder Strahl noch Sprint
 const CADMIUM_DOWN = 3.5;       // s wehrlos nach einem Kadmium-Treffer
 const CLAW_DAMAGE = 60, TAIL_DAMAGE = 140, PULSE_DAMAGE = 140, BEAM_DPS = 220;   // TAIL_DAMAGE: dickste Stelle, vorn
 // Schwanzglieder für den Hieb, dick -> dünn: Knochen (Kopf = Gelenk), Trefferradius, Anteil am Schaden
@@ -176,6 +179,9 @@ export class Godzilla {
       case 'free': {
         const d = this.turnToward(mag > 0.15 ? _dir : null, TURN_RATE, dt);
         if (mag > 0.15) targetSpeed = WALK_SPEED * mag * Math.max(0, Math.cos(d)) ** 2;
+        // Sprint: nur beim Gehen, solange Energie da ist (Anlauf braucht etwas Reserve)
+        this.sprinting = input.down('sprint') && targetSpeed > 0.5 * WALK_SPEED && this.energy > (this.sprinting ? 0 : 8);
+        if (this.sprinting) targetSpeed *= SPRINT;
         if (input.pressed('claw')) this.attack(0);
         else if (input.pressed('breath') && this.energy > 10) {
           this.firing = false; this.play('breathUpper'); this.enter('breath');
@@ -236,13 +242,23 @@ export class Godzilla {
     this.updateBreathFx(dt);
     this.wave.update(dt);
     this.updateGlow(dt);
-    if (this.state !== 'breath') this.energy = Math.min(100, this.energy + 5 * dt);
+    if (this.state !== 'free') this.sprinting = false;
+    if (this.sprinting) this.energy = Math.max(0, this.energy - SPRINT_COST * dt);
+    else if (this.state !== 'breath') this.energy = Math.min(100, this.energy + ENERGY_REGEN * dt);
     this.hurt = Math.max(0, (this.hurt || 0) - dt * 4);      // Treffer klingen ab
     this.calm = (this.calm || 0) + dt;                      // nach 3 s ohne Treffer erholt er sich
     if (this.calm > 3 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 1.5 * dt);
   }
 
   // ---------- Treffer vom Militär ----------
+  // Heilen (zerstörte Gebäude und Einheiten, main.js)
+  heal(amount) {
+    if (this.state === 'dead' || this.hp >= 100) return 0;
+    const before = this.hp;
+    this.hp = Math.min(100, this.hp + amount);
+    return this.hp - before;
+  }
+
   takeDamage(amount, at) {
     if (this.state === 'dead') return;
     this.hp = Math.max(0, this.hp - amount);
@@ -387,7 +403,7 @@ export class Godzilla {
     for (const [a, w] of this.layers) a.setEffectiveWeight(w * norm);
     const loco = Math.max(0, 1 - sum);
     // Schon ab 30 % Tempo nur noch Gehen, dafür langsamer abgespielt: Mischposen aus Stand und Gehen rutschen
-    const s = Math.min(1, this.speed / WALK_SPEED);
+    const s = this.speed / WALK_SPEED;                 // > 1 beim Sprint: Schritte schneller, Schrittlänge gleich
     const w = Math.min(1, s / 0.3);
     // Drehen im Stand: Treten auf der Stelle statt Stehen, Tempo nach Drehgeschwindigkeit
     const spin = Math.abs(this.turnVel);

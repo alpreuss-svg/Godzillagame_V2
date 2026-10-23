@@ -20,6 +20,8 @@ body { font-family: "Segoe UI", system-ui, sans-serif; color: #d8dde6; user-sele
 .bar i { display: block; height: 100%; width: 100%; transition: width .1s linear; }
 .bar.hp i { background: linear-gradient(90deg, #8a1d16, #e0482c); }
 .bar.en i { background: linear-gradient(90deg, #1d4a9a, #7fd0ff); box-shadow: 0 0 8px #4aa8ff; }
+.bar.hp.heal i { animation: heal .6s ease-out; }
+@keyframes heal { from { background: #7dff8a; box-shadow: 0 0 14px #7dff8a; } }
 #minimap { position: absolute; right: 20px; top: 18px; width: 180px; height: 180px; opacity: .9; border-radius: 3px; }
 #goal { position: absolute; right: 24px; top: 208px; font-size: 13px; letter-spacing: .12em; opacity: .8; text-align: right; line-height: 1.6; }
 

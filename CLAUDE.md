@@ -70,7 +70,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `js/main.js` – Renderer (ACES, Schatten nur vom Mond um Godzilla), Nachtlicht (Hemisphäre, Mond als Gegenlicht im
   Norden, kameragebundenes Fülllicht), Laden, Zustände `loading → title → play ⇄ pause`, kleiner Event-Bus
   (`attack`, `stomp`, `roar`, `breath`, `shake`). Qualität per `?q=low|mid|high`.
-- `js/input.js` – Tastatur + Gamepad (Standard-Mapping: A Klaue, X Atomstrahl, Y Brüllen, B Kernpuls, Start Pause).
+- `js/input.js` – Tastatur + Gamepad (Standard-Mapping: A Klaue, X Atomstrahl, Y Brüllen, B Kernpuls, LB/RB/L3 Sprint,
+  Start Pause); Shift = Sprint.
 - `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt nach **Norden** – kein
   Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl; Nordosten wurde probiert und verworfen, `YAW`). Gesteuert wird
   nach Himmelsrichtung (W = Norden). Mausrad zoomt 320–620 m, Erschütterung bei Treffern. Start: Südwesten der
@@ -80,7 +81,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Delle + Bröseln im Vertex-Shader, Löcher mit dunklen Innenwänden, Ruß und Glutränder am Einschlag, verteilte
   Ruß-/Rissflecken und ausfallende Fenster überall (damit man den Schaden von jeder Seite sieht), `aFx` (−1 = Schutt,
   Bruchhöhe, Knickwinkel, Knickachse) für das Knicken kippender Türme und verglimmende Glut im Schutt.
-- `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), 20 m/s, Gebäude bremsen
+- `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), 20 m/s, **Sprint** mit Shift
+  ×1,65 (33 m/s, `SPRINT`), kostet 14 Energie/s, solange lädt nichts nach (sonst 6/s, `ENERGY_REGEN`) – Wunsch des
+  Nutzers, Godzilla war ihm zu langsam; Laufanimation läuft dann schneller, Füße bleiben synchron. `heal()`: Leben
+  durch Zerstörung (`HEAL` in main.js: Hochhaus 6, mittleres Gebäude 1,5, Haus 0,4, Einheit 1; Leiste blinkt grün). Gebäude bremsen
   erst ab 14 m Höhe (bis 12 / 8 / 4 m/s); die Laufanimation
   ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/`WALK_SPEED` (Füße bleiben synchron); beim Anlaufen
   steigt sie in der Phase ein, in der der linke Fuß unter dem Körper steht (`WALK_ENTRY`, sonst rutschen die Füße).
