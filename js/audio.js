@@ -331,6 +331,33 @@ export const Sound = (function () {
       timp: R('Bb1 . . . F1 . . . Bb1 . . . F1 . F1 .', 4),
       perc: 'c . s s k . s . k . s s k s s s ' + R('k . s s k . s . k . s s k s s s', 3)
     },
+    fukuoka: {  // Fukuoka 1994: unruhig-mystisch, cis-Moll, Synth-Streicher in Quartschichtungen
+      bpm: 98, loop: true,
+      brass: 'C#4 - - - G#4 - - - F#4 - E4 - D#4 - - - ' + 'E4 - - - B3 - - - C#4 - - - - - - - ' +
+        'C#5 - - - B4 - A4 - G#4 - - - E4 - - - ' + 'F#4 - - - D#4 - - - C#4 - - - - - - - ',
+      str: pad(['C#3+E3+G#3', 'A2+C#3+E3', 'F#2+A2+C#3', 'G#2+B#2+D#3']),
+      low: [ost('C#2', 'C#3'), ost('A1', 'A2'), ost('F#1', 'F#2'), ost('G#1', 'G#2')].join(' '),
+      timp: R('C#2 . . . . . G#1 . C#2 . . . . . . .', 4),
+      perc: R('k . . s . . k . k . s . . . k .', 4)
+    },
+    moguera: {  // Moguera-Marsch (eigene Melodie): F-Dur, zackig, Trompetenfanfare
+      bpm: 132, loop: true,
+      brass: 'F4 - - C4 F4 - A4 - C5 - - - A4 - F4 - ' + 'G4 - - E4 C4 - E4 - G4 - - - - - - - ' +
+        'F4 - - C4 F4 - A4 - C5 - - - D5 - C5 - ' + 'Bb4 - A4 - G4 - E4 - F4 - - - - - - - ',
+      str: pad(['F3+A3+C4', 'C3+E3+G3', 'F3+A3+C4', 'Bb2+D3+F3']),
+      low: [ost('F1', 'F2'), ost('C2', 'C3'), ost('F1', 'F2'), ost('Bb1', 'Bb2')].join(' '),
+      timp: R('F1 . . . C2 . . . F1 . . . C2 . C2 .', 4),
+      perc: 'c . s s k . s . k . s s k s s s ' + R('k . s s k . s . k . s s k s s s', 3)
+    },
+    spaceg: {   // SpaceGodzilla: kalt und erhaben, b-Moll, Synth-Chor, langsame Glockentöne
+      bpm: 80, loop: true,
+      brass: 'Bb3 - - - - - - - F4 - - - Gb4 - - - ' + 'F4 - - - Db4 - - - C4 - - - - - - - ' +
+        'Bb4 - - - - - - - A4 - - - Gb4 - - - ' + 'F4 - - - - - - - - - - - . . . . ',
+      str: pad(['Bb2+Db3+F3', 'Gb2+Bb2+Db3', 'Bb2+Db3+F3', 'F2+A2+C3']),
+      low: pad(['Bb1', 'Gb1', 'Bb1', 'F1']),
+      timp: 'Bb1 . . . . . . . . . . . . . . . ' + '. . . . . . . . Gb1 . . . . . . . ' + 'Bb1 . . . . . . . Bb1 . . . . . . . ' + 'F1 . . . F1 . . . F1 . F1 . F1 F1 F1 F1',
+      perc: 'c . . . . . . . . . . . . . . . ' + R('. . . . . . . . k . . . . . . .', 2) + ' r r r r . . . . k . . . k . . .'
+    },
     dance: {
       bpm: 170, loop: false,
       brass: 'C5 C5 . C5 . A4 C5 . D5 . C5 . A4 . G4 . C5 C5 . C5 . A4 C5 . F5 - - - E5 - - -',

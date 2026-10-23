@@ -141,6 +141,36 @@ export const LEVELS = {
     finalGoal: () => 'Mechagodzilla: von vorn saugt er den Strahl auf – greif ihn von hinten an (zweites Gehirn)! Aus den Schockankern befreit nur der Kernpuls.',
     win: ['MECHAGODZILLA IST ZERSTÖRT', 'Rodan und Mechagodzilla sind besiegt'],
   },
+  1994: {
+    key: '6',
+    title: 'Fukuoka 1994 – Godzilla gegen SpaceGodzilla',
+    short: '1994 · SpaceGodzilla',
+    city: 'Fukuoka',
+    // Fukuoka: Hochhäuser in Tenjin, der Fukuoka Tower (234 m) am Wasser von Momochi, der Ōhori-Park, Hafen Hakata
+    layout: {
+      seed: 1994, center: { x: -0.6, z: -0.4 }, towerR: 2.0, officeR: 4.0,
+      parks: [{ i0: -4, i1: -3, j0: -2, j1: -1 }],
+      specials: [{ type: 'ftower', i: 2, j: 3 }],
+      zoneOf(i, j, city) {
+        if (i >= -4 && i <= -3 && j >= -2 && j <= -1) return null;          // Ōhori-Park
+        const z = j * P;
+        if (z > city.bayZ - 2 * P) return 'port';
+        const d = Math.hypot(i * P - city.center.x, z - city.center.z) / P;
+        return d < city.cfg.towerR ? 'tower' : d < city.cfg.officeR ? 'office' : 'mixed';
+      },
+    },
+    start: city => [-3 * P, city.bayZ + 110],
+    boss: 'moguera',
+    bossName: 'MOGUERA',
+    models: ['kaiju94'],
+    final: 'spaceg', finalModel: 'kaiju94',
+    music: { level: ['1994', 'fukuoka'], boss: ['1994_boss', 'moguera'], final: ['1994_final', 'spaceg'] },
+    bossGoal: boss => boss.dead ? 'Moguera ist besiegt' : 'Moguera: Atomstrahl, Klaue und Schwanz – gräbt er sich ein, weich der Staubspur aus!',
+    finalGoal: f => f.towerUp()
+      ? 'SpaceGodzilla zieht Kraft aus dem Fukuoka Tower: zerstöre den Turm (am Wasser) und die Kristalltürme!'
+      : 'Der Energiestrom ist unterbrochen – greif SpaceGodzilla an! Aus dem Sog befreit nur der Kernpuls.',
+    win: ['SPACEGODZILLA IST BESIEGT', 'Moguera und SpaceGodzilla sind besiegt'],
+  },
 };
 
 export function currentLevel() {

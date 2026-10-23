@@ -5,14 +5,14 @@ import bpy, sys, os
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import importlib
-import common, godzilla, gz_anim, city, units, biollante, ghidorah, mothra, kaiju93
-for m in (common, gz_anim, godzilla, city, units, biollante, ghidorah, mothra, kaiju93):
+import common, godzilla, gz_anim, city, units, biollante, ghidorah, mothra, kaiju93, kaiju94
+for m in (common, gz_anim, godzilla, city, units, biollante, ghidorah, mothra, kaiju93, kaiju94):
     importlib.reload(m)
 
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 PREVIEW = '--preview' in args
 args = [a for a in args if not a.startswith('--')]
-WHAT = args[0].split(',') if args else ['godzilla', 'city', 'units', 'biollante', 'ghidorah', 'mothra', 'kaiju93']
+WHAT = args[0].split(',') if args else ['godzilla', 'city', 'units', 'biollante', 'ghidorah', 'mothra', 'kaiju93', 'kaiju94']
 OUT = os.path.normpath(os.path.join(HERE, '..', 'assets', 'models'))
 PRE = os.path.normpath(os.path.join(HERE, '..', 'tools', 'previews'))
 
@@ -108,3 +108,11 @@ if 'kaiju93' in WHAT:
         kaiju93.layout_preview(objs)
         common.preview(os.path.join(PRE, 'kaiju93_rodan.png'), target=(-90, 0, 40), dist=220, elev=40, azim=-70, color='VERTEX')
         common.preview(os.path.join(PRE, 'kaiju93_mecha.png'), target=(60, 0, 40), dist=170, elev=10, azim=-70, color='VERTEX')
+
+if 'kaiju94' in WHAT:
+    common.reset()
+    objs = kaiju94.build()
+    common.export_glb(os.path.join(OUT, 'kaiju94.glb'), objs)
+    if PREVIEW:
+        kaiju94.layout_preview(objs)
+        common.preview(os.path.join(PRE, 'kaiju94.png'), target=(0, 0, 35), dist=170, elev=12, azim=-70, color='VERTEX')

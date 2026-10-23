@@ -79,7 +79,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Fenstern, Stahlträger, verkohlte Brocken).
   Custom Property `size` (Breite, Tiefe, Höhe in m) landet als glTF-`extras` im Export. Wahrzeichen (nur über
   `specials` eines Levels gesetzt): `B_landmark` (Yokohama Landmark Tower, 186 m, gestuft mit eingezogenen Ecken),
-  `B_wheel` (Riesenrad Cosmo Clock, 102 m, leuchtende Gondeln), `B_messe` (Makuhari Messe, flache Halle mit Tonnendach).
+  `B_wheel` (Riesenrad Cosmo Clock, 102 m, leuchtende Gondeln), `B_messe` (Makuhari Messe, flache Halle mit Tonnendach), `B_ftower` (Fukuoka Tower, 234 m, Dreiecksschaft).
 - `blender/units.py` – Panzer Typ 74, Raketen-LKW, AH-1 (+ Rotor separat), **Super-X**, **Super-X2** (dunkler
   Pfeilrumpf, Triebwerksgondeln, goldener Fire Mirror am Bug, Material `mirror`), Auto, Yamanote-Zug, Frachter,
   Baum, Laterne, Strommast, Trümmer (`U_debris0..2`). Läuft unter Blender 5.2, Vorschau geprüft.
@@ -105,6 +105,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   waagrecht (XY), linker nach +X, Gelenk `WING_ROOT` (muss zu moths.js passen); Muster als Bild aus den Umrissen.
 - `blender/kaiju93.py` – Rodan (`RO_body`, `RO_wing`) und Mechagodzilla in Gelenkteilen (`MG_torso`, `MG_head`,
   `MG_arm`, `MG_thigh`, `MG_shin`, `MG_garuda`; Ursprung je Teil im Gelenk `JOINTS`, muss zu kaiju93.js passen).
+- `blender/kaiju94.py` – Moguera (`MOG_body` auf Ketten, `MOG_drill` für Nase und Hände, `DRILLS`) und `SG_crystal`
+  (Kristallgruppe für SpaceGodzillas Schultern/Stirn und die Kristalltürme).
 - `vendor/three/` – Three.js 0.170.0 (build + GLTFLoader, BufferGeometryUtils, SkeletonUtils), per Importmap.
 - `assets/models/godzilla.glb`, `city.glb`, `units.glb`, `biollante.glb`, `ghidorah.glb` – aktuelle Exporte (Monster
   lädt nur das Level, das sie braucht: `models` in levels.js).
@@ -204,6 +206,13 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   schwerfällig (Gelenkgruppen, prozeduraler Gang, Schwanz als Kette), Augenlaser, Mega-Buster, Schockanker (halten
   fest, nur der Kernpuls befreit), Plasmagranate (Strahl von vorn macht 30 % Schaden und lädt einen Rückschuss),
   von hinten trifft alles das zweite Gehirn (×2,5); bei halber Kraft dockt Garuda an (Super-Mechagodzilla, Kanonen).
+- `js/kaiju94.js` – 1994: `Moguera` (Boss): landet mit Triebwerken, rollt auf Ketten heran (walzt Gebäude nieder),
+  Plasma-Maser, Spiralraketen (abschießbar), gräbt sich ein, wühlt mit Staubspur unter der Erde zu Godzilla und bricht
+  unter ihm hervor (7 Schaden), danach 2,5 s benommen (doppelter Schaden). `SpaceGodzilla` (Endgegner): umgefärbte
+  `SkeletonUtils`-Kopie von Godzilla (eigene Animationen, Kristalle an spine2/head), schwebt, Korona-Strahl,
+  Kristallgeschosse, Gravitationssog (hält fest, nur der Kernpuls befreit). Kraft über den Fukuoka Tower (Schild:
+  nur 30 % Schaden, heilt) und 4 Kristalltürme (heilen, zerstörbar), sichtbar als violette Energieströme. Die
+  Endgegner-Klasse bekommt alle geladenen Modelle (`models`) als 7. Argument.
 - `js/moths.js` – 1992: `Battra` (Boss-Rolle) in zwei Stufen – Larve (Kette 120 m mit Kopf, kriecht aus der Bucht,
   folgt ihrer Spur wie eine Schlange, walzt Gebäude nieder, rammt mit dem Horn (6 Schaden, stößt Godzilla zurück),
   roter Prismenstrahl aus dem Horn), besiegt gräbt sie sich ein und steigt als Falter auf (fliegt, rote Strahlen aus
@@ -241,7 +250,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (additive Kegel auf Kreuzungen um Godzilla, tasten ihn langsam ab – 5 schnelle waren dem Nutzer zu viel), feste Anzahl Punktlichter an den nächsten Bränden
   (Anzahl je Qualitätsstufe, nie wechselnd – sonst übersetzt Three.js die Shader neu). Filmkorn per CSS (`#grain`).
 - `js/audio.js` – Audio aus Teil 1 als ES-Modul (`Sound`: Orchester-Synth, Schrei als gestrichene Saite, Effekte) plus
-  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989, `sapporo` / `ghidorah` / `mecha` für 1991, `yokohama` / `battra` / `mothra` für 1992, `makuhari` / `rodan` / `gforce` für 1993). `Music` spielt pro
+  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989, `sapporo` / `ghidorah` / `mecha` für 1991, `yokohama` / `battra` / `mothra` für 1992, `makuhari` / `rodan` / `gforce` für 1993, `fukuoka` / `moguera` / `spaceg` für 1994). `Music` spielt pro
   Platz (title, level, boss, over, win; level/boss stellt `Music.setLevel()` je Level um) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
   Suchen sind gewollt), sonst das Synth-Stück. Ton startet mit der ersten Taste (Browser-Regel), M schaltet stumm.
   Ereignis → Geräusch in `hookSounds()` (main.js), häufige Ereignisse gedrosselt.
@@ -264,7 +273,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   King Ghidorah, danach Mecha-King Ghidorah), **1992 Yokohama** (Minato Mirai mit Landmark Tower am Wasser, Riesenrad
   am Hafen, Chinatown als `neon`, Yamashita-Park; Battra, danach Mothra; Wahrzeichen über `layout.specials`
   {type, i, j}, die einen Block belegen), **1993 Makuhari** (Bürotürme, drei Messehallen am Wasser, Strandpark;
-  Rodan/Fire Rodan, danach Mechagodzilla). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
+  Rodan/Fire Rodan, danach Mechagodzilla), **1994 Fukuoka** (Tenjin-Hochhäuser, Fukuoka Tower am Wasser,
+  Ōhori-Park, Hafen; Moguera, danach SpaceGodzilla). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
   `finalGone`.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes (eine aufwendigere Strahl-
   Optik mit Spiralen, Pulsen und Funken gefiel dem Nutzer nicht und wurde zurückgebaut). `Lightning`: Ghidorahs Blitze

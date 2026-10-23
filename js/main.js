@@ -14,8 +14,9 @@ import { Biollante } from './biollante.js';
 import { KingGhidorah, MechaKingGhidorah } from './ghidorah.js';
 import { Battra, Mothra } from './moths.js';
 import { Rodan, Mechagodzilla } from './kaiju93.js';
-const BOSSES = { superx: SuperX, superx2: SuperX2, ghidorah: KingGhidorah, battra: Battra, rodan: Rodan };
-const FINALS = { biollante: Biollante, mecha: MechaKingGhidorah, mothra: Mothra, mechag: Mechagodzilla };
+import { Moguera, SpaceGodzilla } from './kaiju94.js';
+const BOSSES = { superx: SuperX, superx2: SuperX2, ghidorah: KingGhidorah, battra: Battra, rodan: Rodan, moguera: Moguera };
+const FINALS = { biollante: Biollante, mecha: MechaKingGhidorah, mothra: Mothra, mechag: Mechagodzilla, spaceg: SpaceGodzilla };
 import { LEVELS, currentLevel } from './levels.js';
 import { Atmosphere } from './atmosphere.js';
 import { Water } from './water.js';
@@ -111,7 +112,7 @@ async function load() {
   game.city = new City(city, scene, fx, events, LV.layout);
   game.military = new Military(units, scene, fx, events, game.city);
   game.boss = new BOSSES[LV.boss](units, scene, fx, events, game.military, models);
-  game.final = LV.final ? new FINALS[LV.final](models[LV.finalModel], scene, fx, events, fx.glow, game.military) : null;
+  game.final = LV.final ? new FINALS[LV.final](models[LV.finalModel], scene, fx, events, fx.glow, game.military, models) : null;
   for (const m of [game.boss, game.final]) if (m) m.camera = camera;     // Blitzbänder richten sich zur Kamera aus
   game.minimap = new MiniMap($('minimap'), game.city);
   game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
@@ -208,6 +209,9 @@ async function load() {
     $('boss').hidden = false; $('bossName').textContent = game.final.label;
     cinema(e.title, 4.5);
   });
+  // 1994: Moguera und SpaceGodzilla
+  events.on('mogDazed', () => once2('dazed', 8, () => toast('Moguera ist benommen – jetzt trifft alles doppelt!', 2)));
+  events.on('crystalDown', e => toast(e.left ? `Kristallturm zerstört – noch ${e.left}` : 'Alle Kristalltürme sind zerstört!', 2.5));
   // 1993: Rodan und Mechagodzilla
   events.on('rodanFire', e => { cinema(e.title, 4); $('bossName').textContent = game.boss.label; });
   events.on('rodanGift', () => toast('Rodans Lebensenergie geht auf Godzilla über – der Atomstrahl ist stärker!', 4));
@@ -223,7 +227,7 @@ async function load() {
   events.on('biollanteBurn', () => toast('Die Rose verbrennt …', 3));
   events.on('biollanteSpores', () => toast('Goldene Sporen steigen auf – sie verwandelt sich!', 3.5));
   events.on('vineGrab', () => toast('Eine Ranke hält Godzilla fest – Klaue oder Kernpuls!', 2.5));
-  events.on('grabStart', e => e.kind === 'anchors' ? toast('Schockanker! Nur der Kernpuls (R) befreit Godzilla!', 3.5) : toast(e.kind === 'heads' ? 'King Ghidorah hält Godzilla mit zwei Köpfen fest – nur der Kernpuls (R) befreit!' : 'Greifhaken! Nur der Kernpuls (R) befreit Godzilla!', 3.5));
+  events.on('grabStart', e => e.kind === 'gravity' ? toast('Gravitationssog! Nur der Kernpuls (R) befreit Godzilla!', 3.5) : e.kind === 'anchors' ? toast('Schockanker! Nur der Kernpuls (R) befreit Godzilla!', 3.5) : toast(e.kind === 'heads' ? 'King Ghidorah hält Godzilla mit zwei Köpfen fest – nur der Kernpuls (R) befreit!' : 'Greifhaken! Nur der Kernpuls (R) befreit Godzilla!', 3.5));
   events.on('bindStart', () => toast('Ranken fesseln Godzilla – befreie dich mit Atomstrahl (K) oder Kernpuls (R)!', 3.5));
   events.on('biteStart', () => toast('Biollante hat Godzillas Kopf im Maul – Atomstrahl in den Schlund (K)!', 3.5));
   events.on('holdFree', e => { if (e.how === 'beam' && e.kind === 'bite') toast('Volltreffer in den Schlund!', 2); });
@@ -394,6 +398,9 @@ function hookSounds() {
   events.on('mothraRoar', () => once('mothRoar', 2, () => Sound.sfx('roar', { kind: 'rodan', voice: 'moth', pitch: Sound.hasVoice('moth') ? 1 : 1.25 })));
   events.on('prismBeam', () => Sound.sfx('zap'));
   events.on('rodanRoar', () => once('roRoar', 2, () => Sound.sfx('roar', { kind: 'rodan', voice: 'rodan', pitch: Sound.hasVoice('rodan') ? 1 : 0.85 })));
+  events.on('mogRoar', () => Sound.sfx('roar', { kind: 'mecha', voice: 'moguera', pitch: 1.1 }));
+  events.on('sgRoar', () => once('sgRoar', 2, () => Sound.sfx('roar', { kind: 'godzilla', voice: 'sg', pitch: Sound.hasVoice('sg') ? 1 : 1.25 })));
+  events.on('mogMissiles', () => Sound.sfx('shot'));
   events.on('mgRoar', () => Sound.sfx('roar', { kind: 'mecha', voice: 'mg' }));
   events.on('megaBuster', () => { Sound.sfx('zap'); Sound.sfx('charge', 0.5); });
   events.on('plasmaGrenade', () => { Sound.sfx('boom', true); Sound.sfx('zap'); });

@@ -368,6 +368,18 @@ def _(bm, uv):   # Makuhari Messe: lange, flache Ausstellungshalle mit gewölbte
     return (W, D, 28)
 
 
+@building('ftower')
+def _(bm, uv):   # Fukuoka Tower: 234 m, schlanker Dreiecksschaft aus Spiegelglas, Aussichtskanzel, Antennenspitze
+    tri = [(0, -14), (12, 7), (-12, 7)]
+    prism(bm, uv, tri, 0, 120, 'glass', 'roof', STYLES['glass'][1])
+    prism(bm, uv, [(x * 0.8, y * 0.8) for x, y in tri], 120, 116 + 80, 'glass', 'roof', STYLES['glass'][1])
+    prism(bm, uv, [(x * 1.4, y * 1.4) for x, y in tri], 116, 126, 'office', 'roof', STYLES['office'][1])   # Kanzel
+    box(bm, uv, 3, 3, 196, 34, 'metal', 'metal', 0, 0, (4, 4))
+    box(bm, uv, 2, 2, 230, 4, 'red', 'red', 0, 0, (4, 4))
+    box(bm, uv, 30, 26, 0, 8, 'shop', 'roof')
+    return (30, 26, 234)
+
+
 @building('office_a')
 def _(bm, uv):
     box(bm, uv, 24, 22, 0, 42, 'office'); rooftop(bm, uv, 24, 22, 42)
