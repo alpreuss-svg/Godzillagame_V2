@@ -73,7 +73,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Delle + Bröseln im Vertex-Shader, Löcher mit dunklen Innenwänden, Ruß und Glutränder am Einschlag, verteilte
   Ruß-/Rissflecken und ausfallende Fenster überall (damit man den Schaden von jeder Seite sieht), `aFx` (−1 = Schutt,
   Bruchhöhe, Knickwinkel, Knickachse) für das Knicken kippender Türme und verglimmende Glut im Schutt.
-- `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), ~18 m/s; die Laufanimation
+- `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), 20 m/s, Gebäude bremsen
+  erst ab 14 m Höhe (bis 12 / 8 / 4 m/s); die Laufanimation
   ist ab 30 % Tempo voll gewichtet und läuft mit Zeitskala = Tempo/`WALK_SPEED` (Füße bleiben synchron); beim Anlaufen
   steigt sie in der Phase ein, in der der linke Fuß unter dem Körper steht (`WALK_ENTRY`, sonst rutschen die Füße).
   Drehen: Trägheit (max. 63°/s, `TURN_ACCEL`), gedreht wird um den Standfuß und fast nur, solange ein Fuß in der
