@@ -13,7 +13,7 @@ const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m vorau
 const BREATH_COST = 20;         // Energie pro Sekunde
 const AIM_CONE = 0.35, AIM_HOLD = 0.6, AIM_RANGE = 420;   // Zielerfassung: Fangkegel, Haltekegel (rad), Reichweite (m)
 const PULSE_COST = 30;
-const CADMIUM_DOWN = 6;         // s wehrlos nach einem Kadmium-Treffer
+const CADMIUM_DOWN = 3.5;       // s wehrlos nach einem Kadmium-Treffer
 const CLAW_DAMAGE = 60, TAIL_DAMAGE = 140, PULSE_DAMAGE = 140, BEAM_DPS = 220;   // TAIL_DAMAGE: dickste Stelle, vorn
 // Schwanzglieder für den Hieb, dick -> dünn: Knochen (Kopf = Gelenk), Trefferradius, Anteil am Schaden
 const TAIL_SEG = [['tail2', 10, 1], ['tail3', 8.5, 0.85], ['tail4', 6.5, 0.6], ['tail5', 4.5, 0.38], ['tail6', 3, 0.22], ['tail7', 2.5, 0.14], ['tail7', 2.2, 0.1]];
@@ -27,7 +27,6 @@ const MOUTH = new THREE.Vector3(0, 72.9, 19.4);   // Maulspitze im Modell (Bind-
 const PLATE_TOP = 74;                              // höchste Platte (Bind-Pose y)
 const GROUND_Y = 5.9;                              // Knöchelhöhe, bis zu der ein Fuß als aufgesetzt gilt
 const STOMP_Y = 7.0;                               // Knöchelhöhe, unter der ein Fuß als aufgesetzt gilt (steht bei 6,6)
-export const BOUNDS = 1500;
 
 const _dir = new THREE.Vector3(), _v = new THREE.Vector3(), _m = new THREE.Matrix4();
 const _fl = new THREE.Vector3(), _fr = new THREE.Vector3(), _tq = new THREE.Quaternion();
@@ -116,6 +115,7 @@ export class Godzilla {
     this.footY = { L: 99, R: 99 };
     this.raycast = null;          // vom Spiel gesetzt: (from, dir, max) -> Abstand
     this.collide = null;          // vom Spiel gesetzt: (mitte, radius, dt) -> Höhe des blockierenden Gebäudes
+    this.bounds = 1000;           // vom Spiel gesetzt: halbe Kartenbreite
   }
 
   get position() { return this.root.position; }
@@ -221,8 +221,9 @@ export class Godzilla {
     p.addScaledVector(this.forward(), this.speed * dt);
     if (this.state === 'free' || this.state === 'breath') this.applyTurn(this.turnVel * dt);
     else { this.turnVel = approach(this.turnVel, 0, TURN_ACCEL * dt); this.wantLead = 0; }
-    p.x = THREE.MathUtils.clamp(p.x, -BOUNDS, BOUNDS);
-    p.z = THREE.MathUtils.clamp(p.z, -BOUNDS, BOUNDS);
+    const B = this.bounds;                                   // Kartenrand (vom Spiel gesetzt), im Süden die Bucht
+    p.x = THREE.MathUtils.clamp(p.x, -B, B);
+    p.z = THREE.MathUtils.clamp(p.z, -B, B + 400);
     this.root.rotation.y = this.heading;
 
     this.updateWeights(dt);

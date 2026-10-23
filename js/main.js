@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Input } from './input.js';
 import { CameraRig } from './camera.js';
 import { Godzilla } from './godzilla.js';
-import { City, BAY_Z, SHINJUKU_POS } from './city.js';
+import { City, P } from './city.js';
 import { MiniMap } from './minimap.js';
 import { Particles, Debris } from './effects.js';
 import { seeThrough } from './buildings.js';
@@ -91,12 +91,13 @@ async function load() {
     debris: new Debris(scene, [0, 1, 2].map(i => units.scene.getObjectByName('U_debris' + i))),
   };
   game.city = new City(city, scene, fx, events);
-  game.military = new Military(units, scene, fx, events);
+  game.military = new Military(units, scene, fx, events, game.city);
   game.boss = new SuperX(units, scene, fx, events, game.military);
-  game.minimap = new MiniMap($('minimap'), game.city, BAY_Z, SHINJUKU_POS);
+  game.minimap = new MiniMap($('minimap'), game.city);
   game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
   const g = game.godzilla = new Godzilla(gz, scene, events);
-  g.position.set(-760, 0, BAY_Z + 160);       // kommt im Südwesten aus der Bucht, Shinjuku gut 1 km nordöstlich
+  g.position.set(-3 * P, 0, game.city.bayZ + 110);   // kommt im Südwesten aus der Bucht, Shinjuku liegt in der Kartenmitte
+  g.bounds = game.city.extent + 60;
   g.raycast = (o, d, max) => game.city.raycast(o, d, max);
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
   g.aimTargets = () => game.military.targets().concat(game.boss.targets());
@@ -157,7 +158,7 @@ function step(dt) {
       if (!game.boss.active && !game.boss.dead && game.city.destroyed >= BOSS_AT) game.boss.start(g.position);
       if (!game.boss.active && !game.boss.dead) game.military.updateWaves(dt, g.position, game.city.destroyed);
       game.military.update(dt, g, game.city);
-      game.boss.update(dt, g);
+      game.boss.update(dt, g, game.city);
       game.minimap.update(dt, g, game.military, game.boss);
       $('bossHp').style.width = game.boss.hp + '%';
       for (const k of ['cinemaT', 'toastT']) if (game[k] > 0 && (game[k] -= dt) <= 0) $(k === 'cinemaT' ? 'cinema' : 'toast').classList.remove('on');
@@ -198,7 +199,7 @@ const BOSS_AT = 120;          // zerstörte Gebäude, ab denen die Super-X angre
 function objective() {
   const d = game.city.destroyed;
   if (d < BOSS_AT) return `Ziel: Verwüste Tokio (${d} / ${BOSS_AT})`;
-  return game.boss.dead ? 'Die Super-X ist besiegt' : 'Lass ein Hochhaus auf die Super-X stürzen!';
+  return game.boss.dead ? 'Die Super-X ist besiegt' : 'Locke die Super-X nach Shinjuku und lass ein Hochhaus auf sie stürzen!';
 }
 
 // Spielende: Bilanz anzeigen, Taste startet neu

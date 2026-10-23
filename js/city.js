@@ -3,13 +3,13 @@ import * as THREE from 'three';
 import { patchBuildingMaterial, addInstanceAttributes } from './buildings.js';
 import { GroundScars, patchGround, Decals } from './ground.js';
 
-const P = 136;                 // Rastermaß: Blockmitten liegen auf Vielfachen von P
+export const P = 136;          // Rastermaß: Blockmitten liegen auf Vielfachen von P
 const ROAD = 26;
 const BLOCK = P - ROAD;
-const N = 10;                  // Blöcke in jede Richtung
-export const BAY_Z = 7.5 * P;  // südlich davon Wasser
-export const SHINJUKU_POS = { x: -1.5 * P, z: 0.5 * P };
-const GROUND_SIZE = P * 2 * (N + 2);
+// Kartenform je Level (in Blöcken): n = Blöcke vom Zentrum nach Ost/West/Nord, bay = Reihe, ab der im Süden Wasser
+// beginnt, center = Mitte des Hochhausviertels, towerR/officeR = Zonenradien. Die Karte ist absichtlich kompakt –
+// eine größere fühlte sich leer an, man kam nicht über das untere Viertel hinaus.
+export const DEFAULT_LAYOUT = { n: 6, bay: 4.5, center: { x: 0, z: -0.5 }, towerR: 2.4, officeR: 4.2, seed: 1984 };
 
 const ZONES = {
   tower: { lots: 2, types: ['tower_glass', 'tower_tri', 'tower_step', 'office_b', 'tower_glass', 'office_a'] },
@@ -17,7 +17,6 @@ const ZONES = {
   mixed: { lots: 4, types: ['shop_a', 'shop_b', 'apt_b', 'house_a', 'house_b', 'house_a', 'house_b'] },
   port: { lots: 2, types: ['warehouse', 'warehouse', 'oiltank'] },
 };
-const SHINJUKU = new THREE.Vector2(-1.5 * P, 0.5 * P);   // gut 1 km vom Start im Südwesten
 
 function rng(seed) {
   return () => {
@@ -28,17 +27,14 @@ function rng(seed) {
   };
 }
 
-function zoneOf(i, j) {
-  const z = j * P;
-  if (z > BAY_Z - 2 * P) return 'port';
-  const d = Math.hypot(i * P - SHINJUKU.x, z - SHINJUKU.y) / P;
-  if (d < 2.4) return 'tower';
-  if (d < 5.5) return 'office';
-  return 'mixed';
-}
-
 export class City {
-  constructor(gltf, scene, fx, events, seed = 1984) {
+  constructor(gltf, scene, fx, events, layout = {}) {
+    const L = this.cfg = { ...DEFAULT_LAYOUT, ...layout };
+    this.n = L.n;
+    this.bayZ = L.bay * P;
+    this.center = { x: L.center.x * P, z: L.center.z * P };
+    this.extent = (L.n + 0.5) * P;                       // halbe Kartenbreite (Rand der äußersten Blöcke)
+    this.groundSize = P * 2 * (L.n + 2);
     this.types = {};
     for (const node of gltf.scene.children) {
       const meshes = [];
@@ -46,11 +42,11 @@ export class City {
       for (const m of meshes) patchBuildingMaterial(m.material);
       this.types[node.name.replace(/^B_/, '')] = { size: node.userData.size || [12, 12, 4], meshes };
     }
-    this.buildings = this.layout(rng(seed));
+    this.buildings = this.layout(rng(L.seed));
     this.instanced = this.instantiate(scene);
-    this.scars = new GroundScars(GROUND_SIZE);
+    this.scars = new GroundScars(this.groundSize);
     this.decals = new Decals(scene);
-    scene.add(makeGround(this.scars), makeWater());
+    scene.add(makeGround(this.scars, this.groundSize), makeWater(this.bayZ));
     this.fx = fx;
     this.events = events;
     this.time = 0;
@@ -73,11 +69,22 @@ export class City {
     });
   }
 
+  zoneOf(i, j) {
+    if (this.cfg.zoneOf) return this.cfg.zoneOf(i, j, this);   // Level mit eigener Aufteilung
+    const z = j * P;
+    if (z > this.bayZ - 2 * P) return 'port';
+    const d = Math.hypot(i * P - this.center.x, z - this.center.z) / P;
+    if (d < this.cfg.towerR) return 'tower';
+    if (d < this.cfg.officeR) return 'office';
+    return 'mixed';
+  }
+
   layout(rand) {
     const out = [];
-    for (let j = -N; j * P < BAY_Z - P * 0.5; j++) {
-      for (let i = -N; i <= N; i++) {
-        const zone = ZONES[zoneOf(i, j)];
+    for (let j = -this.n; j * P < this.bayZ - P * 0.5; j++) {
+      for (let i = -this.n; i <= this.n; i++) {
+        const zone = ZONES[this.zoneOf(i, j)];
+        if (!zone) continue;                                  // Level-Zonen dürfen Blöcke freilassen (Parks, Flüsse)
         const cx = i * P, cz = j * P;
         if (zone === ZONES.tower && rand() < 0.15) {         // ganze Blöcke für die Hotelscheibe
           out.push(this.place('tower_slab', cx, cz, rand() < 0.5 ? 0 : Math.PI));
@@ -133,6 +140,14 @@ export class City {
       for (const im of meshes) im.computeBoundingSphere();
     }
     return list;
+  }
+
+  // Liegt der Punkt in einem stehenden Gebäude? (Geschosse explodieren daran)
+  inside(p) {
+    for (const b of this.buildings) {
+      if (b.alive && p.y < b.h && Math.abs(p.x - b.x) < b.hw && Math.abs(p.z - b.z) < b.hd) return true;
+    }
+    return false;
   }
 
   // Abstand entlang des Strahls bis zum ersten stehenden Gebäude (Achsen-Box-Test). Gebäude, in denen der Startpunkt
@@ -511,7 +526,7 @@ function slab(o, d, lo, hi, t0, t1) {
 }
 
 // Boden: eine Kachel = ein Block samt halber Straße ringsum
-function makeGround(scars) {
+function makeGround(scars, size) {
   const S = 512, px = S / P, c = document.createElement('canvas');
   c.width = c.height = S;
   const g = c.getContext('2d');
@@ -534,7 +549,6 @@ function makeGround(scars) {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.anisotropy = 4;
-  const size = GROUND_SIZE;
   tex.repeat.set(size / P, size / P);
   tex.offset.set(0.5, 0.5);
   const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92 });
@@ -545,11 +559,11 @@ function makeGround(scars) {
   return ground;
 }
 
-function makeWater() {
+function makeWater(bayZ) {
   const w = new THREE.Mesh(new THREE.PlaneGeometry(4000, 2000),
     new THREE.MeshStandardMaterial({ color: 0x0c1a28, roughness: 0.55, metalness: 0.1 }));
   w.rotation.x = -Math.PI / 2;
-  w.position.set(0, 0.3, BAY_Z + 1000);
+  w.position.set(0, 0.3, bayZ + 1000);
   w.receiveShadow = true;
   return w;
 }

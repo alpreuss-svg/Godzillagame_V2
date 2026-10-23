@@ -67,7 +67,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt nach **Norden** – kein
   Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl; Nordosten wurde probiert und verworfen, `YAW`). Gesteuert wird
   nach Himmelsrichtung (W = Norden). Mausrad zoomt 320–620 m, Erschütterung bei Treffern. Start: Südwesten der
-  Karte in der Bucht (`main.js`), Shinjuku (`SHINJUKU` in city.js) liegt gut 1 km nordöstlich (~1 Minute Weg).
+  Karte in der Bucht (`main.js`), Shinjuku liegt in der Kartenmitte (~35 s Weg).
 - `js/buildings.js` – Shader-Patch aller Stadtmaterialien (doppelseitig): Durchsicht-Kreis (Kegel Kamera→Godzilla,
   gerastert verworfen, Uniforms in `seeThrough`), Schaden je Instanz über `aDmg` (Schaden, Trefferpunkt lokal):
   Delle + Bröseln im Vertex-Shader, Löcher mit dunklen Innenwänden, Ruß und Glutränder am Einschlag, verteilte
@@ -107,8 +107,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Angriffen; der Atomstrahl erfasst beim Laden die nächste Einheit im vorderen Kegel und folgt ihr (`AIM_*`).
   Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab.
 - `js/boss.js` – Super-X: erscheint ab 120 zerstörten Gebäuden (`BOSS_AT` in main.js) mit Kinobalken, neue Wellen
-  stoppen. Schwebt in 130–190 m Abstand auf ~52 m Höhe, zwei echte Suchscheinwerfer auf Godzilla, Bordgeschütz und alle
-  14 s zwei Kadmium-Raketen aufs Maul (`cadmium()`: Godzilla 6 s wehrlos in `down`). Kadmium-Raketen lassen sich mit
+  stoppen. Schwebt in 130–190 m Abstand auf ~68 m Höhe, weicht Hochhäusern aus (`avoid`), feuert nur mit freier Sicht
+  (sonst kreist sie schneller weiter), Geschosse explodieren an Gebäuden. Bordgeschütz; Kadmium (alle 18 s zwei Raketen,
+  `cadmium()`: 3,5 s wehrlos) nur, wenn Godzilla im Hochhausviertel steht – sonst nagelt sie ihn auf dem Weg fest. Kadmium-Raketen lassen sich mit
   dem Strahl erfassen und abschießen. Gepanzert: Strahl nur 1,5/s. Schwachstelle wie im Film: ein kippendes Hochhaus,
   dessen Fall-Linie unter ihr durchgeht (`topple`-Ereignis), 38 Schaden – drei Türme. Absturz → Sieg → Bewertung.
 - `js/atmosphere.js` – Nachtstimmung: Regen (LineSegments in einem Kasten um den Blickpunkt), 5 Flak-Suchscheinwerfer
@@ -124,8 +125,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
   Trümmer (InstancedMesh aus `U_debris0..2`, Schwerkraft, ein Abpraller).
-- `js/city.js` – Teststadt: Raster 136 m, Zonen (Shinjuku-Türme um z = −204, gut 1 km nördlich vom Start, Büros,
-  Wohn-/Ladenviertel, Hafen),
+- `js/city.js` – Stadt: Raster 136 m, Kartenform je Level über `layout` (`DEFAULT_LAYOUT`: 6 Blöcke vom Zentrum,
+  Bucht ab Reihe 4,5, Hochhausviertel in der Mitte – eine größere Karte war dem Nutzer zu groß; optional eigene
+  `zoneOf`), Zonen (Türme, Büros, Wohn-/Ladenviertel, Hafen), `city.extent`/`bayZ`/`center` für andere Module,
   Bucht südlich `BAY_Z`, ein InstancedMesh pro Typ und Material (~46 Draw Calls bei ~3900 Gebäuden),
   Raycast für den Strahl (ignoriert Gebäude, in denen das Maul steckt). Zerstörung: HP = 20 + 2,5·Höhe;
   `damage()` (Umkreis, Abfall, Trefferhöhe `height`), `crush()` (Godzillas Körper, 320 Schaden/s, bremst auf 5 bzw.

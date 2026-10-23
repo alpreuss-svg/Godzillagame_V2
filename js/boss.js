@@ -4,12 +4,12 @@
 import * as THREE from 'three';
 
 const SCALE = 1.7;
-const ALT = 52;                    // Schwebehöhe
+const ALT = 68;                    // Schwebehöhe: über Büros, unter den Hochhäusern
 const RANGE = [130, 190];          // Abstand zu Godzilla
 const HP = 100;
 const TOPPLE_DAMAGE = 38;          // drei Hochhäuser holen sie herunter
 const BEAM_DPS = 1.5;              // Panzerung: der Strahl kratzt nur
-const CADMIUM_EVERY = 14;          // s
+const CADMIUM_EVERY = 18;          // s; Kadmium nur, wenn Godzilla im Hochhausviertel ist
 const GUN_EVERY = 2.0;
 
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _d = new THREE.Vector3();
@@ -63,18 +63,20 @@ export class SuperX {
     this.events.emit('bossStart', {});
   }
 
-  update(dt, g) {
+  update(dt, g, city) {
     if (!this.active) return;
     this.t += dt;
     const gz = g.position, p = this.mesh.position;
     if (this.dead) { this.crash(dt); return; }
-    // kreist langsam in Strahlweite, Bug immer auf Godzilla
+    // kreist langsam in Strahlweite, Bug immer auf Godzilla; ist die Sicht verdeckt, kreist sie schneller weiter
     const dist = Math.hypot(p.x - gz.x, p.z - gz.z);
     const want = (RANGE[0] + RANGE[1]) / 2 + Math.sin(this.t * 0.2) * 25;
-    this.angle = Math.atan2(p.z - gz.z, p.x - gz.x) + 0.06 * dt;
+    this.orbit ??= 1;
+    this.angle = Math.atan2(p.z - gz.z, p.x - gz.x) + this.orbit * (this.blocked ? 0.35 : 0.06) * dt;
     const r = dist + THREE.MathUtils.clamp(want - dist, -40 * dt, 40 * dt);
     p.x = gz.x + Math.cos(this.angle) * r;
     p.z = gz.z + Math.sin(this.angle) * r;
+    this.avoid(city);
     p.y += (ALT + 4 * Math.sin(this.t * 0.8) - p.y) * Math.min(1, dt);
     this.mesh.rotation.y = Math.atan2(gz.x - p.x, gz.z - p.z);
     this.mesh.rotation.z = 0.04 * Math.sin(this.t * 0.6);
@@ -85,17 +87,38 @@ export class SuperX {
       const to = _w.set(gz.x, 40, gz.z);
       b.position.copy(from); b.lookAt(to); b.scale.set(1, 1, from.distanceTo(to));
     }
-    // Bordgeschütz und Kadmium
-    if (dist < RANGE[1] + 80) {
+    // Bordgeschütz und Kadmium nur mit freier Sicht; Kadmium nur, wenn Godzilla im Hochhausviertel steht (sonst
+    // könnte sie ihn auf dem Weg dorthin festnageln – die Falle mit den Hochhäusern muss erreichbar bleiben)
+    if ((this.losT = (this.losT || 0) - dt) <= 0) {
+      this.losT = 0.3;
+      const from = _v.copy(p), to = _w.set(gz.x, 70, gz.z), len = from.distanceTo(to);   // Kopfhöhe: nur Hochhäuser verdecken
+      const was = this.blocked;
+      this.blocked = city.raycast(from, to.sub(from).normalize(), len) < len - 35;
+      if (this.blocked && !was && Math.random() < 0.4) this.orbit *= -1;
+    }
+    const inTowers = Math.hypot(gz.x - city.center.x, gz.z - city.center.z) < city.cfg.towerR * 136 + 90;
+    if (dist < RANGE[1] + 80 && !this.blocked) {
       if ((this.gunT -= dt) <= 0) { this.gunT = GUN_EVERY; this.shoot(g, false); }
-      if ((this.cadT -= dt) <= 0) {
+      if (inTowers && (this.cadT -= dt) <= 0) {
         this.cadT = CADMIUM_EVERY;
         this.cadQueue = 2;
         this.events.emit('cadmiumWarning', {});
       }
       if (this.cadQueue > 0 && (this.cadQT = (this.cadQT || 0) - dt) <= 0) { this.cadQueue--; this.cadQT = 0.45; this.shoot(g, true); }
     }
-    this.updateMissiles(dt, g);
+    this.updateMissiles(dt, g, city);
+  }
+
+  // Weicht Gebäuden aus, die höher als die Flughöhe sind (gleitet nicht mehr durch Hochhäuser)
+  avoid(city) {
+    const p = this.mesh.position;
+    for (const b of city.buildings) {
+      if (!b.alive || b.h < p.y - 12) continue;
+      const dx = p.x - b.x, dz = p.z - b.z;
+      const ox = Math.abs(dx) - b.hw - 26, oz = Math.abs(dz) - b.hd - 26;      // 26 m Sicherheitsabstand
+      if (ox >= 0 || oz >= 0) continue;
+      if (ox > oz) p.x += Math.sign(dx || 1) * -ox; else p.z += Math.sign(dz || 1) * -oz;
+    }
   }
 
   shoot(g, cadmium) {
@@ -110,7 +133,7 @@ export class SuperX {
     this.fx.fire.emit(from.x, from.y, from.z, 2, { spread: 1, up: 1, out: 2, size: 5, life: 0.2 });
   }
 
-  updateMissiles(dt, g) {
+  updateMissiles(dt, g, city) {
     const gz = g.position;
     this.missiles = this.missiles.filter(m => {
       m.life -= dt;
@@ -128,6 +151,7 @@ export class SuperX {
         this.scene.remove(m.mesh); m.hp = 0;
         return false;
       }
+      if (city.inside(p)) { this.military.boom(p, 0.4); this.scene.remove(m.mesh); m.hp = 0; return false; }   // trifft ein Gebäude
       if (m.life <= 0 || p.y < 0) { this.scene.remove(m.mesh); m.hp = 0; return false; }
       return true;
     });

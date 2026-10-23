@@ -2,8 +2,7 @@
 // Straßen in Schussposition und feuern auf Godzilla. Godzilla zerstört sie mit allen Angriffen oder zertritt sie.
 import * as THREE from 'three';
 
-const P = 136;                          // Straßenraster der Stadt (city.js): Straßen liegen auf (i + 0,5) · P
-const LAND_Z = 7.5 * P - P;             // nördlich davon Land (Bucht beginnt bei 7,5 P)
+import { P } from './city.js';          // Straßenraster: Straßen liegen auf (i + 0,5) · P
 const SCALE = 1.4;                      // etwas größer als echt, damit man sie aus der Kamerahöhe noch erkennt
 const MAX_UNITS = 9;
 
@@ -23,7 +22,9 @@ const _s = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
 const road = v => (Math.round(v / P - 0.5) + 0.5) * P;     // nächste Straße
 
 export class Military {
-  constructor(units, scene, fx, events) {
+  constructor(units, scene, fx, events, city) {
+    this.edge = city.extent - P;                 // äußerste Straße
+    this.landZ = city.bayZ - P;                  // nördlich davon Land
     this.scene = scene;
     this.fx = fx;
     this.events = events;
@@ -56,8 +57,8 @@ export class Military {
     // Bodentruppen kommen an einer Kreuzung 380–520 m von Godzilla entfernt an, Hubschrauber von weiter außen
     const a = dir, d = T.air ? 650 : 380 + Math.random() * 140;
     let x = gz.x + Math.cos(a) * d, z = gz.z + Math.sin(a) * d;
-    x = THREE.MathUtils.clamp(x, -9.5 * P, 9.5 * P);
-    z = THREE.MathUtils.clamp(z, -9.5 * P, LAND_Z);
+    x = THREE.MathUtils.clamp(x, -this.edge, this.edge);
+    z = THREE.MathUtils.clamp(z, -this.edge, this.landZ);
     mesh.add(this.lights(T.air));
     if (T.air) {
       mesh.position.set(x, 45 + Math.random() * 15, z);
@@ -122,8 +123,8 @@ export class Military {
     const p = u.mesh.position;
     const a = Math.atan2(p.z - gz.z, p.x - gz.x) + (Math.random() - 0.5) * 0.35;   // bleiben beieinander
     const d = lo + Math.random() * (hi - lo);
-    const tx = road(THREE.MathUtils.clamp(gz.x + Math.cos(a) * d, -9.5 * P, 9.5 * P));
-    const tz = road(THREE.MathUtils.clamp(gz.z + Math.sin(a) * d, -9.5 * P, LAND_Z));
+    const tx = road(THREE.MathUtils.clamp(gz.x + Math.cos(a) * d, -this.edge, this.edge));
+    const tz = road(THREE.MathUtils.clamp(gz.z + Math.sin(a) * d, -this.edge, this.landZ));
     u.path = Math.random() < 0.5 ? [new THREE.Vector3(p.x, 0, tz), new THREE.Vector3(tx, 0, tz)]
       : [new THREE.Vector3(tx, 0, p.z), new THREE.Vector3(tx, 0, tz)];
   }

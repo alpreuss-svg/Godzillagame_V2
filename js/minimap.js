@@ -1,29 +1,29 @@
 // Mini-Map oben rechts: Land, Bucht, Gebäude (Hochhäuser heller, zerstörte rot), Godzilla als Pfeil, Militär, Super-X.
 // Die Gebäudeschicht wird nur neu gezeichnet, wenn sich die Zerstörung geändert hat.
 
-const HALF = 1450;                 // dargestellter Ausschnitt: x und z von -HALF bis +HALF (die ganze Stadt samt Bucht)
 
 export class MiniMap {
-  constructor(canvas, city, bayZ, shinjuku) {
+  constructor(canvas, city) {
     this.c = canvas;
     this.g = canvas.getContext('2d');
     this.city = city;
-    this.bayZ = bayZ;
-    this.shinjuku = shinjuku;
+    this.bayZ = city.bayZ;
+    this.shinjuku = city.center;
+    this.half = city.extent + 120;     // dargestellter Ausschnitt: die ganze Stadt samt Rand und Bucht
     this.base = document.createElement('canvas');
     this.base.width = this.base.height = canvas.width;
     this.drawn = -1;
     this.wait = 0;
   }
 
-  px(v) { return (v / HALF * 0.5 + 0.5) * this.c.width; }
+  px(v) { return (v / this.half * 0.5 + 0.5) * this.c.width; }
 
   drawBase() {
-    const g = this.base.getContext('2d'), S = this.base.width, s = S / (2 * HALF);
+    const g = this.base.getContext('2d'), S = this.base.width, s = S / (2 * this.half);
     g.fillStyle = '#16191f'; g.fillRect(0, 0, S, S);
     g.fillStyle = '#0d2236'; g.fillRect(0, this.px(this.bayZ), S, S);          // Bucht
     g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 1;                // Shinjuku
-    g.beginPath(); g.arc(this.px(this.shinjuku.x), this.px(this.shinjuku.z), 2.4 * 136 * s, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(this.px(this.shinjuku.x), this.px(this.shinjuku.z), this.city.cfg.towerR * 136 * s, 0, Math.PI * 2); g.stroke();
     for (const b of this.city.buildings) {
       const w = Math.max(1, b.hw * 2 * s), d = Math.max(1, b.hd * 2 * s);
       g.fillStyle = b.alive ? (b.h > 70 ? '#c9d2de' : b.h > 25 ? '#7d8896' : '#4d5662') : b.ruin ? '#7a3a22' : '#5a2418';
