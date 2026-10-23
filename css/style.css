@@ -20,7 +20,8 @@ body { font-family: "Segoe UI", system-ui, sans-serif; color: #d8dde6; user-sele
 .bar i { display: block; height: 100%; width: 100%; transition: width .1s linear; }
 .bar.hp i { background: linear-gradient(90deg, #8a1d16, #e0482c); }
 .bar.en i { background: linear-gradient(90deg, #1d4a9a, #7fd0ff); box-shadow: 0 0 8px #4aa8ff; }
-#goal { position: absolute; right: 24px; top: 20px; font-size: 13px; letter-spacing: .12em; opacity: .8; text-align: right; line-height: 1.6; }
+#minimap { position: absolute; right: 20px; top: 18px; width: 180px; height: 180px; opacity: .9; border-radius: 3px; }
+#goal { position: absolute; right: 24px; top: 208px; font-size: 13px; letter-spacing: .12em; opacity: .8; text-align: right; line-height: 1.6; }
 
 /* Bildschirme */
 #screen { position: fixed; inset: 0; display: grid; place-items: center; text-align: center;
@@ -43,6 +44,7 @@ h2 { font-size: 42px; letter-spacing: .3em; margin: 0 0 12px; }
 @media (max-width: 600px) {
   .bar { grid-template-columns: 64px 150px; }
   #goal { display: none; }
+  #minimap { width: 120px; height: 120px; }
 }
 
 /* Bossleiste */

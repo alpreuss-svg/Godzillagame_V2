@@ -5,7 +5,7 @@ import * as THREE from 'three';
 const P = 136;                          // Straßenraster der Stadt (city.js): Straßen liegen auf (i + 0,5) · P
 const LAND_Z = 7.5 * P - P;             // nördlich davon Land (Bucht beginnt bei 7,5 P)
 const SCALE = 1.4;                      // etwas größer als echt, damit man sie aus der Kamerahöhe noch erkennt
-const MAX_UNITS = 14;
+const MAX_UNITS = 9;
 
 const TYPES = {
   tank: { model: 'U_tank', hp: 30, speed: 12, range: [170, 300], reload: 3.4, weapon: 'shell' },
@@ -13,9 +13,9 @@ const TYPES = {
   heli: { model: 'U_heli', hp: 18, speed: 34, range: [140, 220], reload: 4.0, weapon: 'rockets', air: true },
 };
 const WEAPONS = {
-  shell: { speed: 320, damage: 1.3, size: 1.6, color: 0xffc070, homing: 0, trail: false },
-  missile: { speed: 130, damage: 1.7, size: 2.2, color: 0xffe0b0, homing: 1.4, trail: true },
-  rocket: { speed: 170, damage: 0.9, size: 1.6, color: 0xffd090, homing: 0.4, trail: true },
+  shell: { speed: 320, damage: 0.45, size: 1.2, color: 0xffc070, homing: 0, trail: false },
+  missile: { speed: 130, damage: 0.6, size: 1.1, color: 0xffe0b0, homing: 1.4, trail: true },
+  rocket: { speed: 170, damage: 0.35, size: 0.8, color: 0xffd090, homing: 0.4, trail: true },
 };
 
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion();
@@ -46,7 +46,7 @@ export class Military {
   }
 
   // ---------- Erzeugen ----------
-  spawn(type, gz) {
+  spawn(type, gz, dir = Math.random() * Math.PI * 2) {
     if (this.units.length >= MAX_UNITS) return null;
     const T = TYPES[type];
     const mesh = this.models[T.model].clone();
@@ -54,7 +54,7 @@ export class Military {
     mesh.traverse(o => { if (o.isMesh) o.castShadow = false; });
     const u = { type, T, mesh, hp: T.hp, reload: 1 + Math.random() * T.reload, path: [], heading: 0, burst: 0, t: 0 };
     // Bodentruppen kommen an einer Kreuzung 380–520 m von Godzilla entfernt an, Hubschrauber von weiter außen
-    const a = Math.random() * Math.PI * 2, d = T.air ? 650 : 380 + Math.random() * 140;
+    const a = dir, d = T.air ? 650 : 380 + Math.random() * 140;
     let x = gz.x + Math.cos(a) * d, z = gz.z + Math.sin(a) * d;
     x = THREE.MathUtils.clamp(x, -9.5 * P, 9.5 * P);
     z = THREE.MathUtils.clamp(z, -9.5 * P, LAND_Z);
@@ -103,15 +103,16 @@ export class Military {
     this.waveT = (this.waveT ?? 6) - dt;
     if (this.waveT > 0) return;
     this.wave = (this.wave || 0) + 1;
-    const w = this.wave + Math.floor(rage / 25);              // Zerstörung treibt die Eskalation
-    this.waveT = Math.max(9, 22 - w);
+    const w = this.wave + Math.floor(rage / 40);              // Zerstörung treibt die Eskalation (langsam)
+    this.waveT = Math.max(20, 34 - w);
     const plan = ['tank', 'tank'];
-    if (w >= 2) plan.push('truck');
-    if (w >= 3) plan.push('heli');
-    if (w >= 4) plan.push('tank', 'truck');
-    if (w >= 6) plan.push('heli', 'tank');
-    if (w >= 8) plan.push('truck', 'heli');
-    for (const t of plan) this.spawn(t, gz);
+    if (w >= 3) plan.push('truck');
+    if (w >= 5) plan.push('heli');
+    if (w >= 7) plan.push('tank');
+    if (w >= 9) plan.push('truck');
+    // eine Welle rückt geschlossen aus einer Richtung an
+    const dir = Math.random() * Math.PI * 2;
+    for (const t of plan) this.spawn(t, gz, dir + (Math.random() - 0.5) * 0.35);
     this.events.emit('wave', { n: this.wave });
   }
 
@@ -119,7 +120,7 @@ export class Military {
   plan(u, gz) {
     const [lo, hi] = u.T.range;
     const p = u.mesh.position;
-    const a = Math.atan2(p.z - gz.z, p.x - gz.x) + (Math.random() - 0.5) * 0.8;
+    const a = Math.atan2(p.z - gz.z, p.x - gz.x) + (Math.random() - 0.5) * 0.35;   // bleiben beieinander
     const d = lo + Math.random() * (hi - lo);
     const tx = road(THREE.MathUtils.clamp(gz.x + Math.cos(a) * d, -9.5 * P, 9.5 * P));
     const tz = road(THREE.MathUtils.clamp(gz.z + Math.sin(a) * d, -9.5 * P, LAND_Z));
@@ -139,7 +140,7 @@ export class Military {
       u.reload -= dt;
       if (u.reload <= 0 && dist < u.T.range[1] + 60 && (u.T.air || !u.path.length)) {
         u.reload = u.T.reload * (0.8 + Math.random() * 0.4);
-        u.burst = u.T.weapon === 'missiles' ? 4 : u.T.weapon === 'rockets' ? 3 : 1;
+        u.burst = u.T.weapon === 'missiles' ? 2 : u.T.weapon === 'rockets' ? 2 : 1;
       }
       if (u.burst > 0 && (u.burstT = (u.burstT || 0) - dt) <= 0) {
         u.burst--;
@@ -222,7 +223,7 @@ export class Military {
         s.vel.lerp(_v, Math.min(1, s.W.homing * dt));
       }
       s.pos.addScaledVector(s.vel, dt);
-      if (s.W.trail && Math.random() < 0.7) this.fx.dust.emit(s.pos.x, s.pos.y, s.pos.z, 1, { spread: 0.5, up: 0.3, out: 0.5, size: 4, life: 1.6, color: [0.3, 0.3, 0.3] });
+      if (s.W.trail && Math.random() < 0.35) this.fx.dust.emit(s.pos.x, s.pos.y, s.pos.z, 1, { spread: 0.4, up: 0.3, out: 0.4, size: 2.5, life: 1.2, color: [0.3, 0.3, 0.3] });
       // Treffer: Abstand zu einer Kapsel um Godzillas Rumpf (Füße bis Kopf)
       const dy = THREE.MathUtils.clamp(s.pos.y, 6, 72);
       const hit = Math.hypot(s.pos.x - gz.x, s.pos.z - gz.z, s.pos.y - dy) < 15;

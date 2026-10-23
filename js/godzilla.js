@@ -2,8 +2,8 @@
 import * as THREE from 'three';
 import { Beam, Shockwave } from './effects.js';
 
-// Muss zur Laufanimation passen (gz_anim.py: WALK_DIST / WALK_T = 35 m / 1,95 s), sonst gleiten die Füße
-const WALK_SPEED = 35 / 1.95;   // ~18 m/s bei vollem Ausschlag
+// Muss zur Laufanimation passen (gz_anim.py: WALK_DIST / WALK_T = 35 m / 1,75 s), sonst gleiten die Füße
+const WALK_SPEED = 35 / 1.75;   // 20 m/s bei vollem Ausschlag
 const TURN_RATE = 1.1;          // rad/s höchste Drehgeschwindigkeit (~63°/s)
 const TURN_ACCEL = 2.6;         // rad/s² – ein schwerer Körper kommt nur langsam in Drehung und wieder heraus
 const TURN_SPEED = 0.85 / 1.3;  // rad/s, bei dem die Trittanimation (gz_anim: turn, 1,3 s) in Originaltempo läuft
@@ -215,7 +215,8 @@ export class Godzilla {
     const p = this.position;
     if (this.collide && this.speed > 0.5) {
       const block = this.collide(_v.copy(p).addScaledVector(this.forward(new THREE.Vector3()), 7), BODY_RADIUS, dt);
-      if (block > 0) this.speed = Math.min(this.speed, block > 60 ? 2.5 : 5);
+      // Häuser bremsen gar nicht, mittlere Gebäude etwas, nur Hochhäuser deutlich
+      if (block > 14) this.speed = Math.min(this.speed, block > 70 ? 4 : block > 35 ? 8 : 12);
     }
     p.addScaledVector(this.forward(), this.speed * dt);
     if (this.state === 'free' || this.state === 'breath') this.applyTurn(this.turnVel * dt);
@@ -235,8 +236,8 @@ export class Godzilla {
     this.updateGlow(dt);
     if (this.state !== 'breath') this.energy = Math.min(100, this.energy + 5 * dt);
     this.hurt = Math.max(0, (this.hurt || 0) - dt * 4);      // Treffer klingen ab
-    this.calm = (this.calm || 0) + dt;                      // nach 5 s ohne Treffer erholt er sich langsam
-    if (this.calm > 5 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 0.6 * dt);
+    this.calm = (this.calm || 0) + dt;                      // nach 3 s ohne Treffer erholt er sich
+    if (this.calm > 3 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 1.5 * dt);
   }
 
   // ---------- Treffer vom Militär ----------

@@ -73,8 +73,8 @@ def hips_drop(dz):
 
 
 # Gang: ein Zyklus = zwei Schritte. Ein aufgesetzter Fuß wandert relativ zum Körper genau mit Laufgeschwindigkeit
-# nach hinten, steht also auf dem Boden still. Das Spiel muss WALK_DIST / WALK_T (= 35 / 1,95 ≈ 18 m/s) laufen.
-WALK_T = 1.95         # s pro Zyklus -> knapp ein Schritt pro Sekunde, schwer und gemessen
+# nach hinten, steht also auf dem Boden still. Das Spiel muss WALK_DIST / WALK_T (= 35 / 1,75 = 20 m/s) laufen.
+WALK_T = 1.75         # s pro Zyklus -> gut ein Schritt pro Sekunde
 STANCE = 0.6          # Anteil Bodenkontakt je Fuß (Doppelstand beim Aufsetzen)
 REACH = 21.0          # m, die ein Fuß relativ zum Körper während des Bodenkontakts zurücklegt
 WALK_DIST = REACH / STANCE

@@ -8,6 +8,7 @@ const ROAD = 26;
 const BLOCK = P - ROAD;
 const N = 10;                  // Blöcke in jede Richtung
 export const BAY_Z = 7.5 * P;  // südlich davon Wasser
+export const SHINJUKU_POS = { x: -1.5 * P, z: 0.5 * P };
 const GROUND_SIZE = P * 2 * (N + 2);
 
 const ZONES = {
@@ -16,7 +17,7 @@ const ZONES = {
   mixed: { lots: 4, types: ['shop_a', 'shop_b', 'apt_b', 'house_a', 'house_b', 'house_a', 'house_b'] },
   port: { lots: 2, types: ['warehouse', 'warehouse', 'oiltank'] },
 };
-const SHINJUKU = new THREE.Vector2(0, -1.5 * P);   // nah genug, dass man die Türme vom Hafen aus sieht
+const SHINJUKU = new THREE.Vector2(-1.5 * P, 0.5 * P);   // gut 1 km vom Start im Südwesten
 
 function rng(seed) {
   return () => {

@@ -4,7 +4,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Input } from './input.js';
 import { CameraRig } from './camera.js';
 import { Godzilla } from './godzilla.js';
-import { City, BAY_Z } from './city.js';
+import { City, BAY_Z, SHINJUKU_POS } from './city.js';
+import { MiniMap } from './minimap.js';
 import { Particles, Debris } from './effects.js';
 import { seeThrough } from './buildings.js';
 import { Military } from './military.js';
@@ -92,9 +93,10 @@ async function load() {
   game.city = new City(city, scene, fx, events);
   game.military = new Military(units, scene, fx, events);
   game.boss = new SuperX(units, scene, fx, events, game.military);
+  game.minimap = new MiniMap($('minimap'), game.city, BAY_Z, SHINJUKU_POS);
   game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
   const g = game.godzilla = new Godzilla(gz, scene, events);
-  g.position.set(-1200, 0, BAY_Z + 200);      // kommt im Südwesten der Karte aus der Bucht
+  g.position.set(-760, 0, BAY_Z + 160);       // kommt im Südwesten aus der Bucht, Shinjuku gut 1 km nordöstlich
   g.raycast = (o, d, max) => game.city.raycast(o, d, max);
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
   g.aimTargets = () => game.military.targets().concat(game.boss.targets());
@@ -156,6 +158,7 @@ function step(dt) {
       if (!game.boss.active && !game.boss.dead) game.military.updateWaves(dt, g.position, game.city.destroyed);
       game.military.update(dt, g, game.city);
       game.boss.update(dt, g);
+      game.minimap.update(dt, g, game.military, game.boss);
       $('bossHp').style.width = game.boss.hp + '%';
       for (const k of ['cinemaT', 'toastT']) if (game[k] > 0 && (game[k] -= dt) <= 0) $(k === 'cinemaT' ? 'cinema' : 'toast').classList.remove('on');
       game.fx.debris.update(dt);

@@ -44,8 +44,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Klauenhieb: hoch und nach außen ausholen, diagonal über den Körper schlagen, Oberkörper dreht mit (`ARM_OUT`
   = Vorzeichen fürs Abspreizen). `turn`: Treten auf der Stelle (IK), für das Drehen im Stand.
   **Gang und Stand per inverser Kinematik** (`leg_ik`, Seitenebene, Knie nach vorn): Knöchel steht auf Bodenhöhe 5,6 m,
-  ein aufgesetzter Fuß wandert relativ zum Körper mit genau Laufgeschwindigkeit nach hinten. Zyklus 1,95 s, 35 m
-  (`WALK_DIST / WALK_T` ≈ 18 m/s) – `WALK_SPEED` in `js/godzilla.js` muss dazu passen, sonst gleiten die Füße.
+  ein aufgesetzter Fuß wandert relativ zum Körper mit genau Laufgeschwindigkeit nach hinten. Zyklus 1,75 s, 35 m
+  (`WALK_DIST / WALK_T` = 20 m/s) – `WALK_SPEED` in `js/godzilla.js` muss dazu passen, sonst gleiten die Füße.
   Die Hüfte dreht/kippt beim Gehen nicht (sonst wandern die Hüftgelenke), das Wiegen steckt in `spine1`.
 - `blender/city.py` – Gebäudebaukasten mit prozeduralen Fassaden (Tag + leuchtende Nachtfenster als Emission),
   Typen `B_tower_glass`, `B_tower_tri`, `B_tower_slab`, `B_tower_step`, `B_office_a/b/c`, `B_apt_a/b`, `B_shop_a/b`,
@@ -67,7 +67,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt nach **Norden** – kein
   Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl; Nordosten wurde probiert und verworfen, `YAW`). Gesteuert wird
   nach Himmelsrichtung (W = Norden). Mausrad zoomt 320–620 m, Erschütterung bei Treffern. Start: Südwesten der
-  Karte in der Bucht (`main.js`).
+  Karte in der Bucht (`main.js`), Shinjuku (`SHINJUKU` in city.js) liegt gut 1 km nordöstlich (~1 Minute Weg).
 - `js/buildings.js` – Shader-Patch aller Stadtmaterialien (doppelseitig): Durchsicht-Kreis (Kegel Kamera→Godzilla,
   gerastert verworfen, Uniforms in `seeThrough`), Schaden je Instanz über `aDmg` (Schaden, Trefferpunkt lokal):
   Delle + Bröseln im Vertex-Shader, Löcher mit dunklen Innenwänden, Ruß und Glutränder am Einschlag, verteilte
@@ -97,10 +97,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   `Decals` (InstancedMesh-Quadrate mit Canvas-Textur): formlose Einschläge bei jedem Stampfer (keine Fußform – sah
   wie Spinnensymbole aus), Einsturzstellen mit kurzen Rissen und Rußflecken (lange Risslinien wirken wie Spinnenbeine).
 - `js/military.js` – Militär: Panzer Typ 74, Raketen-LKW, AH-1 (Modelle aus `units.glb`, 1,4-fach skaliert, damit man
-  sie sieht). Wellen (`updateWaves`) eskalieren mit Zeit und Zerstörung, max. 14 Einheiten. Bodentruppen fahren
+  sie sieht). Wellen (`updateWaves`) alle 20–34 s, eskalieren langsam, max. 9 Einheiten, eine Welle kommt geschlossen
+  aus einer Richtung. Militär soll nur stören – gefährlich erst, wenn man es lange ignoriert. Bodentruppen fahren
   L-förmig über das Straßenraster zu einer Kreuzung in Schussweite, Hubschrauber kreisen in ~50 m Höhe. Geschosse
   (Leuchtspur, Lenkraketen mit Rauch) streuen so, dass etwa die Hälfte danebengeht; Treffer über eine Kapsel um
-  Godzillas Rumpf (`takeDamage`, Zucken bei Trefferserien, nach 5 s ohne Treffer langsame Erholung). Nachts sichtbar
+  Godzillas Rumpf (`takeDamage`, Zucken bei Trefferserien, nach 3 s ohne Treffer Erholung 1,5/s). Nachts sichtbar
   durch Scheinwerfer mit Lichtkegel bzw. Suchscheinwerfer und Blinklicht. Godzilla zerstört Einheiten mit allen
   Angriffen; der Atomstrahl erfasst beim Laden die nächste Einheit im vorderen Kegel und folgt ihr (`AIM_*`).
   Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab.
@@ -117,6 +118,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   level, boss, over, win) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
   Suchen sind gewollt), sonst das Synth-Stück. Ton startet mit der ersten Taste (Browser-Regel), M schaltet stumm.
   Ereignis → Geräusch in `hookSounds()` (main.js), häufige Ereignisse gedrosselt.
+- `js/minimap.js` – Mini-Map oben rechts (Gebäude, Zerstörung, Godzilla als Pfeil, Militär, Super-X).
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
