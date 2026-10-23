@@ -13,7 +13,7 @@ from kaiju93 import box, rod
 
 V = Vector
 DRILLS = {'nose': (0, -9, 64), 'hand': (14, -12, 34)}   # auch in kaiju94.js (glTF x, z, -y)
-ORDER = ['metal', 'yellow', 'red', 'dark', 'drill', 'crystal']
+ORDER = ['metal', 'yellow', 'red', 'dark', 'drill', 'crystal', 'shoulder']
 
 
 def mats():
@@ -24,6 +24,7 @@ def mats():
         'dark': material('MOG_Dark', color=(0.12, 0.13, 0.15), rough=0.6, metal=0.5),
         'drill': material('MOG_Drill', color=(0.75, 0.72, 0.62), rough=0.25, metal=0.9),
         'crystal': material('SG_Crystal', color=(0.55, 0.45, 1.0), rough=0.1, metal=0.2, emit=(0.5, 0.35, 1.0), emit_strength=1.6),
+        'shoulder': material('SG_Shoulder', rough=0.15, metal=0.1, vcol=True),
     }
 
 
@@ -118,9 +119,38 @@ def crystal(M):
     return to_object('SG_crystal', bm, cols, M)
 
 
+def shoulder(M):
+    """SpaceGodzillas Schulterkristall nach Filmbildern: ein riesiger, leicht gebogener Kristall (weiß bis rosa, an der
+    Basis rot), daneben zwei kleine; Ursprung an der Basis, wächst nach +Z."""
+    bm = bmesh.new(); cols = {}
+    def spike(base, d, r, h, segs=6):
+        d = d.normalized()
+        q = d.to_track_quat('Z', 'Y')
+        rings = [(0, 0.85), (0.18, 1.0), (0.55, 0.92), (0.8, 0.6), (1.0, 0.0)]
+        loops = []
+        for t, k in rings:
+            c = base + d * h * t
+            loops.append([bm.verts.new(c + q @ V((math.cos(2 * math.pi * i / segs) * r * k, math.sin(2 * math.pi * i / segs) * r * k * 0.8, 0)))
+                          for i in range(segs)])
+        for a, b in zip(loops, loops[1:]):
+            for i in range(segs):
+                j = (i + 1) % segs
+                f = bm.faces.new((a[i], a[j], b[j], b[i]))
+                f.material_index = ORDER.index('shoulder'); f.smooth = False
+        f = bm.faces.new(list(reversed(loops[0]))); f.material_index = ORDER.index('shoulder')
+        for li, (t, k) in enumerate(rings):
+            for v in loops[li]:
+                cols[v] = V((0.7, 0.1, 0.14)).lerp(V((1.0, 0.92, 0.95)), min(1, t * 4))
+    spike(V((0, 0, 0)), V((0, 0.15, 1)), 6.5, 30)
+    spike(V((3.5, 2, 0)), V((0.5, 0.4, 1)), 2.6, 11)
+    spike(V((-3, 3, 0)), V((-0.4, 0.6, 1)), 2.2, 9)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.01)
+    return to_object('SG_shoulder', bm, cols, M)
+
+
 def build():
     M = mats()
-    return [moguera(M), drill(M), crystal(M)]
+    return [moguera(M), drill(M), crystal(M), shoulder(M)]
 
 
 def layout_preview(objs):
@@ -130,3 +160,4 @@ def layout_preview(objs):
     for sx in (1, -1):
         h = d.copy(); link(h); h.location = V((-40 + sx * DRILLS['hand'][0], DRILLS['hand'][1], DRILLS['hand'][2]))
     by['SG_crystal'].location = (40, 0, 0)
+    by['SG_shoulder'].location = (70, 0, 0)

@@ -1,7 +1,7 @@
 /* Service Worker: Spiel offline spielbar und installierbar machen.
    Netz zuerst (beim Entwickeln immer der neueste Stand), Cache als Rückfall ohne Verbindung.
    Eigene Musik aus music/ wird nicht zwischengespeichert. Bei neuen Dateien ASSETS und VERSION anpassen. */
-const VERSION = 'godzilla-heisei-v10';
+const VERSION = 'godzilla-heisei-v11';
 const ASSETS = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './js/main.js', './js/input.js', './js/camera.js', './js/godzilla.js', './js/effects.js', './js/city.js',

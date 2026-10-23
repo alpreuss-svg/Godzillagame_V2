@@ -209,13 +209,24 @@ export class SpaceGodzilla {
     this.root.scale.setScalar(1.08);
     this.root.visible = false;
     scene.add(this.root);
-    // umfärben: dunkles Blau-Violett, Platten wie Kristall
+    // umfärben nach Filmbildern: dunkles Blau-Violett, rote Brust und roter Bauch, Rückenplatten weiß-rosa wie Kristall
     this.root.traverse(o => {
       if (!o.isMesh) return;
       o.material = o.material.clone();
       if (/Plates/.test(o.material.name)) { o.material.onBeforeCompile = () => {}; o.material.customProgramCacheKey = () => 'sg-plates';
-        o.material.color.setRGB(0.7, 0.55, 1.4); o.material.emissive.setRGB(0.35, 0.2, 0.7); o.material.needsUpdate = true; }
-      else { o.material.color.setRGB(1.7, 1.9, 3.9); o.material.emissive.setRGB(0.04, 0.03, 0.09); }   // Vertexfarben fast schwarz (wie bei Godzilla ×3)
+        o.material.vertexColors = false;
+        o.material.color.setRGB(1.0, 0.82, 0.88); o.material.emissive.setRGB(0.35, 0.16, 0.22); o.material.roughness = 0.2; o.material.needsUpdate = true; }
+      else if (/Body/.test(o.material.name)) {
+        o.geometry = o.geometry.clone();                              // eigene Vertexfarben (die Geometrie teilt sonst Godzilla)
+        const pos = o.geometry.attributes.position, nor = o.geometry.attributes.normal, col = o.geometry.attributes.color;
+        for (let i = 0; i < col.count; i++) {
+          const l = Math.sqrt((col.getX(i) + col.getY(i) + col.getZ(i)) / 3 / 0.02);   // Helligkeit der Haut (Relief)
+          const y = pos.getY(i), front = nor.getZ(i), chest = front > 0.35 && y > 28 && y < 63 && Math.abs(pos.getX(i)) < 11 - Math.abs(y - 46) * 0.2;
+          const c = chest ? [0.42, 0.045, 0.07] : [0.022, 0.025, 0.06];
+          col.setXYZ(i, c[0] * l, c[1] * l, c[2] * l);
+        }
+        o.material.color.setRGB(1.6, 1.6, 1.6); o.material.emissive.setRGB(0.02, 0.01, 0.04);
+      }
       o.frustumCulled = false;
     });
     this.bones = {};
@@ -227,17 +238,21 @@ export class SpaceGodzilla {
     // Kristalle auf den Schultern und auf der Stirn
     const crystal = gltf.scene.getObjectByName('SG_crystal');
     this.root.updateMatrixWorld(true);
-    const attach = (bone, pos, s, tilt) => {
-      const c = crystal.clone(); c.scale.setScalar(s);
+    const attach = (bone, pos, s, tilt, src = crystal) => {
+      const c = src.clone(); c.scale.setScalar(s);
       const b = this.bones[bone], wp = this.root.localToWorld(new THREE.Vector3(...pos));
       c.position.copy(b.worldToLocal(wp));
       const wq = new THREE.Quaternion().setFromEuler(new THREE.Euler(tilt[0], 0, tilt[1]));
       c.quaternion.copy(b.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(wq));
       b.add(c);
+      return c;
     };
-    attach('spine2', [11, 61, -2], 0.9, [-0.2, -0.5]);
-    attach('spine2', [-11, 61, -2], 0.9, [-0.2, 0.5]);
-    attach('head', [0, 79, 13], 0.25, [0.6, 0]);
+    const big = gltf.scene.getObjectByName('SG_shoulder');            // riesige Schulterkristalle (weiß-rosa, rote Basis)
+    big.traverse(o => { if (o.isMesh) o.material.emissive.setRGB(0.3, 0.16, 0.2); });   // leuchten nachts leicht
+    attach('spine2', [12, 60, -4], 1.0, [-0.3, -0.35], big);
+    attach('spine2', [-12, 60, -4], 1.0, [-0.3, 0.35], big);
+    const horn = attach('head', [0, 79, 12], 0.22, [0.7, 0]);          // gelb-oranges Stirnhorn
+    horn.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.setRGB(1, 0.6, 0.15); o.material.emissive.setRGB(0.8, 0.4, 0.05); } });
     this.crystalSrc = crystal;
     this.corona = makeBeam(scene, [1.9, 1.3, 0.4], [2.4, 2.1, 1.2]);
     this.feeds = [];                                                  // Energieströme von Turm/Kristallen

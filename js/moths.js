@@ -29,7 +29,7 @@ export class Battra {
     // Larve: Kette als Körper (dunkel, geringelt), Kopf aus dem glb
     let skin = null;
     gltf.scene.getObjectByName('BT_head').traverse(o => { if (o.isMesh && !skin) skin = o.material; });
-    this.body = new Chain(scene, skin, LARVA_LEN, LARVA_R[0], LARVA_R[1], { color: [0.12, 0.07, 0.05], rings: 24 });
+    this.body = new Chain(scene, skin, LARVA_LEN, LARVA_R[0], LARVA_R[1], { color: [0.022, 0.03, 0.045], rings: 24, ringColor: [0.4, 0.25, 0.04], spots: [0.6, 0.02, 0.01] });
     this.body.visible = false;
     this.head = gltf.scene.getObjectByName('BT_head').clone();
     this.head.visible = false;

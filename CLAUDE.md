@@ -29,7 +29,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `blender/build_assets.py` – Einstieg; Argument wählt `godzilla`, `city`, `units`, `biollante`, `ghidorah`, `mothra`,
   `kaiju93`, `kaiju94`, `kaiju95`.
 - `blender/common.py` – Szene, Materialien (sRGB → linear), Bilder aus numpy, glTF-Export, Workbench-Vorschau,
-  EEVEE-Nachtvorschau (zeigt Emission).
+  EEVEE-Nachtvorschau (zeigt Emission), `color_preview` (EEVEE bei Tageslicht: Vertexfarben, Texturen und Emission
+  zusammen – zum Vergleich der Modelle mit Fotos; die Workbench zeigt nur eins davon).
+  **Achtung:** `noise.noise(..., noise_basis='VORONOI_F2F1')` liefert Werte von −1 bis 1 (Median ≈ −0,68); Fugen und
+  Plattenränder darum mit Schwellen um −0,95 auswählen (eine Schwelle wie 0,08 traf fast alle Punkte).
 - `blender/godzilla.py` – Körper aus **Metaballs** entlang eines Skelettgraphen (Skin-Modifier war lückenhaft),
   dezimiert auf ~26k Dreiecke, Hautrelief per Voronoi-Rauschen, Vertexfarben (`Col`), Augen/Klauen per Raycast,
   Maulhöhle = zwei negative Metaball-Ellipsoide; Zähne (14 oben/14 unten) per senkrechtem Spaltenscan durch die Höhle,
@@ -98,18 +101,30 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   `GH_head` (zwei lange Hörner, Stachelkrone, Wangenstacheln), `MGH_head` (Silberplatten, grüne Augen),
   `GH_tailtip` (Stachelbüschel) und `MGH_clamp` (Greifzange) für die Schwanzenden. Gelenkpunkte `NECK_ROOTS`,
   `TAIL_ROOTS`, `WING_ROOT` müssen zu ghidorah.js passen. Vorschau setzt beide mit Röhren als Hälsen zusammen.
-- `blender/mothra.py` – Mothra und Battra (1992), erste Entwürfe ohne Bildvorlage: `MO_body` (Pelz, blaue Augen,
-  gefiederte Fühler), `MO_wing` (Vorder- und Hinterflügel, Textur: orange-gelb, schwarzer Rand mit gelben Flecken,
-  Augenflecken), `BT_body` (dunkel gepanzert, langes Horn, rote Augen, Stacheln), `BT_wing` (spitz und gezackt,
-  schwarz mit roten Zickzacklinien), `BT_head` (Kopf der Larve mit Horn, roten Augenreihen, Kiefern). Flügel liegen
-  waagrecht (XY), linker nach +X, Gelenk `WING_ROOT` (muss zu moths.js passen); Muster als Bild aus den Umrissen.
-- `blender/kaiju93.py` – Rodan (`RO_body`, `RO_wing`) und Mechagodzilla in Gelenkteilen (`MG_torso`, `MG_head`,
-  `MG_arm`, `MG_thigh`, `MG_shin`, `MG_garuda`; Ursprung je Teil im Gelenk `JOINTS`, muss zu kaiju93.js passen).
+- `blender/mothra.py` – Mothra und Battra (1992) nach Filmbildern des Nutzers: `MO_body` (weißer Pelz mit orangen
+  Querstreifen, schwarze Flecken unter den Flügeln, große blaue Augen, schwarze Schnauze, kurze gebogene weiße Fühler,
+  helle Beine mit gelben Krallen), `MO_wing` (Vorderflügel gelb-orange mit großen schwarzen Flammenflecken aus
+  Wertrauschen `vnoise`, Augenring an der Spitze, dicke gelbe Pelzkante `MO_LEAD`; Hinterflügel orange-rot mit
+  schwarzen Bögen), `BT_body` (schwarz gepanzert, vorgesetzter Kopf mit Schnauze, Krone aus gelben Hörnern, schräge
+  rote Augen, Fangzähne, Krallenarme, rote Flecken am Hinterleib, Zangen), `BT_wing` (schwarz mit verzweigten roten
+  Blitzen, gelb gesäumt), `BT_head` (Larvenkopf schiefergrau mit Goldkanten, goldenes Horn schräg nach vorn oben,
+  Brauenplatten, rote Schlitzaugen, geschwungene Hauer). Mothras Larve kommt im Spiel nicht vor. Flügel liegen
+  waagrecht (XY), linker nach +X, Gelenk `WING_ROOT` (muss zu kaiju.js passen); Muster als Bild aus den Umrissen.
+- `blender/kaiju93.py` – nach Filmbildern: Rodan (`RO_body`: rot-orange, heller quer gerippter Hals und Bauch,
+  langer dunkler Schnabel, zwei Hörner, Nackenstacheln; `RO_wing` mit geäderter Flughaut als Bild `rodan_image`) und
+  Mechagodzilla 1993 als runde Chrompanzerung aus Metaballs (`chrome`: V-Brustpanzer, Bauchlinse, Rückendüsen,
+  Echsenkopf mit Kamm und Zahnreihen, massige Oberschenkel mit Seitenplatten, runde Kniepanzer, Vierzehenfüße) in
+  Gelenkteilen (`MG_torso`, `MG_head`, `MG_arm`, `MG_thigh`, `MG_shin`, `MG_garuda` mit langen Kanonen; Ursprung je
+  Teil im Gelenk `JOINTS`, muss zu kaiju93.js passen).
 - `blender/kaiju94.py` – Moguera (`MOG_body` auf Ketten, `MOG_drill` für Nase und Hände, `DRILLS`) und `SG_crystal`
-  (Kristallgruppe für SpaceGodzillas Schultern/Stirn und die Kristalltürme).
-- `blender/kaiju95.py` – Destoroyah: `DE_juvenile` (krabbenartiges Jungtier), Flugform `DEF_body`/`DEF_wing`
-  (Namen passend zu `Moth` in kaiju.js, Flügelwurzel `WING_FLY`), Endform `DE_body` (~110 m, Laserhorn, leuchtendes
-  Maul), `DE_wing` (Fledermausflügel, Wurzel `WING_FINAL`), `DE_pincer` (Schwanzschere, zeigt entlang +Y der Kette).
+  (Kristallgruppe für Stirnhorn und Kristalltürme), `SG_shoulder` (SpaceGodzillas riesiger Schulterkristall, weiß bis
+  rosa mit roter Basis, Vertexfarben).
+- `blender/kaiju95.py` – Destoroyah nach Filmbildern: `DE_juvenile` (Krabbe/Skorpion: sechs spitze Beine, zwei
+  erhobene Sichelscheren, Stachelkrone, Kieferzangen, beiger Brustfleck), Flugform `DEF_body`/`DEF_wing` (Namen
+  passend zu `Moth` in kaiju.js, Flügelwurzel `WING_FLY`), Endform `DE_body` (~110 m, rot mit schwarzbraunen
+  Panzerflecken, leuchtende Brustblüte `DE_Flower`, Kopf `demon_head` mit Stachelkragen und gelb-orangem Laserhorn
+  `DE_Laser` – Spitze bei Blender (0, −38, 96), passend zu kaiju95.js –, rote Schulterhörner, helle Fuß-/Kniekrallen),
+  `DE_wing` (rote gerippte Flughaut, dunkle Fingerknochen, Wurzel `WING_FINAL`), `DE_pincer` (Halbmond-Schere).
 - `vendor/three/` – Three.js 0.170.0 (build + GLTFLoader, BufferGeometryUtils, SkeletonUtils), per Importmap.
 - `assets/models/godzilla.glb`, `city.glb`, `units.glb`, `biollante.glb`, `ghidorah.glb` – aktuelle Exporte (Monster
   lädt nur das Level, das sie braucht: `models` in levels.js).
@@ -185,7 +200,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   auf Godzilla zurück (4 Leben/s, ohne Zurückzucken), glüht mit der Hitze auf; nach 4 s Strahl (`MELT`, kühlt 0,25/s ab)
   schmilzt er, danach trifft der Strahl mit 8/s. Hochhaus-Falle wirkt weiter.
 - `js/chain.js` – biegsame Kette (Schlauch mit 10 Knochen, folgt einer Bezierkurve; optional Kopf an der Spitze und
-  Vertexfarben mit Querringen) für Biollantes Ranken und Ghidorahs Hälse und Schwänze.
+  Vertexfarben mit Querringen, `ringColor` für eigene Ringfarbe, `spots` für Flankenflecken je Glied) für Biollantes
+  Ranken, Ghidorahs Hälse und Schwänze, Battras Larve (schiefergrau, goldene Ringe, rote Flecken), Destoroyahs Schwanz.
 - `js/ghidorah.js` – 1991: `KingGhidorah` (Boss-Rolle wie die Super-X; bekommt auch Godzillas `attack`-Ereignisse)
   und `MechaKingGhidorah` (Endgegner-Rolle). Rumpf + Flügel (King schlägt, Mecha fast starr) + 3 Hälse und 2
   Schwänze als Ketten (Mecha-Mittelhals silbern gegliedert, Schwanzenden aus dem glb), Köpfe auf den Halsspitzen.
@@ -212,7 +228,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `js/kaiju94.js` – 1994: `Moguera` (Boss): landet mit Triebwerken, rollt auf Ketten heran (walzt Gebäude nieder),
   Plasma-Maser, Spiralraketen (abschießbar), gräbt sich ein, wühlt mit Staubspur unter der Erde zu Godzilla und bricht
   unter ihm hervor (7 Schaden), danach 2,5 s benommen (doppelter Schaden). `SpaceGodzilla` (Endgegner): umgefärbte
-  `SkeletonUtils`-Kopie von Godzilla (eigene Animationen, Kristalle an spine2/head), schwebt, Korona-Strahl,
+  `SkeletonUtils`-Kopie von Godzilla (eigene Animationen; eigene Geometrie-Kopie mit neuen Vertexfarben: Blau-Violett,
+  rote Brust und roter Bauch nach Bind-Pose-Position; Rückenplatten weiß-rosa; `SG_shoulder` an spine2, gelb-oranges
+  Stirnhorn am Kopf), schwebt, Korona-Strahl,
   Kristallgeschosse, Gravitationssog (hält fest, nur der Kernpuls befreit). Kraft über den Fukuoka Tower (Schild:
   nur 30 % Schaden, heilt) und 4 Kristalltürme (heilen, zerstörbar), sichtbar als violette Energieströme. Die
   Endgegner-Klasse bekommt alle geladenen Modelle (`models`) als 7. Argument.
@@ -285,7 +303,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Rodan/Fire Rodan, danach Mechagodzilla), **1994 Fukuoka** (Tenjin-Hochhäuser, Fukuoka Tower am Wasser,
   Ōhori-Park, Hafen; Moguera, danach SpaceGodzilla), **1995 Tokio – Finale** (Big Sight in Ariake am Wasser,
   Hamarikyū-Garten; Destoroyah-Jungtiere/Flugform, danach Destoroyah). `burning: true` macht Godzilla zum Burning
-  Godzilla (`setBurning()` in godzilla.js: glühende Flecken per Shader auf `GZ_Body`, rot-orange Platten und Strahl,
+  Godzilla (`setBurning()` in godzilla.js: glühende Lava-Flecken per Shader auf `GZ_Body` wie im Film großflächig auf
+  Brust und Bauch, Oberschenkeln und Schultern (Bereiche nach Bind-Pose-Position, Rand dunkelrot, Mitte orange),
+  rot-orange Platten und Strahl,
   `power` 1,25). Nach dem Sieg folgt die Kernschmelze (`meltdown()`: Glut wächst, Dampf, Explosion, Musikplatz `end`,
   Endbildschirm „Das Ende der Heisei-Ära“). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
   `finalGone`.
@@ -339,4 +359,5 @@ Burning Godzilla, Kernschmelze) spielbar – alle sieben Heisei-Level sind angel
 Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~370k Dreiecke mit Requisiten, ~70 Draw Calls; `?q=low`), Lautstärken
 anhören, Balance (Wellen, Schaden, Bossphase) im echten Spiel prüfen, Biollante-Kampf im echten Spiel abstimmen,
 Kämpfe im echten Spiel abstimmen, alle Monster nach den Bildvorlagen und Soundeffekten des Nutzers verfeinern
-(Rodan, Mechagodzilla, Moguera, SpaceGodzilla, Destoroyah sind erste Entwürfe).
+(Mothra, Battra, Rodan, Mechagodzilla, SpaceGodzilla, Destoroyah und Burning Godzilla sind nach den Bildern des
+Nutzers überarbeitet; Moguera ist noch ein Entwurf ohne Bildvorlage).

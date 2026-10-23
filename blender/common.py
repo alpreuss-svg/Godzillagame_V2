@@ -134,3 +134,20 @@ def night_preview(path, **cam):
     s.view_settings.view_transform = 'AgX'
     _render_cam(path, **cam)
     bpy.data.objects.remove(sun)
+
+def color_preview(path, **cam):
+    """EEVEE-Ansicht bei Tageslicht: zeigt Vertexfarben, Texturen und Emission zusammen (zum Vergleich mit Fotos)."""
+    s = bpy.context.scene
+    s.world = s.world or bpy.data.worlds.new('W')
+    s.world.use_nodes = True
+    s.world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.25, 0.27, 0.3, 1)
+    s.world.node_tree.nodes['Background'].inputs['Strength'].default_value = 1.0
+    sun = bpy.data.objects.get('pv_sun')
+    if sun is None:
+        sun = link(bpy.data.objects.new('pv_sun', bpy.data.lights.new('pv_sun', 'SUN')))
+        sun.data.energy = 3.0
+        sun.rotation_euler = (math.radians(40), math.radians(10), math.radians(-40))
+    engines = [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items]
+    s.render.engine = next(e for e in ('BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT') if e in engines)
+    s.view_settings.view_transform = 'Standard'
+    _render_cam(path, **cam)

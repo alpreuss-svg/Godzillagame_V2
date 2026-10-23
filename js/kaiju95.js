@@ -11,8 +11,14 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3
 const FLY_WING = [5, 4, -3];                 // blender/kaiju95.py WING_FLY (glTF x, z, -y)
 const FINAL_WING = [14, 66, -6];             // WING_FINAL
 const OXY = [[1.9, 0.25, 0.9], [2.4, 1.3, 2.0]];   // Mikro-Sauerstoff: purpur
-// Haut und Flughäute nachts aufhellen (die Vertexfarben sind dunkelrot)
-const brighten = gltf => gltf.scene.traverse(o => { if (o.isMesh && /DE_Skin|DE_Membrane/.test(o.material.name)) o.material.color.setScalar(2.2); });
+// Haut und Flughäute nachts etwas aufhellen
+const brighten = gltf => gltf.scene.traverse(o => {
+  if (!o.isMesh) return;
+  const m = o.material;
+  if (/DE_Skin/.test(m.name)) { m.color.setScalar(2.1); m.emissive.setRGB(0.04, 0.004, 0.003); }       // leicht rot glimmend
+  if (/DE_Membrane/.test(m.name)) { m.color.setScalar(1.9); m.emissive.setRGB(0.22, 0.02, 0.015); }  // Flughaut wie durchscheinend
+  if (/DE_Flower/.test(m.name)) { m.color.setRGB(0.9, 0.28, 0.05); m.emissive.setRGB(0.55, 0.14, 0.02); m.emissiveIntensity = 1; }
+});
 
 // ======================= Destoroyah: Jungtiere und Flugform (Boss) =======================
 const DS = { n: 6, juvHp: 30, juvSpeed: 18, leapDmg: 2, leapRate: 0.07, spitEvery: 8, spitDps: 1.2,
@@ -226,7 +232,7 @@ export class Destoroyah {
     });
     let skin = null;
     this.group.traverse(o => { if (o.isMesh && !skin && /DE_Skin/.test(o.material.name)) skin = o.material; });
-    this.tail = new Chain(scene, skin, 105, 7, 2.2, { color: [0.5, 0.08, 0.07], rings: 18, head: get('DE_pincer') });
+    this.tail = new Chain(scene, skin, 105, 7, 2.2, { color: [0.55, 0.06, 0.05], rings: 26, ringColor: [0.12, 0.03, 0.025], head: get('DE_pincer') });
     this.tail.visible = false;
     this.oxy = makeBeam(scene, ...OXY);
     this.horn = makeBeam(scene, [1.9, 0.5, 0.3], [2.4, 1.6, 1.2]);
@@ -293,7 +299,7 @@ export class Destoroyah {
     else this.oxy.update(dt, false);
     if (this.horn.t > 0 && !this.stunT) {                         // Laserhorn: schwenkt quer über Godzilla
       this.horn.t -= dt; this.hornSweep += dt * 0.8;
-      const from = G.localToWorld(_c.set(0, 92, 40)).clone();
+      const from = G.localToWorld(_c.set(0, 95, 38)).clone();
       const dir = _b.copy(gp).setY(gp.y + 50).sub(from).normalize().applyAxisAngle(UP, this.hornSweep);
       const max = city ? city.raycast(from, dir, 260) : 260;
       const end = this.horn.update(dt, true, from, dir, max);

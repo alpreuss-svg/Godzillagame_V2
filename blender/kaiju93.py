@@ -1,4 +1,4 @@
-"""1993: Rodan und Mechagodzilla (mit Garuda). Erste Entwürfe ohne Bildvorlage.
+"""1993: Rodan und Mechagodzilla (mit Garuda), nach Filmbildern des Nutzers.
 - RO_body: Rodan – langer spitzer Schnabel, Kamm nach hinten, schlanker Hals, Rumpf, hängende Beine mit Krallen
 - RO_wing: linker Flugsaurier-Flügel, waagrecht (XY), nach +X, Gelenk im Ursprung
 - MG_torso, MG_head, MG_arm, MG_thigh, MG_shin, MG_garuda: Mechagodzilla in Gelenkteilen; jedes Teil hat seinen
@@ -7,7 +7,7 @@ Blender: Z oben, vorn = -Y (glTF +Z)."""
 import bpy, bmesh, math
 import numpy as np
 from mathutils import Vector, Matrix, Euler, noise
-from common import link, material
+from common import link, material, make_image
 from biollante import metaball_mesh, ell, chain, add_cone, lin
 
 V = Vector
@@ -22,7 +22,7 @@ ORDER = ['skin', 'membrane', 'horn', 'eye', 'metal', 'yellow', 'red', 'dark']
 def mats():
     return {
         'skin': material('RO_Skin', rough=0.8, vcol=True),
-        'membrane': material('RO_Membrane', rough=0.7, vcol=True),
+        'membrane': material('RO_Membrane', rough=0.7, img=rodan_image()),
         'horn': material('RO_Horn', color=(0.75, 0.66, 0.5), rough=0.5),
         'eye': material('RO_Eye', color=(1.0, 0.75, 0.2), emit=(1.0, 0.7, 0.2), emit_strength=3),
         'metal': material('MG_Metal', rough=0.3, metal=0.85, vcol=True),
@@ -88,136 +88,264 @@ def rod(bm, cols, a, b, r0, r1, mat, col, seg=8):
 
 
 # ---------------- Rodan ----------------
+def bent(bm, pts, r0, r1, k, segs=5):
+    """Gebogenes Horn aus Kegelstümpfen entlang pts (r0 -> r1)."""
+    faces, n = [], len(pts) - 1
+    for i in range(n):
+        a, b = V(pts[i]), V(pts[i + 1])
+        faces += add_cone(bm, a, b - a, r0 + (r1 - r0) * i / n, (b - a).length * (1.0 if i == n - 1 else 1.25), segs)
+    set_mat(faces, k)
+
+
 def rodan(M):
-    E = [ell((0, 2, 0), (6.5, 12, 6), (-6, 0, 0)),          # Rumpf
-         ell((0, -8, 1.5), (7, 6, 6)),                       # Brust
-         ell((0, 14, -1), (3.5, 8, 3), (8, 0, 0))]           # Schwanzstummel
-    chain(E, [(0, -12, 3), (0, -18, 7), (0, -23, 9)], 3.2, 2.4)   # Hals
-    E += [ell((0, -27, 10), (3.2, 5, 3.0)),                  # Kopf
-          ell((0, -36, 9), (1.6, 8, 1.4), (6, 0, 0)),        # langer Schnabel
-          ell((0, -20, 13.5), (1.2, 8, 3.0), (-28, 0, 0))]   # Kamm nach hinten oben
-    me = metaball_mesh('RO_body', E, 4500, res=0.6)
+    """Rodan nach Filmbildern: rot-orange Haut, heller gerippter Hals und Bauch, langer dunkler Schnabel, zwei nach
+    hinten gebogene Hörner mit hellen Spitzen, gelbe Augen, kleine Rückenstacheln, Greifklauen."""
+    E = [ell((0, 3, 0), (6, 11, 5.5), (-6, 0, 0)),           # Rumpf
+         ell((0, -8, 2), (7, 6.5, 6.5)),                      # Brust
+         ell((0, 15, -1), (3, 8, 2.5), (8, 0, 0))]            # Schwanzstummel
+    chain(E, [(0, -12, 4), (0, -17, 8.5), (0, -21, 11.5)], 3.4, 2.4)   # langer Hals
+    E += [ell((0, -25, 12.5), (3.0, 4.5, 3.0)),               # Kopf
+          ell((0, -33, 11.5), (1.5, 8, 1.6), (8, 0, 0)),      # Oberschnabel
+          ell((0, -31.5, 10), (1.2, 6.5, 0.9), (2, 0, 0))]    # Unterschnabel
+    me = metaball_mesh('RO_body', E, 5000, res=0.55)
     bm = bmesh.new(); bm.from_mesh(me); bpy.data.meshes.remove(me)
     bm.normal_update()
     cols = {}
     for v in bm.verts:
         p, n = v.co.copy(), v.normal.copy()
-        v.co += n * noise.noise(p * 0.6, noise_basis='VORONOI_F2F1') * 0.35
-        c = V((0.48, 0.24, 0.13)) * (0.85 + 0.3 * noise.noise(p * 0.15))
-        if n.z < -0.4:
-            c = c.lerp(V((0.7, 0.5, 0.32)), 0.4)               # hellerer Bauch
+        v.co += n * noise.noise(p * 0.7, noise_basis='VORONOI_F2F1') * 0.25
+        c = V((0.6, 0.2, 0.1)).lerp(V((0.32, 0.09, 0.06)), max(0, n.z)) * (0.85 + 0.3 * noise.noise(p * 0.2))
+        if n.z < -0.15 and p.y < 8:                            # heller, quer gerippter Hals- und Bauchpanzer
+            c = V((0.88, 0.74, 0.55)) if math.sin(p.y * 1.7) < 0.6 else V((0.62, 0.45, 0.3))
+        if p.y < -27.5:
+            c = V((0.2, 0.19, 0.2))                            # dunkler Schnabel
+        elif p.y < -21:
+            c = c.lerp(V((0.38, 0.3, 0.32)), 0.5)              # gräulicher Kopf
         cols[v] = c
     for f in bm.faces:
         f.smooth = True
         f.material_index = ORDER.index('skin')
     bm.normal_update()
     for sx in (1, -1):
-        r = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=0.9)
+        r = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=0.8)
         for v in r['verts']:
-            v.co += V((sx * 2.6, -28.5, 11))
+            v.co += V((sx * 2.5, -26.5, 13.4))
         set_mat(list({f for v in r['verts'] for f in v.link_faces}), 'eye')
-        rod(bm, cols, (sx * 3, 6, -3), (sx * 3.4, 14, -9), 1.6, 1.1, 'skin', (0.42, 0.22, 0.12))     # Beine nach hinten
+        bent(bm, [(sx * 1.3, -23.5, 14.5), (sx * 2.2, -19, 18), (sx * 3, -13, 19.5)], 1.2, 0.6, 'horn')   # Hörner
+        rod(bm, cols, (sx * 3, 6, -3), (sx * 3.4, 13, -8), 1.6, 1.1, 'skin', (0.45, 0.13, 0.08))       # Beine
         for k in (-1, 0, 1):
-            set_mat(add_cone(bm, V((sx * 3.4 + k * 0.9, 14, -9)), V((k * 0.3, -0.4, -1)), 0.5, 3.2, 4), 'horn')
+            set_mat(add_cone(bm, V((sx * 3.4 + k * 0.9, 13, -8)), V((k * 0.3, -0.5, -1)), 0.5, 3.4, 4), 'horn')
+    for k in range(9):                                          # kleine Stacheln über Nacken und Rücken
+        y = -20 + k * 3.2
+        z = 14 - k * 1.2 if k < 4 else 8 - (k - 4) * 0.6
+        set_mat(add_cone(bm, V((0, y, z)), V((0, 0.6, 1)), 0.6, 2.2, 4), 'horn')
     return to_object('RO_body', bm, cols, M)
 
 
+RO_POLY = [(0, -6), (16, -9), (34, -12), (58, -16), (88, -9), (80, -1), (71, 4), (64, 10), (54, 12), (46, 18), (34, 20),
+           (24, 24), (12, 22), (0, 12)]
+
+
+def rodan_image(n=512):
+    from mothra import poly_dist, line_dist, vnoise
+    ys, xs = np.mgrid[0:n, 0:n] / n
+    X, Y = xs * 92.0, -20 + (1 - ys) * 46.0
+    d, inside = poly_dist(X, Y, RO_POLY)
+    k = np.clip((Y + 10) / 32, 0, 1)[..., None]                           # zum Hinterrand heller und orange
+    col = np.array([0.5, 0.1, 0.08]) * (1 - k) + np.array([0.92, 0.45, 0.25]) * k
+    col = col * (0.85 + 0.3 * vnoise(X, Y, 12, 4, 2))[..., None]
+    rng = np.random.default_rng(93)
+    vd = np.full(X.shape, 1e9)
+    for i in range(16):                                                    # Adern vom Arm zum Hinterrand
+        t = (i + 0.5) / 16
+        x, y = 88 * t, -6 - 10 * math.sin(t * math.pi * 0.9)
+        pts = [(x, y)]
+        for _ in range(6):
+            x += rng.uniform(-4, 3); y += rng.uniform(3, 6)
+            pts.append((x, y))
+            if rng.random() < 0.4:
+                vd = np.minimum(vd, line_dist(X, Y, [(x, y), (x + rng.uniform(-6, 6), y + rng.uniform(3, 7))]))
+        vd = np.minimum(vd, line_dist(X, Y, pts))
+    col[vd < 0.5] = col[vd < 0.5] * 0.45
+    col[d < 0.8] = [0.3, 0.07, 0.05]
+    return make_image('RO_wing_img', col)
+
+
 def rodan_wing(M):
-    poly = [(0, -6), (16, -9), (34, -12), (58, -16), (86, -8), (74, 4), (60, 10), (44, 16), (26, 20), (10, 18), (0, 10)]
     bm = bmesh.new()
+    uv = bm.loops.layers.uv.verify()
     cols = {}
-    vs = [bm.verts.new(V((x, y, 0.5 * math.sin(x * 0.06)))) for x, y in poly]
+    vs = [bm.verts.new(V((x, y, 0.6 * math.sin(x * 0.06)))) for x, y in RO_POLY]
     f = bm.faces.new(vs)
     res = bmesh.ops.triangulate(bm, faces=[f], quad_method='BEAUTY', ngon_method='BEAUTY')
     set_mat(res['faces'], 'membrane')
+    for t in res['faces']:
+        for loop in t.loops:
+            loop[uv].uv = (loop.vert.co.x / 92.0, (loop.vert.co.y + 20) / 46.0)
     for v in vs:
-        k = v.co.x / 86
-        cols[v] = V((0.42, 0.2, 0.11)).lerp(V((0.62, 0.36, 0.2)), k) if v.co.y > -5 else V((0.32, 0.15, 0.08))
-    rod(bm, cols, (0, -2, 0.5), (34, -12, 1), 2.0, 1.4, 'skin', (0.4, 0.2, 0.1))      # Arm
-    rod(bm, cols, (34, -12, 1), (86, -8, 0.5), 1.3, 0.4, 'skin', (0.4, 0.2, 0.1))     # Flugfinger
-    set_mat(add_cone(bm, V((34, -13, 1.5)), V((0.2, -1, 0.4)), 0.6, 3.5, 4), 'horn')  # Daumenkralle
+        cols[v] = V((1, 1, 1))
+    rod(bm, cols, (0, -2, 0.5), (34, -12, 1.4), 2.2, 1.5, 'skin', (0.35, 0.12, 0.08))     # Arm
+    rod(bm, cols, (34, -12, 1.4), (88, -9, 0.6), 1.4, 0.4, 'skin', (0.32, 0.1, 0.07))     # Flugfinger
+    for k in (-1, 0, 1):                                                                    # Hand mit Krallen
+        set_mat(add_cone(bm, V((34, -13, 1.5)), V((k * 0.4, -1, 0.3)), 0.5, 3.5, 4), 'horn')
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     return to_object('RO_wing', bm, cols, M)
 
 
-# ---------------- Mechagodzilla ----------------
-S, D, Y = (0.66, 0.7, 0.76), (0.4, 0.43, 0.48), (1, 0.85, 0.2)
+# ---------------- Mechagodzilla (1993): runde Chrompanzerung ----------------
+S, D, Y = (0.72, 0.75, 0.8), (0.42, 0.45, 0.5), (1, 0.8, 0.2)
+M_CUR = [None]
+
+
+def chrome(name, E, tris, origin, extra=None, grooves=None):
+    """Metaball-Panzerteil in Chrom; grooves(p) -> True für dunkle Fugen."""
+    me = metaball_mesh(name, E, tris, res=0.5)
+    bm = bmesh.new(); bm.from_mesh(me); bpy.data.meshes.remove(me)
+    bm.normal_update()
+    cols = {}
+    for v in bm.verts:
+        c = V(S) * (0.92 + 0.12 * v.normal.z)
+        if grooves and grooves(v.co):
+            c = V((0.18, 0.19, 0.22))
+        cols[v] = c
+    for f in bm.faces:
+        f.smooth = True
+        f.material_index = ORDER.index('metal')
+    if extra:
+        extra(bm, cols)
+    return to_object(name, bm, cols, M_CUR[0], origin)
 
 
 def mg_torso(M):
-    bm = bmesh.new(); cols = {}
-    box(bm, cols, (20, 15, 10), (0, 1, 36), 'metal', D)                              # Becken
-    box(bm, cols, (25, 17, 24), (0, -1, 50), 'metal', S, taper=(1.12, 1.0))          # Rumpf, oben breiter
-    box(bm, cols, (17, 3, 18), (0, -10, 50), 'metal', (0.74, 0.78, 0.84), taper=(1.1, 1))   # Brustplatte
-    for k in range(4):
-        box(bm, cols, (14 - k, 0.6, 1.0), (0, -11.6, 44 + k * 3.6), 'dark', D)       # Lüftungsschlitze
+    E = [ell((0, 1, 36), (11, 8, 6)),                      # Becken
+         ell((0, -1, 44), (10.5, 8, 6.5)),                 # Bauch
+         ell((0, -2, 53), (13.5, 9.5, 8.5)),               # breite Brust
+         ell((0, 6, 52), (11.5, 6.5, 9)),                  # Rücken
+         ell((0, -3, 63), (6, 6, 5))]                      # Halsansatz
     for sx in (1, -1):
-        box(bm, cols, (1.6, 0.6, 1.6), (sx * 5.5, -11.8, 57), 'yellow', Y)            # Brustlichter
-        box(bm, cols, (9, 13, 6), (sx * 15, -2, 62), 'metal', D, rot=(0, sx * -18, 0))   # Schulterpanzer
-        box(bm, cols, (2, 9, 1.5), (sx * 9, -2, 63.5), 'red', (1, 0.2, 0.1))
-    box(bm, cols, (11, 10, 6), (0, -3, 64), 'metal', S)                              # Halsansatz
-    for k in range(5):                                                                 # Rückenflossen aus Metall
-        z = 40 + k * 5
-        rod(bm, cols, (0, 8, z), (0, 13 + k * 0.3, z + 6), 2.2, 0.3, 'metal', D, 4)
-    return to_object('MG_torso', bm, cols, M)
+        E += [ell((sx * 6, -7, 54), (6, 4, 5.5)),            # Brustmuskeln
+              ell((sx * 14.5, -2, 59), (6, 6.5, 5.5))]       # runde Schulterpanzer
+
+    def grooves(p):
+        if p.y < -6 and 47 < p.z < 59 and abs(abs(p.x) * 0.75 - (p.z - 47)) < 0.6:
+            return True                                     # V-förmiger Brustpanzer
+        if p.y < -4 and abs(p.z - 47.5) < 0.5:
+            return True                                     # Gürtellinie
+        return False
+
+    def extra(bm, cols):
+        r = bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=1.0)    # Bauchlinse (Plasmagranate)
+        for v in r['verts']:
+            v.co = V((v.co.x * 3.2, v.co.y * 1.0, v.co.z * 3.2)) + V((0, -9.4, 45))
+            cols[v] = V(D)
+        set_mat(list({f for v in r['verts'] for f in v.link_faces}), 'dark')
+        r = bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=6, radius=1.3)
+        for v in r['verts']:
+            v.co += V((0, -10.2, 45))
+        set_mat(list({f for v in r['verts'] for f in v.link_faces}), 'yellow')
+        for k in range(3):                                   # Lüftungsrillen am Bauch
+            box(bm, cols, (5 - k, 0.5, 0.5), (0, -9.4, 40.6 - k * 1.3), 'dark', D)
+        for sx in (1, -1):                                   # Rückendüsen
+            rod(bm, cols, (sx * 5, 7, 58), (sx * 5.5, 13, 51), 2.0, 2.4, 'metal', D, 10)
+            rod(bm, cols, (sx * 5.5, 13, 51), (sx * 5.6, 13.6, 50), 2.2, 2.2, 'dark', D, 10)
+        for k in range(5):                                   # kleine Rückenzacken
+            z = 40 + k * 4.5
+            box(bm, cols, (1.2, 4, 4), (0, 10 + (k % 2) * 0.5, z), 'metal', S, rot=(30, 0, 0), taper=(0.4, 0.4))
+    return chrome('MG_torso', E, 6000, (0, 0, 0), extra, grooves)
 
 
 def mg_head(M):
-    bm = bmesh.new(); cols = {}
     n = V(JOINTS['neck'])
-    box(bm, cols, (7, 8, 7), n + V((0, -3, 3)), 'metal', S)                          # Schädel
-    box(bm, cols, (5, 8, 3.2), n + V((0, -10, 2.6)), 'metal', S, taper=(0.7, 1))     # Schnauze
-    box(bm, cols, (4.4, 7, 1.6), n + V((0, -9.5, 0.2)), 'metal', D)                  # Unterkiefer
-    box(bm, cols, (7.4, 1.2, 1.4), n + V((0, -6.8, 5)), 'yellow', Y)                 # Augenvisier
-    for sx in (1, -1):
-        set_mat(add_cone(bm, n + V((sx * 2.4, -2, 6.5)), V((sx * 0.3, 0.8, 0.6)), 0.8, 4, 4), 'metal')
-    return to_object('MG_head', bm, cols, M, JOINTS['neck'])
+    E = [ell(n + V((0, -0.5, 0.5)), (4.5, 4.5, 4.5)),       # Halsring
+         ell(n + V((0, -3, 4)), (3.6, 4.5, 3.4)),          # Schädel
+         ell(n + V((0, -9, 2.8)), (2.6, 5, 1.9)),          # Schnauze
+         ell(n + V((0, -8.5, 0.6)), (2.3, 4.6, 1.2)),      # Unterkiefer
+         ell(n + V((0, 0.5, -1.5)), (3.8, 4, 4))]          # Hals
+    chain(E, [n + V((0, -6, 6.6)), n + V((0, -2, 7.8)), n + V((0, 2, 6.5))], 0.9, 0.7)   # Schädelkamm
+
+    def grooves(p):
+        return abs(p.z - (n.z + 1.75)) < 0.28 and p.y < n.y - 4      # Maulspalte
+
+    def extra(bm, cols):
+        for sx in (1, -1):
+            box(bm, cols, (1.6, 2.4, 0.9), n + V((sx * 2.3, -6.5, 4.9)), 'yellow', Y, rot=(0, sx * 15, sx * -20))   # Augen
+            for k in range(5):                               # Zahnreihen
+                yy = -12 + k * 1.5
+                set_mat(add_cone(bm, n + V((sx * (1.2 + k * 0.25), yy, 1.95)), V((0, 0, -1)), 0.32, 0.9, 4), 'metal')
+                set_mat(add_cone(bm, n + V((sx * (1.1 + k * 0.25), yy + 0.6, 1.55)), V((0, 0, 1)), 0.3, 0.8, 4), 'metal')
+        for k in range(4):                                   # Zacken auf dem Kamm
+            set_mat(add_cone(bm, n + V((0, -5 + k * 2.2, 7.6 + (1 if k == 1 else 0))), V((0, 0.4, 1)), 0.6, 1.8, 4), 'metal')
+    ob = chrome('MG_head', E, 3000, JOINTS['neck'], extra, grooves)
+    for v in ob.data.vertices:                                # Kopf 1,3-fach, auf dem Hals etwas höher
+        w = min(1.0, max(0.0, (v.co.z + 2) / 4))                # weicher Übergang zum Hals
+        v.co = v.co * (1 + 0.3 * w) + V((0, 0, 1.2 * w))
+    return ob
 
 
 def mg_arm(M):
-    bm = bmesh.new(); cols = {}
     s = V(JOINTS['shoulder'])
-    rod(bm, cols, s, s + V((1.5, -2, -11)), 3.4, 2.8, 'metal', S)                    # Oberarm
-    rod(bm, cols, s + V((1.5, -2, -11)), s + V((1.5, -11, -15)), 2.8, 2.4, 'metal', D)   # Unterarm nach vorn
-    box(bm, cols, (4, 4, 3), s + V((1.5, -12.5, -15.5)), 'metal', S)                 # Hand
-    for k in (-1, 0, 1):
-        set_mat(add_cone(bm, s + V((1.5 + k * 1.2, -14, -16)), V((k * 0.2, -1, -0.6)), 0.5, 3.2, 4), 'metal')
-    return to_object('MG_arm', bm, cols, M, JOINTS['shoulder'])
+    el, wr = s + V((1.5, -2, -10)), s + V((1.5, -10, -14))
+    E = []
+    chain(E, [s, el], 3.8, 3.3, step=0.4)                   # Oberarm
+    chain(E, [el, wr], 3.3, 3.0, step=0.4)                  # Unterarm
+    E += [ell(wr + V((0, -0.5, 0)), (3.6, 1.6, 3.6)),       # Manschette
+          ell(wr + V((0, -2.8, -0.4)), (2.6, 2.2, 2.4))]    # Hand
+
+    def grooves(p):
+        return abs((p - el).length - 3.2) < 0.25
+
+    def extra(bm, cols):
+        for k in (-1.5, -0.5, 0.5, 1.5):                     # gegliederte Finger
+            b0 = wr + V((k * 1.2, -4.2, -0.6))
+            rod(bm, cols, b0, b0 + V((k * 0.3, -1.8, -0.8)), 0.55, 0.5, 'metal', S, 6)
+            set_mat(add_cone(bm, b0 + V((k * 0.3, -1.8, -0.8)), V((0, -0.6, -1)), 0.45, 1.6, 4), 'metal')
+    return chrome('MG_arm', E, 2400, JOINTS['shoulder'], extra, grooves)
 
 
 def mg_thigh(M):
-    bm = bmesh.new(); cols = {}
     h, k = V(JOINTS['hip']), V(JOINTS['knee'])
-    box(bm, cols, (9, 10, 18), (h + k) / 2, 'metal', S, taper=(0.8, 0.85))
-    box(bm, cols, (9.5, 3, 4), h + V((0, -5, -6)), 'red', (1, 0.2, 0.1))
-    return to_object('MG_thigh', bm, cols, M, JOINTS['hip'])
+    E = [ell((h + k) / 2 + V((0, 0, 1)), (6.5, 7, 9.5)),    # massiger Oberschenkel
+         ell(h + V((5.5, 0, -7)), (1.8, 6, 7.5)),           # große Seitenplatte
+         ell(k + V((0, -3.5, 0)), (4.2, 3.2, 4.2))]         # runder Kniepanzer
+
+    def grooves(p):
+        return abs(p.x - (h.x + 3.7)) < 0.3 and p.z > k.z + 2
+    return chrome('MG_thigh', E, 2400, JOINTS['hip'], None, grooves)
 
 
 def mg_shin(M):
-    bm = bmesh.new(); cols = {}
     k = V(JOINTS['knee'])
-    box(bm, cols, (8, 9, 16), k + V((0, 1.5, -8)), 'metal', D, taper=(1.15, 1.1))   # Schienbein (unten breiter)
-    box(bm, cols, (11, 16, 3.5), V((k.x, -1, 1.8)), 'metal', S)                       # Fuß
-    for j in (-1, 0, 1):
-        set_mat(add_cone(bm, V((k.x + j * 3, -9, 1.5)), V((0, -1, -0.2)), 1.0, 3, 4), 'metal')
-    box(bm, cols, (6, 1, 2), k + V((0, -3.5, -4)), 'yellow', Y)
-    return to_object('MG_shin', bm, cols, M, JOINTS['knee'])
+    E = [ell(k + V((0, 1, -6)), (5.5, 6, 7.5)),             # Schienbein
+         ell(V((k.x, 0, 5)), (6, 6.5, 2.5)),                 # Knöchelring
+         ell(V((k.x, -3, 2)), (7, 9, 2.2))]                  # breiter Fuß
+
+    def grooves(p):
+        return abs(p.z - 7.6) < 0.35 or abs(p.z - 3.7) < 0.3
+
+    def extra(bm, cols):
+        for j in (-1.5, -0.5, 0.5, 1.5):                     # vier Krallenzehen
+            set_mat(add_cone(bm, V((k.x + j * 3, -10.5, 1.4)), V((0, -1, -0.3)), 1.2, 3.2, 5), 'metal')
+    return chrome('MG_shin', E, 2400, JOINTS['knee'], extra, grooves)
 
 
 def mg_garuda(M):
-    """Garuda: Kampfjet, dockt auf dem Rücken an (Super-Mechagodzilla), zwei Kanonen nach vorn."""
-    bm = bmesh.new(); cols = {}
+    """Garuda: Kampfjet, dockt auf dem Rücken an (Super-Mechagodzilla), zwei lange Kanonen über die Schultern nach vorn."""
     g = V(JOINTS['garuda'])
-    box(bm, cols, (12, 24, 5), g, 'metal', (0.6, 0.62, 0.66), taper=(0.6, 0.9))
-    box(bm, cols, (34, 10, 1.2), g + V((0, 4, -1)), 'metal', D, taper=(0.5, 0.7))     # Flügel
-    for sx in (1, -1):
-        rod(bm, cols, g + V((sx * 5, -2, 3)), g + V((sx * 5, -22, 6)), 1.2, 0.9, 'metal', D, 8)   # Kanonen
-        rod(bm, cols, g + V((sx * 4, 12, 0)), g + V((sx * 4, 15, 0)), 1.6, 1.6, 'yellow', Y, 8)    # Düsen
-    return to_object('MG_garuda', bm, cols, M, JOINTS['garuda'])
+    E = [ell(g, (5, 13, 3.2)), ell(g + V((0, -9, 1.6)), (3, 5, 2.2))]
+
+    def extra(bm, cols):
+        box(bm, cols, (30, 10, 1.0), g + V((0, 5, -1)), 'metal', D, taper=(0.4, 0.6))         # Deltaflügel
+        for sx in (1, -1):
+            box(bm, cols, (1, 7, 6), g + V((sx * 4, 9, 4)), 'metal', D, rot=(0, sx * 20, 0), taper=(0.6, 0.5))   # Leitwerk
+            rod(bm, cols, g + V((sx * 5, -2, 2)), g + V((sx * 5, -36, 9)), 1.3, 1.0, 'metal', D, 8)  # Kanonen
+            box(bm, cols, (2.6, 2.6, 2.6), g + V((sx * 5, -36.5, 9.1)), 'metal', S)                 # Mündung
+            rod(bm, cols, g + V((sx * 3, 12, 0)), g + V((sx * 3, 15, 0)), 1.7, 1.7, 'yellow', Y, 8)  # Düsen
+    return chrome('MG_garuda', E, 2000, JOINTS['garuda'], extra)
 
 
 def build():
     M = mats()
+    M_CUR[0] = M
     return [rodan(M), rodan_wing(M), mg_torso(M), mg_head(M), mg_arm(M), mg_thigh(M), mg_shin(M), mg_garuda(M)]
 
 

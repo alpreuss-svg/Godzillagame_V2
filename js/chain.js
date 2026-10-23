@@ -21,7 +21,8 @@ export function segDist(p, a, b) {
 export class Chain {
   // head: optionales Objekt an der Spitze (dreht mit dem letzten Knochen); color: [r, g, b] (linear) für Materialien
   // mit Vertexfarben, rings: dunkle Querringe (Schuppen) entlang der Kette
-  constructor(scene, mat, len, r0, r1, { head = null, color = null, rings = 0 } = {}) {
+  // ringColor: eigene Farbe der Querringe (sonst abgedunkelt), spots: Farbe von Flecken an den Flanken je Glied
+  constructor(scene, mat, len, r0, r1, { head = null, color = null, rings = 0, ringColor = null, spots = null } = {}) {
     this.len = len;
     const l = len / SEG;
     const geo = new THREE.CylinderGeometry(r1, r0, len, 10, SEG * 3, true).translate(0, len / 2, 0);
@@ -36,8 +37,11 @@ export class Chain {
     if (color) {
       const col = new Float32Array(n * 3);
       for (let i = 0; i < n; i++) {
-        const k = rings && Math.abs(Math.sin(pos.getY(i) * Math.PI * rings / len)) < 0.2 ? 0.6 : 1;
-        col.set([color[0] * k, color[1] * k, color[2] * k], i * 3);
+        const s = Math.sin(pos.getY(i) * Math.PI * rings / len), ring = rings && Math.abs(s) < 0.2;
+        let c = color;
+        if (ring) c = ringColor || color.map(x => x * 0.6);
+        else if (spots && Math.abs(s) > 0.8 && Math.abs(pos.getX(i)) > 0.75 * Math.hypot(pos.getX(i), pos.getZ(i))) c = spots;
+        col.set(c, i * 3);
       }
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
     }

@@ -95,10 +95,12 @@ if 'mothra' in WHAT:
     common.export_glb(os.path.join(OUT, 'mothra.glb'), objs)
     if PREVIEW:
         mothra.layout_preview(objs)
-        common.preview(os.path.join(PRE, 'mothra_top.png'), target=(0, 5, 40), dist=420, elev=70, azim=-90, color='TEXTURE')
-        common.preview(os.path.join(PRE, 'mothra_mothra.png'), target=(-110, -5, 40), dist=210, elev=25, azim=-70, color='TEXTURE')
-        common.preview(os.path.join(PRE, 'mothra_battra.png'), target=(110, -5, 40), dist=210, elev=25, azim=-110, color='TEXTURE')
-        common.preview(os.path.join(PRE, 'mothra_larva.png'), target=(0, -6, 12), dist=70, elev=15, azim=-60, color='VERTEX')
+        common.color_preview(os.path.join(PRE, 'mothra_top.png'), target=(0, 5, 40), dist=420, elev=70, azim=-90)
+        common.color_preview(os.path.join(PRE, 'mothra_mothra.png'), target=(-110, -5, 40), dist=210, elev=25, azim=-70)
+        common.color_preview(os.path.join(PRE, 'mothra_mothra_head.png'), target=(-110, -18, 38), dist=70, elev=10, azim=-60)
+        common.color_preview(os.path.join(PRE, 'mothra_battra.png'), target=(110, -5, 40), dist=210, elev=25, azim=-110)
+        common.color_preview(os.path.join(PRE, 'mothra_battra_head.png'), target=(110, -18, 36), dist=75, elev=12, azim=-120)
+        common.color_preview(os.path.join(PRE, 'mothra_larva.png'), target=(0, -10, 14), dist=80, elev=12, azim=-55)
 
 if 'kaiju93' in WHAT:
     common.reset()
@@ -106,8 +108,10 @@ if 'kaiju93' in WHAT:
     common.export_glb(os.path.join(OUT, 'kaiju93.glb'), objs)
     if PREVIEW:
         kaiju93.layout_preview(objs)
-        common.preview(os.path.join(PRE, 'kaiju93_rodan.png'), target=(-90, 0, 40), dist=220, elev=40, azim=-70, color='VERTEX')
-        common.preview(os.path.join(PRE, 'kaiju93_mecha.png'), target=(60, 0, 40), dist=170, elev=10, azim=-70, color='VERTEX')
+        common.color_preview(os.path.join(PRE, 'kaiju93_rodan.png'), target=(-90, 0, 40), dist=220, elev=30, azim=-70)
+        common.color_preview(os.path.join(PRE, 'kaiju93_rodan_head.png'), target=(-90, -24, 50), dist=55, elev=10, azim=-40)
+        common.color_preview(os.path.join(PRE, 'kaiju93_mecha.png'), target=(60, 0, 40), dist=170, elev=8, azim=-70)
+        common.color_preview(os.path.join(PRE, 'kaiju93_mecha_front.png'), target=(60, 0, 40), dist=150, elev=5, azim=-90)
 
 if 'kaiju94' in WHAT:
     common.reset()
@@ -123,5 +127,7 @@ if 'kaiju95' in WHAT:
     common.export_glb(os.path.join(OUT, 'kaiju95.glb'), objs)
     if PREVIEW:
         kaiju95.layout_preview(objs)
-        common.preview(os.path.join(PRE, 'kaiju95.png'), target=(-20, 0, 40), dist=330, elev=14, azim=-75, color='VERTEX')
-        common.preview(os.path.join(PRE, 'kaiju95_final.png'), target=(60, 0, 45), dist=190, elev=10, azim=-60, color='VERTEX')
+        common.color_preview(os.path.join(PRE, 'kaiju95.png'), target=(-20, 0, 40), dist=330, elev=14, azim=-75)
+        common.color_preview(os.path.join(PRE, 'kaiju95_final.png'), target=(60, 0, 50), dist=200, elev=8, azim=-75)
+        common.color_preview(os.path.join(PRE, 'kaiju95_head.png'), target=(60, -22, 78), dist=70, elev=10, azim=-60)
+        common.color_preview(os.path.join(PRE, 'kaiju95_juv.png'), target=(-150, -5, 12), dist=80, elev=20, azim=-60)

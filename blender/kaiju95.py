@@ -1,8 +1,11 @@
-"""1995: Destoroyah in drei Formen. Erste Entwürfe ohne Bildvorlage.
-- DE_juvenile: Jungtier – krabbenartig, flacher Panzer, sechs Beine, zwei Scheren, Hornkamm, ~25 m
+"""1995: Destoroyah in drei Formen, nach Filmbildern des Nutzers.
+- DE_juvenile: Jungtier (Aggregat) – krabben-/skorpionartig, sechs spitze Beine, zwei lange Sichelscheren nach oben
+  gebogen, Kopf mit Stachelkrone und Kieferzangen, beiger Borstenfleck auf der Brust, dunkelrot-schwarz, ~25 m
 - DEF_body / DEF_wing: Flugform – schlanker Dämonenkörper mit Hornkopf, Fledermausflügel (links, waagrecht nach +X)
-- DE_body / DE_wing: Endform – riesiger roter Dämon auf kräftigen Beinen, Brustpanzer, Kopf mit großem Horn (Laserhorn),
-  kleine Arme, große Fledermausflügel; DE_pincer: Schwanzschere (zeigt nach +Z, sitzt auf der Kettenspitze)
+- DE_body / DE_wing: Endform – kräftig rot mit schwarzbraunen, rauen Panzerflecken, leuchtende orange Brustblüte,
+  Kopf mit Kragen aus nach hinten gebogenen Stacheln, langes gelb-oranges Laserhorn, gelbe Augen, rote Schulterhörner,
+  große helle Krallen an Füßen und Knien, Fledermausflügel rot mit dunklen Fingerknochen;
+  DE_pincer: Schwanzschere (zeigt nach +Z, sitzt auf der Kettenspitze)
 Blender: Z oben, vorn = -Y (glTF +Z)."""
 import bpy, bmesh, math
 import numpy as np
@@ -13,16 +16,21 @@ from biollante import metaball_mesh, ell, chain, add_cone, lin
 V = Vector
 WING_FLY = (5, 3, 4)          # Flügelgelenk Flugform (Blender)
 WING_FINAL = (14, 6, 66)      # Flügelgelenk Endform (Blender)
-ORDER = ['skin', 'membrane', 'horn', 'eye', 'mouth']
+ORDER = ['skin', 'membrane', 'horn', 'eye', 'mouth', 'claw', 'laser', 'flower', 'spike']
+RED, DARK = V((0.78, 0.1, 0.08)), V((0.16, 0.07, 0.06))
 
 
 def mats():
     return {
-        'skin': material('DE_Skin', rough=0.55, metal=0.25, vcol=True),
-        'membrane': material('DE_Membrane', rough=0.6, metal=0.2, vcol=True),
-        'horn': material('DE_Horn', color=(0.85, 0.75, 0.55), rough=0.4, metal=0.3),
-        'eye': material('DE_Eye', color=(1, 0.85, 0.2), emit=(1, 0.8, 0.2), emit_strength=4),
+        'skin': material('DE_Skin', rough=0.5, metal=0.2, vcol=True),
+        'membrane': material('DE_Membrane', rough=0.5, metal=0.1, vcol=True),
+        'horn': material('DE_Horn', color=(0.55, 0.08, 0.07), rough=0.4, metal=0.3),
+        'spike': material('DE_Spike', color=(0.75, 0.1, 0.08), rough=0.35, metal=0.3),
+        'claw': material('DE_Claw', color=(0.88, 0.82, 0.68), rough=0.45),
+        'laser': material('DE_Laser', color=(1.0, 0.72, 0.2), emit=(1.0, 0.55, 0.1), emit_strength=0.8, rough=0.3),
+        'eye': material('DE_Eye', color=(1, 0.8, 0.15), emit=(1, 0.75, 0.15), emit_strength=4),
         'mouth': material('DE_Mouth', color=(0.6, 0.1, 0.25), emit=(0.8, 0.15, 0.4), emit_strength=1.2),
+        'flower': material('DE_Flower', color=(1.0, 0.55, 0.15), emit=(1.0, 0.5, 0.1), emit_strength=1.6),
     }
 
 
@@ -32,20 +40,34 @@ def set_mat(faces, k):
         f.smooth = k in ('skin', 'membrane')
 
 
-def finish(name, E, tris, M, skin_col, res=0.8, extra=None, origin=(0, 0, 0)):
+def bent(bm, pts, r0, r1, k, segs=5):
+    """Gebogener Stachel aus Kegelstümpfen entlang pts (r0 -> r1)."""
+    faces, n = [], len(pts) - 1
+    for i in range(n):
+        a, b = V(pts[i]), V(pts[i + 1])
+        faces += add_cone(bm, a, b - a, r0 + (r1 - r0) * i / n, (b - a).length * (1.0 if i == n - 1 else 1.25), segs)
+    set_mat(faces, k)
+
+
+def skin_color(p, n, dark_k=1.0):
+    """Rot mit schwarzbraunen, rauen Panzerflecken; Fugen dunkel."""
+    c = RED * (0.8 + 0.3 * noise.noise(p * 0.15))
+    if noise.noise(p * 0.07 + V((3, 1, 7))) > 0.15 * dark_k:
+        c = DARK * (0.8 + 0.5 * noise.noise(p * 0.6))
+    if noise.noise(p * 0.35, noise_basis='VORONOI_F2F1') < -0.95:
+        c = c * 0.45
+    return c
+
+
+def finish(name, E, tris, M, res=0.8, extra=None, origin=(0, 0, 0), color=skin_color):
     me = metaball_mesh(name, E, tris, res=res)
     bm = bmesh.new(); bm.from_mesh(me); bpy.data.meshes.remove(me)
     bm.normal_update()
     cols = {}
     for v in bm.verts:
         p, n = v.co.copy(), v.normal.copy()
-        v.co += n * noise.noise(p * 0.5, noise_basis='VORONOI_F2F1') * 0.5            # Panzerplatten
-        c = V(skin_col) * (0.8 + 0.35 * noise.noise(p * 0.12))
-        if n.z > 0.5:
-            c = c * 0.7                                                                  # Rücken dunkler
-        if noise.noise(p * 0.35, noise_basis='VORONOI_F2F1') < 0.08:
-            c = c * 0.5                                                                  # Fugen
-        cols[v] = c
+        v.co += n * noise.noise(p * 0.5, noise_basis='VORONOI_F2F1') * 0.45            # raue Panzerplatten
+        cols[v] = color(p, n)
     for f in bm.faces:
         f.smooth = True
         f.material_index = ORDER.index('skin')
@@ -64,7 +86,7 @@ def finish(name, E, tris, M, skin_col, res=0.8, extra=None, origin=(0, 0, 0)):
     ca = out.color_attributes.new('Col', 'FLOAT_COLOR', 'POINT')
     arr = np.ones((len(out.vertices), 4))
     for v in bm.verts:
-        arr[v.index, :3] = lin(cols.get(v, skin_col))
+        arr[v.index, :3] = lin(cols.get(v, RED))
     ca.data.foreach_set('color', arr.astype(np.float32).ravel())
     out.color_attributes.active_color = ca
     bm.free()
@@ -73,73 +95,114 @@ def finish(name, E, tris, M, skin_col, res=0.8, extra=None, origin=(0, 0, 0)):
     return link(bpy.data.objects.new(name, out))
 
 
-def eyes(bm, pos, r, sx_list=(1, -1)):
-    for sx in sx_list:
-        res = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=r)
+def eyes(bm, pos, r, slant=0.3):
+    for sx in (1, -1):
+        res = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=1.0)
         for v in res['verts']:
+            v.co = V((v.co.x * r * 1.2, v.co.y * r * 1.6, v.co.z * r * 0.8))
+            v.co.z += v.co.x * sx * slant
             v.co += V((sx * pos[0], pos[1], pos[2]))
         set_mat(list({f for v in res['verts'] for f in v.link_faces}), 'eye')
 
 
-RED = (0.55, 0.1, 0.08)
+def demon_head(bm, c, s, horn_len):
+    """Destoroyahs Kopf (Zusatzteile): Laserhorn, Stachelkragen nach hinten, Augen, Zähne. c = Kopfmitte, s = Maßstab."""
+    c = V(c)
+    tip = c + V((0, -9, 3)) * s
+    bent(bm, [tip, tip + V((0, -0.7, 0.55)) * horn_len * 0.5, tip + V((0, -0.55, 0.85)) * horn_len], 3.0 * s, 1.2 * s, 'laser', 6)
+    eyes(bm, (c.x + 4.2 * s, c.y - 5 * s, c.z + 2 * s), 1.2 * s)
+    for i in range(7):                                                # Kragen aus großen, nach hinten gebogenen Stacheln
+        a = math.radians(-75 + i * 25)
+        base = c + V((math.sin(a) * 6.5, 2 + abs(math.sin(a)) * 1.5, 3 + math.cos(a) * 2.5)) * s
+        out = V((math.sin(a) * 0.9, 0.9, 0.5 + math.cos(a) * 0.6)).normalized()
+        L = (12 - abs(i - 3) * 1.2) * s
+        bent(bm, [base, base + out * L * 0.55 + V((0, 0, 1.5 * s)), base + out * L + V((0, 2 * s, -1 * s))], 2.0 * s, 1.0 * s, 'spike')
+    for sx in (1, -1):                                                # zwei vordere Seitenfinnen
+        b = c + V((sx * 5, -3, 3)) * s
+        bent(bm, [b, b + V((sx * 4, -2, 5)) * s, b + V((sx * 5, 1, 9)) * s], 1.5 * s, 0.8 * s, 'spike')
+        for k in range(4):                                            # Zähne
+            set_mat(add_cone(bm, c + V((sx * (1.2 + k * 0.9), -12 + k * 1.6, -2.3)) * s, V((0, 0, -1)), 0.45 * s, 1.8 * s, 4), 'claw')
+        set_mat(add_cone(bm, c + V((sx * 3.5, -9, -2.5)) * s, V((sx * 0.3, -0.5, -1)), 0.8 * s, 3.5 * s, 4), 'claw')   # Hauer
 
 
 def juvenile(M):
-    E = [ell((0, 0, 6), (9, 12, 4.5)), ell((0, -10, 7), (6, 5, 4)), ell((0, 9, 5), (6, 6, 3.5))]
+    E = [ell((0, 2, 7), (8, 10, 5)), ell((0, -9, 8.5), (6, 5, 4.5)), ell((0, 10, 6), (5.5, 6, 3.5)),
+         ell((0, -14, 9.5), (4, 4, 3.5))]
     for sx in (1, -1):
-        for k in range(3):                                                    # sechs Beine
-            chain(E, [(sx * 6, -4 + k * 6, 5), (sx * 13, -5 + k * 7, 8), (sx * 17, -6 + k * 8, 0.5)], 1.6, 0.8)
-        chain(E, [(sx * 5, -12, 7), (sx * 9, -19, 8), (sx * 7, -24, 6)], 1.8, 2.4)   # Scherenarme
+        for k in range(3):                                                    # sechs spitze Beine
+            chain(E, [(sx * 6, -2 + k * 6, 6), (sx * 13, -3 + k * 7, 12), (sx * 18, -4 + k * 8, 1)], 1.6, 0.9)
+        chain(E, [(sx * 5, -11, 8), (sx * 11, -15, 16), (sx * 13, -14, 25)], 2.2, 1.8)   # Scherenarme nach oben
+
+    def color(p, n):
+        c = RED * 0.75 if n.z > 0 else DARK
+        if noise.noise(p * 0.2) > 0.2:
+            c = DARK
+        if p.y < -8 and n.y < -0.5 and abs(p.x) < 4 and p.z < 9:
+            c = V((0.7, 0.58, 0.4))                                           # beiger Borstenfleck
+        return c
+
     def extra(bm, cols):
-        eyes(bm, (2.4, -14, 9), 0.9)
-        set_mat(add_cone(bm, V((0, -12, 10)), V((0, -0.6, 1)), 1.4, 7, 5), 'horn')
+        eyes(bm, (2.2, -16.5, 11), 0.8)
         for sx in (1, -1):
-            for d in (1, -1):
-                set_mat(add_cone(bm, V((sx * 7, -24, 6)), V((sx * 0.2 * d, -1, d * 0.3)), 1.2, 4.5, 4), 'horn')   # Scheren
-        for k in range(4):
-            set_mat(add_cone(bm, V((0, -4 + k * 4, 10)), V((0, 0.3, 1)), 0.8, 3, 4), 'horn')
-    return finish('DE_juvenile', E, 3000, M, RED, 0.45, extra)
+            bent(bm, [(sx * 13, -14, 25), (sx * 14, -19, 29), (sx * 12, -25, 28), (sx * 10, -27, 24)], 1.6, 0.6, 'spike')   # Sichelscheren
+            set_mat(add_cone(bm, V((sx * 13, -14, 24)), V((sx * 0.3, -1, -0.6)), 0.9, 5, 4), 'spike')
+            bent(bm, [(sx * 2, -17, 7.5), (sx * 3.5, -20, 6.5), (sx * 1.5, -22, 6)], 0.8, 0.4, 'claw')   # Kieferzangen
+            for k in range(3):                                               # Beinspitzen
+                set_mat(add_cone(bm, V((sx * 18, -4 + k * 8, 1.5)), V((sx * 0.3, 0, -1)), 0.8, 3, 4), 'spike')
+        for k in range(5):                                                   # Stachelkrone und Rückenstacheln
+            a = math.radians(-60 + k * 30)
+            set_mat(add_cone(bm, V((math.sin(a) * 3, -13, 12)), V((math.sin(a) * 0.5, 0.3, 1)), 0.9, 4.5, 4), 'spike')
+            set_mat(add_cone(bm, V((0, -4 + k * 4, 11.5)), V((0, 0.3, 1)), 0.8, 3, 4), 'spike')
+    return finish('DE_juvenile', E, 3500, M, 0.45, extra, color=color)
 
 
 def flyer(M):
-    E = [ell((0, 2, 0), (5, 14, 5), (-5, 0, 0)), ell((0, -10, 2), (5.5, 6, 6)), ell((0, 18, -2), (2.5, 9, 2.5), (10, 0, 0))]
-    chain(E, [(0, -14, 4), (0, -19, 6)], 3, 2.6)
-    E += [ell((0, -23, 6), (3.6, 5, 3.2))]
+    E = [ell((0, 2, 0), (5.5, 14, 5.5), (-5, 0, 0)), ell((0, -10, 2), (6, 6, 6.5)), ell((0, 18, -2), (2.5, 9, 2.5), (10, 0, 0))]
+    chain(E, [(0, -14, 4), (0, -19, 6)], 3.2, 2.8)
+    E += [ell((0, -23, 6.5), (3.8, 5, 3.4))]
+
     def extra(bm, cols):
-        eyes(bm, (2.4, -25, 7.5), 0.8)
-        set_mat(add_cone(bm, V((0, -24, 9)), V((0, -0.8, 1)), 1.6, 9, 5), 'horn')
+        demon_head(bm, (0, -23, 6.5), 0.5, 9)
         for sx in (1, -1):
-            set_mat(add_cone(bm, V((sx * 2.5, -21, 8.5)), V((sx * 0.5, 0.6, 0.8)), 0.9, 5, 4), 'horn')
-    return finish('DEF_body', E, 3500, M, RED, 0.55, extra)
+            for k in range(2):
+                set_mat(add_cone(bm, V((sx * 4, -6 + k * 8, -4)), V((sx * 0.2, 0.3, -1)), 0.8, 4, 4), 'claw')
+    return finish('DEF_body', E, 3500, M, 0.55, extra)
 
 
 def bat_wing(M, name, span, color):
-    """Fledermausflügel (links, waagrecht nach +X): Arm, vier Finger, Membran mit gebogtem Hinterrand."""
+    """Fledermausflügel (links, waagrecht nach +X): Arm, vier dunkle Fingerknochen, rote Membran mit Rippen und
+    gebogtem Hinterrand."""
     bm = bmesh.new(); cols = {}
     k = span / 90
     root, wrist = V((0, 0, 0)), V((34 * k, -6 * k, 0))
     tips = [V((90 * k, -16 * k, 0)), V((86 * k, 10 * k, 0)), V((66 * k, 30 * k, 0)), V((40 * k, 40 * k, 0))]
     body = V((4 * k, 24 * k, 0))
+
     def rod(a, b, r0, r1):
         d = b - a
         r = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=r0, radius2=r1, depth=d.length,
                                   matrix=Matrix.Translation(a + d / 2) @ d.to_track_quat('Z', 'Y').to_matrix().to_4x4())
         set_mat(list({f for v in r['verts'] for f in v.link_faces}), 'skin')
         for v in r['verts']:
-            cols[v] = V(color) * 0.7
-    rod(root, wrist, 2.2 * k, 1.6 * k)
-    pts = [wrist] + tips + [body, root]
+            cols[v] = DARK
+    rod(root, wrist, 2.4 * k, 1.8 * k)
     for t in tips:
-        rod(wrist, t, 1.3 * k, 0.3 * k)
-        set_mat(add_cone(bm, t, (t - wrist).normalized(), 0.6 * k, 4 * k, 4), 'horn')
+        rod(wrist, t, 1.4 * k, 0.35 * k)
+        set_mat(add_cone(bm, t, (t - wrist).normalized(), 0.7 * k, 5 * k, 4), 'spike')
+    set_mat(add_cone(bm, wrist, V((0.2, -1, 0.4)), 1.2 * k, 6 * k, 4), 'spike')      # Daumenkralle
     ring = [wrist] + tips + [body]
-    for a, b in zip(ring, ring[1:]):
+    for a, b in zip(ring, ring[1:]):                                # Membranfelder, in Streifen geteilt (Rippen)
         mid = (a + b) / 2
         inward = (wrist - mid) * 0.22
-        vs = [bm.verts.new(wrist), bm.verts.new(a), bm.verts.new(mid + inward), bm.verts.new(b)]
-        set_mat([bm.faces.new((vs[0], vs[1], vs[2])), bm.faces.new((vs[0], vs[2], vs[3]))], 'membrane')
-        for v in vs:
-            cols[v] = V(color) * (0.6 + 0.4 * (v.co.length / (90 * k)))
+        edge = [a.lerp(mid + inward, t / 3) for t in range(3)] + [(mid + inward).lerp(b, t / 3) for t in range(4)]
+        c0 = bm.verts.new(wrist); cols[c0] = V(color) * 0.55
+        prev = None
+        for i, e in enumerate(edge):
+            ve = bm.verts.new(e)
+            cols[ve] = V(color) * (1.05 if i % 2 else 0.75)        # helle und dunkle Rippen
+            if prev:
+                set_mat([bm.faces.new((c0, prev, ve))], 'membrane')
+            prev = ve
     vs = [bm.verts.new(root), bm.verts.new(wrist), bm.verts.new(body)]
     set_mat([bm.faces.new(vs)], 'membrane')
     for v in vs:
@@ -167,43 +230,66 @@ def bat_wing(M, name, span, color):
 
 def final_form(M):
     E = [ell((0, 2, 44), (14, 11, 18), (8, 0, 0)),            # Rumpf
-         ell((0, -4, 60), (15, 11, 10)),                       # Brust und Schultern
-         ell((0, 6, 30), (14, 12, 9))]                         # Becken
+         ell((0, -4, 58), (16, 11.5, 10.5)),                   # breite Brust und Schultern
+         ell((0, 6, 30), (14.5, 12, 9))]                       # Becken
     for sx in (1, -1):                                          # kräftige Beine mit nach hinten geknicktem Fuß
-        chain(E, [(sx * 9, 4, 30), (sx * 13, -4, 18), (sx * 12, 6, 8), (sx * 12, -2, 2)], 8.5, 4.5)
-        chain(E, [(sx * 12, -6, 58), (sx * 16, -12, 50), (sx * 14, -18, 46)], 3.4, 2.2)   # kleine Arme
-    chain(E, [(0, -8, 66), (0, -12, 72)], 7, 6)                 # Hals
+        chain(E, [(sx * 9, 4, 30), (sx * 13, -4, 18), (sx * 12, 6, 8), (sx * 12, -2, 2)], 9, 5)
+        E.append(ell((sx * 13, -2, 4), (6.5, 8, 3.5)))         # breiter Fuß
+        chain(E, [(sx * 13, -6, 57), (sx * 18, -13, 50), (sx * 15, -20, 46)], 3.8, 2.6)   # Arme
+        E.append(ell((sx * 15, -6, 63), (6.5, 7, 5.5)))        # Schulterwulst
+    chain(E, [(0, -8, 65), (0, -12, 71)], 7.5, 6.5)             # Hals
     E += [ell((0, -17, 76), (7.5, 9, 6.5)), ell((0, -26, 74), (5, 7, 4), (8, 0, 0)),     # Kopf, Schnauze
           ell((0, -24, 71.5), (4.6, 7, 1.6), None, True)]                                 # Maul
+
     def extra(bm, cols):
-        eyes(bm, (4.5, -21, 78), 1.3)
-        set_mat(add_cone(bm, V((0, -18, 80)), V((0, -0.9, 0.7)), 3.2, 26, 6), 'horn')    # großes Laserhorn
+        demon_head(bm, (0, -18, 76), 1.0, 20)
+        # leuchtende Brustblüte: Scheibe mit acht dunklen Blütenrippen
+        r = bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=1.0)
+        for v in r['verts']:
+            v.co = V((v.co.x * 8, v.co.y * 1.6, v.co.z * 8))
+            v.co = Matrix.Rotation(math.radians(-12), 3, 'X') @ v.co + V((0, -14.2, 52))
+        set_mat(list({f for v in r['verts'] for f in v.link_faces}), 'flower')
+        for i in range(8):
+            a = i * math.pi / 4
+            d = V((math.cos(a), 0, math.sin(a)))
+            b0 = V((0, -15.4, 52)) + d * 1.2
+            set_mat(add_cone(bm, b0, d + V((0, -0.15, 0)), 0.9, 7.2, 3), 'horn')
         for sx in (1, -1):
-            set_mat(add_cone(bm, V((sx * 5, -14, 80)), V((sx * 0.4, 0.6, 0.8)), 1.6, 9, 5), 'horn')
-            for k in range(3):                                                            # Krallen
-                set_mat(add_cone(bm, V((sx * 12 + (k - 1) * 2, -8, 1.5)), V(((k - 1) * 0.3, -1, -0.2)), 1.2, 4, 4), 'horn')
-                set_mat(add_cone(bm, V((sx * 14 + (k - 1), -21, 45)), V(((k - 1) * 0.2, -1, -0.4)), 0.6, 3, 4), 'horn')
-        for k in range(6):                                                                # Rückenstacheln
-            set_mat(add_cone(bm, V((0, 10 + k * 1.5, 62 - k * 6)), V((0, 1, 0.7)), 1.6, 6, 4), 'horn')
-        for f in bm.faces:                                                                # Maul innen
+            for k, (yy, zz, L) in enumerate(((-4, 66, 12), (2, 62, 9))):              # rote Schulterhörner
+                b = V((sx * 17, yy, zz))
+                bent(bm, [b, b + V((sx * 0.6, -0.2, 0.8)) * L * 0.6, b + V((sx * 0.9, 0.3, 0.7)) * L], 2.6, 1.0, 'spike')
+            for k in range(4):                                                       # große helle Fußkrallen
+                set_mat(add_cone(bm, V((sx * 13 + (k - 1.5) * 3, -9, 3)), V(((k - 1.5) * 0.25, -1, -0.3)), 1.8, 6, 5), 'claw')
+            for k in range(3):                                                       # Knie- und Fersenkrallen
+                set_mat(add_cone(bm, V((sx * (14 + k * 1.5), -8 + k * 2, 18 + k * 2)), V((sx * 0.4, -1, 0.2)), 1.6, 6, 5), 'claw')
+                set_mat(add_cone(bm, V((sx * 12.5, 9 + k, 9 + k * 2)), V((sx * 0.2, 1, -0.2)), 1.3, 4.5, 4), 'claw')
+            for k in range(3):                                                       # Handkrallen
+                set_mat(add_cone(bm, V((sx * 15 + (k - 1) * 1.5, -22, 46)), V(((k - 1) * 0.25, -1, -0.3)), 0.8, 4, 4), 'claw')
+            for k in range(3):                                                       # Armstacheln
+                set_mat(add_cone(bm, V((sx * 19, -10 + k * 3, 52 + k * 2)), V((sx * 1, 0.4, 0.4)), 1.0, 4, 4), 'spike')
+        for k in range(7):                                                           # Rückenstacheln
+            set_mat(add_cone(bm, V((0, 11 + k * 1.2, 64 - k * 5.5)), V((0, 1, 0.7)), 1.8, 7, 4), 'spike')
+        for f in bm.faces:                                                           # Maul innen
             c = f.calc_center_median()
             if f.material_index == ORDER.index('skin') and c.y < -20 and 70 < c.z < 73.5 and abs(c.x) < 4.4:
                 f.material_index = ORDER.index('mouth')
-    return finish('DE_body', E, 14000, M, (0.62, 0.1, 0.09), 1.0, extra)
+    return finish('DE_body', E, 15000, M, 1.0, extra)
 
 
 def pincer(M):
-    E = [('b', V((0, 0, 1)), 3.4), ell((0, 0, 5), (3.6, 3, 4))]
+    """Schwanzschere: zwei sichelförmige, nach innen gebogene Zangen (wie ein Halbmond)."""
+    E = [('b', V((0, 0, 1)), 3.6), ell((0, 0, 5), (4.2, 3, 3.5))]
+
     def extra(bm, cols):
         for sx in (1, -1):
-            set_mat(add_cone(bm, V((sx * 2.2, 0, 7)), V((-sx * 0.35, 0, 1)), 1.4, 9, 5), 'horn')
-    return finish('DE_pincer', E, 900, M, RED, 0.4, extra)
+            bent(bm, [(sx * 2.5, 0, 6), (sx * 6, 0, 9), (sx * 6.5, 0, 14), (sx * 3.5, 0, 17)], 1.6, 0.5, 'spike')
+    return finish('DE_pincer', E, 900, M, 0.4, extra)
 
 
 def build():
     M = mats()
-    return [juvenile(M), flyer(M), bat_wing(M, 'DEF_wing', 70, (0.5, 0.1, 0.1)), final_form(M),
-            bat_wing(M, 'DE_wing', 95, (0.55, 0.12, 0.12)), pincer(M)]
+    return [juvenile(M), flyer(M), bat_wing(M, 'DEF_wing', 70, (0.75, 0.12, 0.1)), final_form(M),
+            bat_wing(M, 'DE_wing', 95, (0.82, 0.13, 0.11)), pincer(M)]
 
 
 def layout_preview(objs):

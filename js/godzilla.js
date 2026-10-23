@@ -537,10 +537,19 @@ export class Godzilla {
         '#include <begin_vertex>\n  vBPos = position;');
       sh.fragmentShader = 'uniform float uBurn, uBTime;\nvarying vec3 vBPos;\n' +
         sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  vec3 q = vBPos * 0.24;
-  float n = sin(q.x * 2.1 + sin(q.y * 1.7)) * sin(q.y * 1.3 + sin(q.z * 2.3)) * sin(q.z * 1.9 + q.x * 0.7);
-  float spot = smoothstep(0.32, 0.6, n + 0.06 * sin(uBTime * 3.0 + q.y * 4.0));
-  totalEmissiveRadiance += vec3(1.0, 0.16, 0.03) * spot * uBurn * (0.85 + 0.15 * sin(uBTime * 5.0));`);
+  // wie im Film: große Glutflecken auf Brust und Bauch, Oberschenkeln und Schultern, sonst nur vereinzelt
+  float reg = max(max(
+    smoothstep(2.0, 8.0, vBPos.z) * step(24.0, vBPos.y) * step(vBPos.y, 64.0),
+    step(8.0, vBPos.y) * step(vBPos.y, 32.0) * smoothstep(4.0, 9.0, abs(vBPos.x))),
+    step(48.0, vBPos.y) * step(vBPos.y, 68.0) * smoothstep(9.0, 13.0, abs(vBPos.x)));
+  vec3 q = vBPos * 0.16;
+  float n = (sin(q.x * 2.1 + sin(q.y * 1.7)) + sin(q.y * 1.3 + sin(q.z * 2.3)) + sin(q.z * 1.9 + q.x * 0.7)) / 3.0;
+  n += 0.04 * sin(uBTime * 3.0 + q.y * 4.0);
+  float spot = smoothstep(0.5 - 0.6 * reg, 0.85 - 0.55 * reg, n);
+  float lava = 0.6 + 0.4 * sin(dot(vBPos, vec3(0.7, 0.35, 0.3)) + sin(vBPos.y * 0.45 + vBPos.z * 0.3) * 2.5)
+                     * sin(dot(vBPos, vec3(-0.3, 0.6, 0.55)) + sin(vBPos.x * 0.5 - vBPos.y * 0.2) * 2.5);   // Lava-Zellen
+  vec3 glowC = mix(vec3(0.4, 0.03, 0.01), vec3(0.95, 0.3, 0.05), spot * spot) * lava;   // Rand dunkelrot, Mitte orange
+  totalEmissiveRadiance += glowC * spot * uBurn * (0.85 + 0.15 * sin(uBTime * 5.0 + vBPos.y * 0.3));`);
     };
     mat.customProgramCacheKey = () => 'gz-burning';
     mat.needsUpdate = true;
