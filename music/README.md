@@ -19,6 +19,15 @@ Dateinamen (Endung .mp3, .ogg oder .m4a):
 | `1992`       | Yokohama 1992, Spiel         | Main Title (Ifukube)                    |
 | `1992_boss`  | Bossphase Battra             | Battra-Thema (Ifukube)                  |
 | `1992_final` | Endkampf Mothra              | Mothras Lied (Koseki/Ifukube)           |
+| `1993`       | Makuhari 1993, Spiel         | Main Title (Ifukube)                    |
+| `1993_boss`  | Bossphase Rodan              | Rodan-Thema (Ifukube)                   |
+| `1993_final` | Endkampf Mechagodzilla       | G-Force-Marsch (Ifukube)                |
+| `1994`       | Fukuoka 1994, Spiel          | Main Title (Hattori)                    |
+| `1994_boss`  | Bossphase Moguera            | Moguera-Marsch (Hattori)                |
+| `1994_final` | Endkampf SpaceGodzilla       | SpaceGodzilla-Thema (Hattori)           |
+| `1995`       | Tokio 1995, Spiel            | Main Title (Ifukube)                    |
+| `1995_boss`  | Bossphase Destoroyah         | Destoroyah-Thema (Ifukube)              |
+| `1995_final` | Endkampf Destoroyah          | Destoroyah-Thema / Kampf (Ifukube)      |
 | `gameover`   | Godzilla fällt               | ein ruhiges, trauriges Stück            |
 | `win`        | Sieg                         | Abspann                                 |
 
@@ -38,3 +47,5 @@ Biollantes Schrei: `bio1` … `bio6` (Rose etwas heller, Bestie tiefer). Aus Bio
 bio2 11,65–15,5 s, bio3 17,75–19,45 s (die drei kräftigen), bio4 3,3–4,45 s und bio5 7,75–9,35 s (zwei leise).
 
 Battra: `batt1` … `batt4`, Mothra: `moth1` … `moth4` (eigene Schreie, optional; sonst Synth-Kreischen).
+
+Weitere Schreie (optional): `rodan1…`, `mg1…` (Mechagodzilla), `mog1…` (Moguera), `sg1…` (SpaceGodzilla), `des1…` (Destoroyah).

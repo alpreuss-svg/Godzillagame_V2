@@ -304,6 +304,33 @@ export const Sound = (function () {
       timp: 'F1 . . . . . . . . . . . . . . . ' + '. . . . . . . . . . . . . . . . ' + 'F1 . . . . . . . . . . . . . . . ' + 'C2 . . . . . . . C2 . . . C2 . . . ',
       perc: 'c . . . . . . . . . . . . . . . ' + R('. . . . . . . . . . . . . . . .', 2) + ' r r r r . . . . . . . . . . . .'
     },
+    makuhari: { // Makuhari 1993: nüchtern und modern, d-Dorisch, treibende Achtel, kühle Bläser
+      bpm: 108, loop: true,
+      brass: 'D4 - - - F4 - G4 - A4 - - - - - - - ' + 'C5 - B4 - A4 - G4 - E4 - - - - - - - ' +
+        'D4 - - - F4 - G4 - A4 - C5 - D5 - - - ' + 'C5 - - - A4 - - - G4 - - - E4 - - - ',
+      str: pad(['D3+F3+A3', 'C3+E3+G3', 'D3+F3+A3', 'A2+C3+E3']),
+      low: [ost('D2', 'D3'), ost('C2', 'C3'), ost('D2', 'D3'), ost('A1', 'A2')].join(' '),
+      timp: R('D2 . . . . . . . A1 . . . . . . .', 4),
+      perc: R('k . s . k k s . k . s . k k s s', 4)
+    },
+    rodan: {    // Rodan: kreischend und wild, e-Moll, schnelle Blechstöße
+      bpm: 150, loop: true,
+      brass: 'E5 - D5 - B4 - - - E5 - G5 - F#5 - - - ' + 'E5 - D5 - B4 - A4 - G4 - - - F#4 - - - ' +
+        'E4 - G4 - B4 - E5 - D5 - C5 - B4 - - - ' + 'A4 - G4 - F#4 - D#4 - E4 - - - - - - - ',
+      str: pad(['E3+G3+B3', 'C3+E3+G3', 'A2+C3+E3', 'B2+D#3+F#3']),
+      low: [ost('E2', 'E3'), ost('C2', 'C3'), ost('A1', 'A2'), ost('B1', 'B2')].join(' '),
+      timp: R('E2 . E2 . B1 . . . E2 . E2 . B1 . B1 .', 4),
+      perc: R('k s k s k . s s k s k s k s s s', 4)
+    },
+    gforce: {   // G-Force-Marsch (eigene Melodie): heroisch, B-Dur, Militärtrommel
+      bpm: 126, loop: true,
+      brass: 'Bb3 - - Bb3 D4 - F4 - Bb4 - - - A4 - G4 - ' + 'F4 - - Eb4 D4 - C4 - D4 - - - - - - - ' +
+        'Bb3 - - Bb3 D4 - F4 - Bb4 - - - C5 - D5 - ' + 'Eb5 - D5 - C5 - A4 - Bb4 - - - - - - - ',
+      str: pad(['Bb2+D3+F3', 'Eb3+G3+Bb3', 'Bb2+D3+F3', 'F2+A2+C3']),
+      low: [ost('Bb1', 'Bb2'), ost('Eb2', 'Eb3'), ost('Bb1', 'Bb2'), ost('F1', 'F2')].join(' '),
+      timp: R('Bb1 . . . F1 . . . Bb1 . . . F1 . F1 .', 4),
+      perc: 'c . s s k . s . k . s s k s s s ' + R('k . s s k . s . k . s s k s s s', 3)
+    },
     dance: {
       bpm: 170, loop: false,
       brass: 'C5 C5 . C5 . A4 C5 . D5 . C5 . A4 . G4 . C5 C5 . C5 . A4 C5 . F5 - - - E5 - - -',
@@ -526,9 +553,10 @@ export const Sound = (function () {
   // Fehlen sie, schreit der Synthesizer. Die 404-Meldungen beim Suchen sind gewollt.
   var VOICES = { godzilla: ['roar1', 'roar2', 'roar3'], kg: ['kg1', 'kg2', 'kg3', 'kg4', 'kg5', 'kg6'], mkg: ['mkg1', 'mkg2', 'mkg3', 'mkg4'],
     bio: ['bio1', 'bio2', 'bio3', 'bio4', 'bio5', 'bio6'], batt: ['batt1', 'batt2', 'batt3', 'batt4'],
-    moth: ['moth1', 'moth2', 'moth3', 'moth4'] };
-  var roarFiles = { godzilla: [], kg: [], mkg: [], bio: [], batt: [], moth: [] },
-    roarNext = { godzilla: 0, kg: 0, mkg: 0, bio: 0, batt: 0, moth: 0 };
+    moth: ['moth1', 'moth2', 'moth3', 'moth4'], rodan: ['rodan1', 'rodan2', 'rodan3', 'rodan4'], mg: ['mg1', 'mg2', 'mg3'],
+    moguera: ['mog1', 'mog2', 'mog3'], sg: ['sg1', 'sg2', 'sg3', 'sg4'], des: ['des1', 'des2', 'des3', 'des4', 'des5'] };
+  var roarFiles = {}, roarNext = {};
+  Object.keys(VOICES).forEach(function (v) { roarFiles[v] = []; roarNext[v] = 0; });
   function loadRoarFiles() {
     Object.keys(VOICES).forEach(function (v) { VOICES[v].forEach(function (n, i) { loadVoice(v, n, i); }); });
   }
@@ -668,7 +696,7 @@ export const Sound = (function () {
 })();
 
 /* ---------- Musikmanager: eigene Dateien aus music/ haben Vorrang ----------
-   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, 1991, 1991_boss, 1991_final, 1992, 1992_boss, 1992_final, gameover, win – siehe music/README.md.
+   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, 1991, 1991_boss, 1991_final, 1992, 1992_boss, 1992_final, 1993, 1993_boss, 1993_final, 1994, 1994_boss, 1994_final, 1995, 1995_boss, 1995_final, gameover, win – siehe music/README.md.
    Fehlt eine Datei, spielt das Synth-Stück. Die Suche wird pro Platz gemerkt. */
 const SLOTS = {
   title: { file: 'title', synth: 'heisei', loop: true },

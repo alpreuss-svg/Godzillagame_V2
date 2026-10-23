@@ -21,12 +21,13 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 ## Einrichtung auf einem neuen PC
 1. Blender installieren: `winget install --id BlenderFoundation.Blender -e` (entwickelt mit Blender 5.2 LTS).
 2. Modelle neu bauen (optional, die `.glb` liegen schon im Repo):
-   `"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --factory-startup -P blender/build_assets.py -- godzilla,city,units,biollante,ghidorah,mothra --preview`
+   `"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --factory-startup -P blender/build_assets.py -- godzilla,city,units,biollante,ghidorah,mothra,kaiju93,kaiju94,kaiju95 --preview`
    Vorschaubilder landen in `tools/previews/` (nicht im Repo) und können zur Kontrolle angesehen werden.
 3. Lokaler Server: `powershell -ExecutionPolicy Bypass -File tools\serve.ps1` → http://localhost:8123
 
 ## Aufbau
-- `blender/build_assets.py` – Einstieg; Argument wählt `godzilla`, `city`, `units`, `biollante`, `ghidorah`, `mothra`.
+- `blender/build_assets.py` – Einstieg; Argument wählt `godzilla`, `city`, `units`, `biollante`, `ghidorah`, `mothra`,
+  `kaiju93`, `kaiju94`, `kaiju95`.
 - `blender/common.py` – Szene, Materialien (sRGB → linear), Bilder aus numpy, glTF-Export, Workbench-Vorschau,
   EEVEE-Nachtvorschau (zeigt Emission).
 - `blender/godzilla.py` – Körper aus **Metaballs** entlang eines Skelettgraphen (Skin-Modifier war lückenhaft),
@@ -78,7 +79,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Fenstern, Stahlträger, verkohlte Brocken).
   Custom Property `size` (Breite, Tiefe, Höhe in m) landet als glTF-`extras` im Export. Wahrzeichen (nur über
   `specials` eines Levels gesetzt): `B_landmark` (Yokohama Landmark Tower, 186 m, gestuft mit eingezogenen Ecken),
-  `B_wheel` (Riesenrad Cosmo Clock, 102 m, leuchtende Gondeln).
+  `B_wheel` (Riesenrad Cosmo Clock, 102 m, leuchtende Gondeln), `B_messe` (Makuhari Messe, flache Halle mit Tonnendach).
 - `blender/units.py` – Panzer Typ 74, Raketen-LKW, AH-1 (+ Rotor separat), **Super-X**, **Super-X2** (dunkler
   Pfeilrumpf, Triebwerksgondeln, goldener Fire Mirror am Bug, Material `mirror`), Auto, Yamanote-Zug, Frachter,
   Baum, Laterne, Strommast, Trümmer (`U_debris0..2`). Läuft unter Blender 5.2, Vorschau geprüft.
@@ -102,6 +103,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Augenflecken), `BT_body` (dunkel gepanzert, langes Horn, rote Augen, Stacheln), `BT_wing` (spitz und gezackt,
   schwarz mit roten Zickzacklinien), `BT_head` (Kopf der Larve mit Horn, roten Augenreihen, Kiefern). Flügel liegen
   waagrecht (XY), linker nach +X, Gelenk `WING_ROOT` (muss zu moths.js passen); Muster als Bild aus den Umrissen.
+- `blender/kaiju93.py` – Rodan (`RO_body`, `RO_wing`) und Mechagodzilla in Gelenkteilen (`MG_torso`, `MG_head`,
+  `MG_arm`, `MG_thigh`, `MG_shin`, `MG_garuda`; Ursprung je Teil im Gelenk `JOINTS`, muss zu kaiju93.js passen).
 - `vendor/three/` – Three.js 0.170.0 (build + GLTFLoader, BufferGeometryUtils, SkeletonUtils), per Importmap.
 - `assets/models/godzilla.glb`, `city.glb`, `units.glb`, `biollante.glb`, `ghidorah.glb` – aktuelle Exporte (Monster
   lädt nur das Level, das sie braucht: `models` in levels.js).
@@ -120,6 +123,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Delle + Bröseln im Vertex-Shader, Löcher mit dunklen Innenwänden, Ruß und Glutränder am Einschlag, verteilte
   Ruß-/Rissflecken und ausfallende Fenster überall (damit man den Schaden von jeder Seite sieht), `aFx` (−1 = Schutt,
   Bruchhöhe, Knickwinkel, Knickachse) für das Knicken kippender Türme und verglimmende Glut im Schutt.
+- **Punkte** (main.js): Gebäude 10 + 2 × Höhe (Häuschen ~26, Hochhaus ~290), Einheiten 60, Boss 2000, Endgegner 3000.
+  Der Boss kommt bei `game.bossAt` = Wert von 60 Durchschnittsgebäuden der Stadt (vorher 120 Gebäude – dem Nutzer zu
+  lang). Bewertung = Gebäude-Gegenwert pro Minute.
 - `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), 20 m/s, **Sprint** mit Shift
   ×1,65 (33 m/s, `SPRINT`), kostet 7 Energie/s, solange lädt nichts nach (sonst 6/s, `ENERGY_REGEN`) – Wunsch des
   Nutzers, Godzilla war ihm zu langsam; Laufanimation läuft dann schneller, Füße bleiben synchron. `heal()`: Leben
@@ -162,7 +168,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (`ROAR_RANGE` in main.js; Militär 3 s, Bosse 2,5 s über `stun()` – Super-X schießt nicht, Ghidorahs Blitze und
   Biollantes Ranken/Saft brechen ab), Druckwelle zeigt die Reichweite; danach 20 s Aufladen (`ROAR_CD`), angezeigt als
   goldener Streifen unten in der Lebensleiste (`#roarCd`, leuchtet wenn bereit).
-- `js/boss.js` – Super-X: erscheint ab 120 zerstörten Gebäuden (`BOSS_AT` in main.js) mit Kinobalken, neue Wellen
+- `js/boss.js` – Super-X: erscheint bei der Boss-Punktzahl (`game.bossAt` in main.js) mit Kinobalken, neue Wellen
   stoppen. Fliegt über den Hochhäusern an (`ALT_TRAVEL`, sonst blieb sie an Umeda hängen), schwebt dann in 130–190 m
   Abstand auf ~68 m Höhe, weicht Hochhäusern aus (`avoid`; beim Anstoßen kreist sie schneller weiter), feuert nur mit freier Sicht
   (sonst kreist sie schneller weiter), Geschosse explodieren an Gebäuden. Bordgeschütz; Kadmium (alle 18 s zwei Raketen,
@@ -188,6 +194,16 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   King gelandet – die äußeren Köpfe beißen in Godzillas Schultern, der Mittelkopf feuert aus nächster Nähe; Mecha –
   Greifhaken an zwei Stahlseilen mit Klammer um die Brust. Strahl auf Kopf 6/s, Körper 4/s (Mecha 4/2,5).
   Absturz → `bossCrash` bzw. `finalGone`. Die Blitzbänder brauchen `camera` (setzt main.js).
+- `js/kaiju.js` – gemeinsame Helfer der Monster ab 1992: `Moth` (Körper + schlagende Flügel), `orbit` (Kreisflug,
+  weicht Hochhäusern aus – im Sturzflug/Flügelsturm abgeschaltet, sonst blieben sie an Türmen hängen), `clearAlt`
+  (Tiefflug knapp über den Dächern), `faceTo`, `sphereHit`, `makeBeam`/`fireBeam` (Ziel: Godzillas Brust relativ zu
+  seiner Höhe, auch im Wasser). Nahkampf an Fliegern nur im Sturzflug bzw. Flügelsturm.
+- `js/kaiju93.js` – 1993: `Rodan` (Boss): fliegt, Sturzflug mit Überschallknall (Druckwelle reißt Gebäude um), besiegt
+  Absturz und Rückkehr als glühender Fire Rodan mit Schnabelstrahl; fällt Fire Rodan, geht seine Lebensenergie auf
+  Godzilla über (+40 Leben, volle Energie, `g.power` 1,5 = stärkerer Atomstrahl). `Mechagodzilla` (Endgegner): geht
+  schwerfällig (Gelenkgruppen, prozeduraler Gang, Schwanz als Kette), Augenlaser, Mega-Buster, Schockanker (halten
+  fest, nur der Kernpuls befreit), Plasmagranate (Strahl von vorn macht 30 % Schaden und lädt einen Rückschuss),
+  von hinten trifft alles das zweite Gehirn (×2,5); bei halber Kraft dockt Garuda an (Super-Mechagodzilla, Kanonen).
 - `js/moths.js` – 1992: `Battra` (Boss-Rolle) in zwei Stufen – Larve (Kette 120 m mit Kopf, kriecht aus der Bucht,
   folgt ihrer Spur wie eine Schlange, walzt Gebäude nieder, rammt mit dem Horn (6 Schaden, stößt Godzilla zurück),
   roter Prismenstrahl aus dem Horn), besiegt gräbt sie sich ein und steigt als Falter auf (fliegt, rote Strahlen aus
@@ -225,7 +241,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (additive Kegel auf Kreuzungen um Godzilla, tasten ihn langsam ab – 5 schnelle waren dem Nutzer zu viel), feste Anzahl Punktlichter an den nächsten Bränden
   (Anzahl je Qualitätsstufe, nie wechselnd – sonst übersetzt Three.js die Shader neu). Filmkorn per CSS (`#grain`).
 - `js/audio.js` – Audio aus Teil 1 als ES-Modul (`Sound`: Orchester-Synth, Schrei als gestrichene Saite, Effekte) plus
-  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989, `sapporo` / `ghidorah` / `mecha` für 1991, `yokohama` / `battra` / `mothra` für 1992). `Music` spielt pro
+  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989, `sapporo` / `ghidorah` / `mecha` für 1991, `yokohama` / `battra` / `mothra` für 1992, `makuhari` / `rodan` / `gforce` für 1993). `Music` spielt pro
   Platz (title, level, boss, over, win; level/boss stellt `Music.setLevel()` je Level um) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
   Suchen sind gewollt), sonst das Synth-Stück. Ton startet mit der ersten Taste (Browser-Regel), M schaltet stumm.
   Ereignis → Geräusch in `hookSounds()` (main.js), häufige Ereignisse gedrosselt.
@@ -247,7 +263,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (Hochhäuser am Bahnhof im Norden, Ōdōri-Park als Blockreihe quer durch die Stadt, Susukino als `neon`, Hafen;
   King Ghidorah, danach Mecha-King Ghidorah), **1992 Yokohama** (Minato Mirai mit Landmark Tower am Wasser, Riesenrad
   am Hafen, Chinatown als `neon`, Yamashita-Park; Battra, danach Mothra; Wahrzeichen über `layout.specials`
-  {type, i, j}, die einen Block belegen). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
+  {type, i, j}, die einen Block belegen), **1993 Makuhari** (Bürotürme, drei Messehallen am Wasser, Strandpark;
+  Rodan/Fire Rodan, danach Mechagodzilla). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
   `finalGone`.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes (eine aufwendigere Strahl-
   Optik mit Spiralen, Pulsen und Funken gefiel dem Nutzer nicht und wurde zurückgebaut). `Lightning`: Ghidorahs Blitze

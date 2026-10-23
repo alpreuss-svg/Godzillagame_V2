@@ -13,8 +13,9 @@ import { SuperX, SuperX2 } from './boss.js';
 import { Biollante } from './biollante.js';
 import { KingGhidorah, MechaKingGhidorah } from './ghidorah.js';
 import { Battra, Mothra } from './moths.js';
-const BOSSES = { superx: SuperX, superx2: SuperX2, ghidorah: KingGhidorah, battra: Battra };
-const FINALS = { biollante: Biollante, mecha: MechaKingGhidorah, mothra: Mothra };
+import { Rodan, Mechagodzilla } from './kaiju93.js';
+const BOSSES = { superx: SuperX, superx2: SuperX2, ghidorah: KingGhidorah, battra: Battra, rodan: Rodan };
+const FINALS = { biollante: Biollante, mecha: MechaKingGhidorah, mothra: Mothra, mechag: Mechagodzilla };
 import { LEVELS, currentLevel } from './levels.js';
 import { Atmosphere } from './atmosphere.js';
 import { Water } from './water.js';
@@ -148,7 +149,7 @@ async function load() {
     if (game.boss.attack) game.boss.attack(e);          // King Ghidorah: Klaue, Schwanz, Kernpuls
     if (game.final) game.final.attack(e);
   });
-  events.on('beamLine', e => { game.military.damageLine(e.from, e.to, 14, e.dps * e.dt); game.boss.beamLine(e.from, e.to, e.dt); if (game.final) game.final.beamLine(e.from, e.to, e.dps, e.dt); });
+  events.on('beamLine', e => { game.military.damageLine(e.from, e.to, 14, e.dps * e.dt); game.boss.beamLine(e.from, e.to, e.dt * e.power); if (game.final) game.final.beamLine(e.from, e.to, e.dps, e.dt * e.power); });
   events.on('stomp', e => {
     rig.shake(0.35 * e.strength);
     game.props.knock(e.pos, 20);
@@ -159,6 +160,14 @@ async function load() {
     game.city.scars.blob(e.pos.x, e.pos.z, 12, [0, 0.3, 0.1]);
     fx.dust.emit(e.pos.x, 0, e.pos.z, 3, { spread: 6, up: 1.5, out: 6, size: 12, life: 2 });
   });
+  // Punkte
+  game.meanPoints = game.city.buildings.reduce((a, b) => a + buildingPoints(b), 0) / game.city.buildings.length;
+  game.bossAt = Math.round(BOSS_BUILDINGS * game.meanPoints / 100) * 100;
+  const gain = n => { game.score += n; };
+  events.on('collapse', e => gain(buildingPoints(e.b)));
+  events.on('unitDestroyed', () => gain(UNIT_POINTS));
+  events.on('bossDown', () => gain(BOSS_POINTS));
+  events.on('finalDown', () => gain(FINAL_POINTS));
   events.on('collapse', e => { rig.shake(e.topple ? 0.6 : 0.25); game.props.knock(e.b, Math.max(e.b.hw, e.b.hd) + 14); });
   // Gischt: weiße Tropfen und feiner Nebel
   const splash = (x, z, k) => {
@@ -199,7 +208,14 @@ async function load() {
     $('boss').hidden = false; $('bossName').textContent = game.final.label;
     cinema(e.title, 4.5);
   });
+  // 1993: Rodan und Mechagodzilla
+  events.on('rodanFire', e => { cinema(e.title, 4); $('bossName').textContent = game.boss.label; });
+  events.on('rodanGift', () => toast('Rodans Lebensenergie geht auf Godzilla über – der Atomstrahl ist stärker!', 4));
+  events.on('garuda', e => { cinema(e.title, 3.5); });
+  events.on('plasmaGrenade', () => toast('Die Plasmagranate schießt deinen Strahl zurück – greif ihn von hinten an!', 3));
+  events.on('secondBrain', () => once2('brain', 6, () => toast('Treffer am zweiten Gehirn in der Hüfte!', 1.8)));
   // 1992: Battra und Mothra
+  events.on('finalRise', () => { if (game.final) $('bossName').textContent = game.final.label; });
   events.on('battraChange', e => { cinema(e.title, 4); $('bossName').textContent = game.boss.label; });
   events.on('powderStart', () => toast('Mothra streut Schuppenpulver – es wirft den Atomstrahl zurück! Schrei (L) bläst es weg.', 3.5));
   events.on('powderGone', () => toast('Das Schuppenpulver ist verweht', 2));
@@ -207,7 +223,7 @@ async function load() {
   events.on('biollanteBurn', () => toast('Die Rose verbrennt …', 3));
   events.on('biollanteSpores', () => toast('Goldene Sporen steigen auf – sie verwandelt sich!', 3.5));
   events.on('vineGrab', () => toast('Eine Ranke hält Godzilla fest – Klaue oder Kernpuls!', 2.5));
-  events.on('grabStart', e => toast(e.kind === 'heads' ? 'King Ghidorah hält Godzilla mit zwei Köpfen fest – nur der Kernpuls (R) befreit!' : 'Greifhaken! Nur der Kernpuls (R) befreit Godzilla!', 3.5));
+  events.on('grabStart', e => e.kind === 'anchors' ? toast('Schockanker! Nur der Kernpuls (R) befreit Godzilla!', 3.5) : toast(e.kind === 'heads' ? 'King Ghidorah hält Godzilla mit zwei Köpfen fest – nur der Kernpuls (R) befreit!' : 'Greifhaken! Nur der Kernpuls (R) befreit Godzilla!', 3.5));
   events.on('bindStart', () => toast('Ranken fesseln Godzilla – befreie dich mit Atomstrahl (K) oder Kernpuls (R)!', 3.5));
   events.on('biteStart', () => toast('Biollante hat Godzillas Kopf im Maul – Atomstrahl in den Schlund (K)!', 3.5));
   events.on('holdFree', e => { if (e.how === 'beam' && e.kind === 'bite') toast('Volltreffer in den Schlund!', 2); });
@@ -242,7 +258,7 @@ function step(dt) {
       if (game.endT > 0 && (game.endT -= dt) <= 0) endGame();
       g.update(dt, input, rig);
       game.city.update(dt);
-      if (!game.boss.active && !game.boss.dead && game.city.destroyed >= BOSS_AT) game.boss.start(g.position);
+      if (!game.boss.active && !game.boss.dead && game.score >= game.bossAt) game.boss.start(g.position);
       if (!game.boss.active && !game.boss.dead) game.military.updateWaves(dt, g.position, game.city.destroyed);
       game.military.update(dt, g, game.city);
       game.boss.update(dt, g, game.city);
@@ -277,6 +293,7 @@ function step(dt) {
     if (rc !== game.shownRoar) { game.shownRoar = rc; $('roarCd').style.width = rc * 100 + '%'; $('roarCd').classList.toggle('ready', rc >= 1); }
     $('en').style.width = g.energy + '%';
     if (game.city.destroyed !== shownDestroyed) $('destroyed').textContent = shownDestroyed = game.city.destroyed;
+    if (game.score !== game.shownScore) $('score').textContent = game.shownScore = game.score;
     if (game.military.destroyed !== shownUnits) $('units').textContent = shownUnits = game.military.destroyed;
     const obj = objective();
     if (obj !== shownObjective) $('objective').textContent = shownObjective = obj;
@@ -289,14 +306,18 @@ let shownDestroyed = -1, shownUnits = -1, shownObjective = '';
 game.stats = { time: 0 };
 game.endT = 0;
 game.overT = 0;
-const BOSS_AT = 120;
+// Punkte: je höher ein Gebäude, desto mehr (Häuschen ~26, Büro ~94, Hochhaus ~290); Einheiten 60. Der Boss kommt bei
+// einer Punktzahl, die etwa 60 durchschnittlichen Gebäuden der Stadt entspricht (vorher 120 Gebäude – dauerte zu lang).
+const buildingPoints = b => Math.round(10 + 2 * b.h);
+const BOSS_BUILDINGS = 60, UNIT_POINTS = 60, BOSS_POINTS = 2000, FINAL_POINTS = 3000;
+game.score = 0;
 const ROAR_RANGE = 450;      // m, so weit betäubt der Schrei
-const HEAL = { tower: 6, mid: 1.5, small: 0.4, unit: 1 };   // Leben pro zerstörtem Gebäude bzw. Einheit          // zerstörte Gebäude, ab denen die Super-X angreift
+const HEAL = { tower: 6, mid: 1.5, small: 0.4, unit: 1 };   // Leben pro zerstörtem Gebäude bzw. Einheit
 
 function objective() {
-  const d = game.city.destroyed;
+  const d = game.score;
   if (game.final && (game.final.active || game.finalT > 0)) return game.final.active ? LV.finalGoal(game.final) : 'Etwas regt sich im Fluss …';
-  if (d < BOSS_AT && !game.boss.active && !game.boss.dead) return `Ziel: Verwüste ${LV.city} (${d} / ${BOSS_AT})`;
+  if (d < game.bossAt && !game.boss.active && !game.boss.dead) return `Ziel: Verwüste ${LV.city} (${d} / ${game.bossAt} Punkte)`;
   return game.boss.dead ? LV.win[1] : LV.bossGoal(game.boss);
 }
 
@@ -308,7 +329,7 @@ function endGame() {
   $('overTitle').textContent = won ? LV.win[0] : 'GODZILLA FÄLLT';
   $('overSub').textContent = won ? LV.win[1] : 'Die Selbstverteidigungsstreitkräfte haben gesiegt';
   const t = game.stats.time, mm = Math.floor(t / 60), ss = Math.floor(t % 60);
-  const rows = [['Zeit', `${mm}:${String(ss).padStart(2, '0')}`], ['Gebäude zerstört', game.city.destroyed],
+  const rows = [['Punkte', game.score], ['Zeit', `${mm}:${String(ss).padStart(2, '0')}`], ['Gebäude zerstört', game.city.destroyed],
     ['Einheiten zerstört', game.military.destroyed]];
   if (won) rows.push(['Bewertung', rating()]);
   $('overStats').innerHTML = rows.map(([a, b]) => `<tr><td>${b}</td><td>${a}</td></tr>`).join('');
@@ -317,7 +338,7 @@ function endGame() {
 
 // Bewertung nach Zerstörung pro Minute und verbliebenem Leben
 function rating() {
-  const g = game.godzilla, perMin = (game.city.destroyed + game.military.destroyed * 2) / Math.max(1, game.stats.time / 60);
+  const g = game.godzilla, perMin = (game.score / game.meanPoints) / Math.max(1, game.stats.time / 60);   // Gebäude-Gegenwert pro Minute
   const score = perMin * 0.6 + g.hp * 0.4;
   return score > 90 ? 'S – König der Monster' : score > 65 ? 'A – Zerstörer' : score > 40 ? 'B – Bedrohung' : 'C – Ausreißer';
 }
@@ -372,6 +393,10 @@ function hookSounds() {
   events.on('battraRoar', () => once('battRoar', 2, () => Sound.sfx('roar', { kind: 'rodan', voice: 'batt', pitch: Sound.hasVoice('batt') ? 1 : 0.7 })));
   events.on('mothraRoar', () => once('mothRoar', 2, () => Sound.sfx('roar', { kind: 'rodan', voice: 'moth', pitch: Sound.hasVoice('moth') ? 1 : 1.25 })));
   events.on('prismBeam', () => Sound.sfx('zap'));
+  events.on('rodanRoar', () => once('roRoar', 2, () => Sound.sfx('roar', { kind: 'rodan', voice: 'rodan', pitch: Sound.hasVoice('rodan') ? 1 : 0.85 })));
+  events.on('mgRoar', () => Sound.sfx('roar', { kind: 'mecha', voice: 'mg' }));
+  events.on('megaBuster', () => { Sound.sfx('zap'); Sound.sfx('charge', 0.5); });
+  events.on('plasmaGrenade', () => { Sound.sfx('boom', true); Sound.sfx('zap'); });
   events.on('mothraBeam', () => Sound.sfx('zap'));
   events.on('gustStart', () => Sound.sfx('heavy'));
   events.on('biteStart', () => { Sound.sfx('hit'); bioRoar(); });
@@ -413,6 +438,9 @@ function updateWaders(dt, g) {
   if (f && f.active && f.group && f.group.position.y < 10) add(f.group.position.x, f.group.position.z, 22, false);
   w.setWaders(list);
 }
+
+const onceT = {};
+function once2(key, gap, fn) { const t = performance.now(); if (t - (onceT[key] || 0) > gap * 1000) { onceT[key] = t; fn(); } }
 
 function cinema(text, sec) { $('cinemaText').textContent = text; $('cinema').classList.add('on'); game.cinemaT = sec; }
 function toast(text, sec) { $('toast').textContent = text; $('toast').classList.add('on'); game.toastT = sec; }

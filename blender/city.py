@@ -355,6 +355,19 @@ def _(bm, uv):   # Riesenrad Cosmo Clock: Ring, Speichen, Gondeln mit Lichtern, 
     return (96, 14, cz + R + 2)
 
 
+@building('messe')
+def _(bm, uv):   # Makuhari Messe: lange, flache Ausstellungshalle mit gewölbtem Dach aus Segmenten
+    W, D = 100, 74
+    box(bm, uv, W, D, 0, 14, 'shop', 'roof')
+    for k in range(9):                                   # Tonnendach: Streifen entlang X, zur Mitte höher
+        y0 = -D / 2 + k * D / 9
+        h = 5 + 9 * math.sin(math.pi * (k + 0.5) / 9)
+        box(bm, uv, W - 4, D / 9 + 0.2, 14, h, 'metal', 'metal', 0, y0 + D / 18, (8, 8))
+    for x in (-40, 0, 40):
+        antenna(bm, uv, 27, 4, x, 0)
+    return (W, D, 28)
+
+
 @building('office_a')
 def _(bm, uv):
     box(bm, uv, 24, 22, 0, 42, 'office'); rooftop(bm, uv, 24, 22, 42)

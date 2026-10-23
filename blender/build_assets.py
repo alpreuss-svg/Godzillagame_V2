@@ -1,18 +1,18 @@
 """Erzeugt alle 3D-Modelle des Spiels als .glb.
-Aufruf: blender -b --factory-startup -P blender/build_assets.py -- [godzilla,city,units,biollante,ghidorah,mothra] [--preview]"""
+Aufruf: blender -b --factory-startup -P blender/build_assets.py -- [godzilla,city,units,biollante,ghidorah,mothra,kaiju93] [--preview]"""
 import bpy, sys, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import importlib
-import common, godzilla, gz_anim, city, units, biollante, ghidorah, mothra
-for m in (common, gz_anim, godzilla, city, units, biollante, ghidorah, mothra):
+import common, godzilla, gz_anim, city, units, biollante, ghidorah, mothra, kaiju93
+for m in (common, gz_anim, godzilla, city, units, biollante, ghidorah, mothra, kaiju93):
     importlib.reload(m)
 
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 PREVIEW = '--preview' in args
 args = [a for a in args if not a.startswith('--')]
-WHAT = args[0].split(',') if args else ['godzilla', 'city', 'units', 'biollante', 'ghidorah', 'mothra']
+WHAT = args[0].split(',') if args else ['godzilla', 'city', 'units', 'biollante', 'ghidorah', 'mothra', 'kaiju93']
 OUT = os.path.normpath(os.path.join(HERE, '..', 'assets', 'models'))
 PRE = os.path.normpath(os.path.join(HERE, '..', 'tools', 'previews'))
 
@@ -99,3 +99,12 @@ if 'mothra' in WHAT:
         common.preview(os.path.join(PRE, 'mothra_mothra.png'), target=(-110, -5, 40), dist=210, elev=25, azim=-70, color='TEXTURE')
         common.preview(os.path.join(PRE, 'mothra_battra.png'), target=(110, -5, 40), dist=210, elev=25, azim=-110, color='TEXTURE')
         common.preview(os.path.join(PRE, 'mothra_larva.png'), target=(0, -6, 12), dist=70, elev=15, azim=-60, color='VERTEX')
+
+if 'kaiju93' in WHAT:
+    common.reset()
+    objs = kaiju93.build()
+    common.export_glb(os.path.join(OUT, 'kaiju93.glb'), objs)
+    if PREVIEW:
+        kaiju93.layout_preview(objs)
+        common.preview(os.path.join(PRE, 'kaiju93_rodan.png'), target=(-90, 0, 40), dist=220, elev=40, azim=-70, color='VERTEX')
+        common.preview(os.path.join(PRE, 'kaiju93_mecha.png'), target=(60, 0, 40), dist=170, elev=10, azim=-70, color='VERTEX')

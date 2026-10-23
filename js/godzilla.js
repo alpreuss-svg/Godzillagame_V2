@@ -416,8 +416,9 @@ export class Godzilla {
     let max = pitch > 0.02 ? from.y / Math.sin(pitch) : AIM_RANGE + 100;   // bis zum Boden
     if (this.raycast) max = Math.min(max, this.raycast(from, dir, max));
     const end = this.beam.update(dt, this.firing, from, dir, max);
-    if (this.firing) this.events.emit('beamLine', { from, to: end || from.clone().addScaledVector(dir, this.beam.len), dps: BEAM_DPS, dt });
-    if (end) this.events.emit('attack', { kind: 'beam', pos: end, from: this.position, radius: 16, damage: BEAM_DPS * dt });
+    const dps = BEAM_DPS * (this.power || 1);                  // power: z. B. Rodans Lebensenergie (1,5)
+    if (this.firing) this.events.emit('beamLine', { from, to: end || from.clone().addScaledVector(dir, this.beam.len), dps, dt, power: this.power || 1 });
+    if (end) this.events.emit('attack', { kind: 'beam', pos: end, from: this.position, radius: 16, damage: dps * dt });
   }
 
   // ---------- Einzelanimationen über Fortbewegung legen (Gewichte summieren sich zu 1) ----------

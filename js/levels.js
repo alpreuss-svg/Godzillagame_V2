@@ -111,6 +111,36 @@ export const LEVELS = {
     finalGoal: () => 'Mothra: Atomstrahl, wenn kein Schuppenpulver glitzert – der Schrei (L) bläst es weg! Beim Flügelsturm ist sie tief genug für Klaue und Schwanz.',
     win: ['YOKOHAMA GEHÖRT GODZILLA', 'Battra und Mothra sind besiegt'],
   },
+  1993: {
+    key: '5',
+    title: 'Makuhari 1993 – Godzilla gegen Mechagodzilla',
+    short: '1993 · Mechagodzilla',
+    city: 'Makuhari',
+    // Makuhari (Chiba): Bürotürme des neuen Zentrums, die Messehallen am Wasser, Strandpark an der Bucht, Hafen
+    layout: {
+      seed: 1993, center: { x: 0.5, z: 0.4 }, towerR: 1.8, officeR: 3.9,
+      parks: [{ i0: -5, i1: -3, j0: 3, j1: 3 }],
+      specials: [{ type: 'messe', i: -1, j: 2 }, { type: 'messe', i: 0, j: 2 }, { type: 'messe', i: 1, j: 2 }],
+      zoneOf(i, j, city) {
+        if (i >= -5 && i <= -3 && j === 3) return null;                   // Strandpark
+        const z = j * P;
+        if (z > city.bayZ - 2 * P) return 'port';
+        const d = Math.hypot(i * P - city.center.x, z - city.center.z) / P;
+        return d < city.cfg.towerR ? 'tower' : d < city.cfg.officeR ? 'office' : 'mixed';
+      },
+    },
+    start: city => [-3 * P, city.bayZ + 110],
+    boss: 'rodan',
+    bossName: 'RODAN',
+    models: ['kaiju93'],
+    final: 'mechag', finalModel: 'kaiju93',
+    music: { level: ['1993', 'makuhari'], boss: ['1993_boss', 'rodan'], final: ['1993_final', 'gforce'] },
+    bossGoal: boss => boss.dead ? 'Rodan ist besiegt' : boss.fire
+      ? 'Fire Rodan glüht: Atomstrahl – stürzt er herab, Klaue und Schwanz!'
+      : 'Rodan greift aus der Luft an: Atomstrahl, und im Sturzflug Klaue und Schwanz!',
+    finalGoal: () => 'Mechagodzilla: von vorn saugt er den Strahl auf – greif ihn von hinten an (zweites Gehirn)! Aus den Schockankern befreit nur der Kernpuls.',
+    win: ['MECHAGODZILLA IST ZERSTÖRT', 'Rodan und Mechagodzilla sind besiegt'],
+  },
 };
 
 export function currentLevel() {

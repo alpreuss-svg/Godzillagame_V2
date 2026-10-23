@@ -7,100 +7,9 @@
 // dann ist sie für Klaue und Schwanz erreichbar).
 import * as THREE from 'three';
 import { Chain } from './chain.js';
-import { Beam } from './effects.js';
+import { Moth, makeBeam, fireBeam, orbit, faceTo, sphereHit, clearAlt, UP } from './kaiju.js';
 
-const WING_ROOT = [7.5, 1.5, 5];          // aus blender/mothra.py (glTF x, z, -y)
-const UP = new THREE.Vector3(0, 1, 0);
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3();
-
-function makeBeam(scene, outer, core) {
-  const b = new Beam(scene);
-  b.layers[0].material.uniforms.uColor.value.setRGB(...outer);
-  b.layers[1].material.uniforms.uColor.value.setRGB(...core);
-  b.impact.material.uniforms.uColor.value.setRGB(...outer);
-  b.layers[0].userData.r = 3.0; b.layers[1].userData.r = 1.1;   // schlanker als Godzillas Strahl
-  scene.remove(b.light, b.mouthLight);                         // feste Lichtanzahl
-  b.t = 0;
-  return b;
-}
-
-// Ein Strahl, der von einem Punkt zu Godzillas Brust geht; Gebäude dazwischen fangen ihn ab
-function fireBeam(beam, dt, from, g, city, dps, fx) {
-  const to = _b.copy(g.position).setY(48), dir = to.clone().sub(from);
-  const len = dir.length(); dir.normalize();
-  const max = city ? Math.min(len, city.raycast(from, dir, len)) : len;
-  const end = beam.update(dt, true, from, dir, max);
-  if (!end) return;
-  if (max >= len - 2) g.takeDamage(dps * dt, end);
-  else if (city) city.damage(end.clone(), 12, 120 * dt, from, false, end.y);
-  if (Math.random() < dt * 10) fx.fire.emit(end.x, end.y, end.z, 1, { spread: 3, up: 3, out: 5, size: 10, life: 0.5 });
-}
-
-// Fliegender Falter (Battra-Falter, Mothra): Körper + zwei Flügel, die um die Längsachse schlagen
-class Moth {
-  constructor(gltf, scene, prefix, scale) {
-    const get = n => gltf.scene.getObjectByName(n);
-    this.group = new THREE.Group();
-    this.group.scale.setScalar(scale);
-    this.group.visible = false;
-    scene.add(this.group);
-    const body = get(prefix + '_body').clone();
-    body.position.set(0, 0, 0);
-    this.group.add(body);
-    this.wings = [1, -1].map(sx => {
-      const pivot = new THREE.Group();
-      pivot.position.set(sx * WING_ROOT[0], WING_ROOT[1], WING_ROOT[2]);
-      const w = get(prefix + '_wing').clone();
-      w.position.set(0, 0, 0);
-      w.scale.set(sx, 1, 1);
-      w.traverse(o => { if (o.isMesh) o.material.side = THREE.DoubleSide; });
-      pivot.add(w);
-      this.group.add(pivot);
-      pivot.userData.sx = sx;
-      return pivot;
-    });
-    this.t = 0;
-  }
-
-  flap(dt, rate, amp, base = 0.1) {
-    this.t += dt;
-    for (const w of this.wings) w.rotation.z = w.userData.sx * (base + amp * Math.sin(this.t * rate));
-  }
-}
-
-// Kreisflug um Godzilla in Strahlweite; gibt den Abstand zurück
-function orbit(o, dt, gp, alt, want, speed, spin, city) {
-  const p = o.position;
-  const dist = Math.hypot(p.x - gp.x, p.z - gp.z);
-  const ang = Math.atan2(p.z - gp.z, p.x - gp.x) + spin * dt;
-  const r = dist + THREE.MathUtils.clamp(want - dist, -speed * dt, speed * dt);
-  p.x = gp.x + Math.cos(ang) * r;
-  p.z = gp.z + Math.sin(ang) * r;
-  p.y += (alt - p.y) * Math.min(1, dt * 0.8);
-  if (city && p.y > 8) {                                        // Hochhäusern ausweichen
-    for (const b of city.buildings) {
-      if (!b.alive || b.h < p.y + 10) continue;
-      const dx = p.x - b.x, dz = p.z - b.z, ox = Math.abs(dx) - b.hw - 30, oz = Math.abs(dz) - b.hd - 30;
-      if (ox >= 0 || oz >= 0) continue;
-      if (ox > oz) p.x += Math.sign(dx || 1) * -ox; else p.z += Math.sign(dz || 1) * -oz;
-    }
-  }
-  return dist;
-}
-
-function faceTo(o, gp, dt, rate, pitch = 0) {
-  let dy = Math.atan2(gp.x - o.position.x, gp.z - o.position.z) - o.rotation.y;
-  dy = Math.atan2(Math.sin(dy), Math.cos(dy));
-  o.rotation.y += THREE.MathUtils.clamp(dy, -rate * dt, rate * dt);
-  o.rotation.x = pitch;
-}
-
-function sphereHit(c, R, o, d, max) {
-  const ox = c.x - o.x, oy = c.y - o.y, oz = c.z - o.z;
-  const t = ox * d.x + oy * d.y + oz * d.z, q = ox * ox + oy * oy + oz * oz - t * t;
-  if (t < 0 || q > R * R) return max;
-  return Math.min(max, t - Math.sqrt(R * R - q));
-}
 
 // ======================= Battra (Boss) =======================
 const LARVA_LEN = 120, LARVA_R = [13, 6];
@@ -248,13 +157,13 @@ export class Battra {
       if ((this.diveT -= dt) <= 0) { this.state = 'dive'; this.st = 0; this.hitDone = false; this.events.emit('battraRoar', {}); }
     }
     if (this.state === 'dive') {                                   // Sturzflug auf Godzillas Brust
-      alt = 45; want = 10;
+      alt = Math.max(45, clearAlt(city, gp.x, gp.z, 70) + 10); want = 10;
       if (!this.hitDone && o.position.distanceTo(_a.copy(gp).setY(50)) < 30) {
         this.hitDone = true; g.takeDamage(K.diveDmg, gp); this.events.emit('shake', 1.2);
       }
       if (this.st > 3 || this.hitDone && this.st > 1) { this.state = 'imago'; this.diveT = K.diveEvery * (0.8 + 0.4 * Math.random()); }
     }
-    orbit(o, dt, gp, alt, want, this.state === 'dive' ? 70 : 35, this.state === 'dive' ? 0 : 0.06, city);
+    orbit(o, dt, gp, alt, want, this.state === 'dive' ? 70 : 35, this.state === 'dive' ? 0 : 0.06, this.state === 'dive' ? null : city);
     faceTo(o, gp, dt, 1.4, this.state === 'dive' ? 0.35 : 0.1);
     this.imago.flap(dt, this.state === 'dive' ? 2 : 4.5, this.state === 'dive' ? 0.15 : 0.55);
     this.center.copy(o.position).setY(o.position.y + 2);
@@ -288,7 +197,7 @@ export class Battra {
     if (!this.fighting() || e.kind === 'beam') return;
     const D = BAT[this.form].dmg, c = this.center;
     if (e.kind === 'pulse') { if (Math.hypot(e.pos.x - c.x, e.pos.z - c.z) < 150 && c.y < 100) this.damage(D.pulse, true); return; }
-    if (c.y > 30) return;                                         // fliegend nur im Sturzflug erreichbar
+    if (this.form === 'imago' && this.state !== 'dive') return;  // fliegend nur im Sturzflug erreichbar
     if (Math.hypot(e.pos.x - c.x, e.pos.z - c.z) < e.radius + 20) this.damage(e.kind === 'tail' ? D.tail * Math.min(1, e.damage / 100) : D.claw, true);
   }
 
@@ -362,7 +271,7 @@ export class Mothra {
       if ((this.gustT -= dt) <= 0) { this.state = 'gust'; this.st = 0; this.events.emit('gustStart', {}); this.events.emit('mothraRoar', {}); }
     }
     if (this.state === 'gust') {                                    // Flügelsturm: tief vor Godzilla, schlägt kräftig
-      alt = 26; want = 90; flapRate = 7; flapAmp = 0.8;
+      alt = Math.max(26, clearAlt(city, gp.x, gp.z, 110) + 8); want = 90; flapRate = 7; flapAmp = 0.8;
       if (this.st > 1 && !this.stunT) {
         const dir = Math.atan2(gp.x - o.position.x, gp.z - o.position.z);
         gp.x += Math.sin(dir) * 9 * dt; gp.z += Math.cos(dir) * 9 * dt;   // drückt Godzilla weg
@@ -375,7 +284,7 @@ export class Mothra {
       }
       if (this.st > MO.gustDur) { this.state = 'fly'; this.gustT = MO.gustEvery * (0.8 + 0.4 * Math.random()); g.speedCap = Infinity; }
     }
-    orbit(o, dt, gp, alt, want, 34, this.state === 'gust' ? 0 : 0.05, city);
+    orbit(o, dt, gp, alt, want, 34, this.state === 'gust' ? 0 : 0.05, this.state === 'gust' ? null : city);
     faceTo(o, gp, dt, 1.2, this.state === 'gust' ? -0.25 : 0.08);
     this.moth.flap(dt, flapRate, flapAmp);
     this.bodyTarget.mesh.position.copy(o.position).setY(o.position.y + 2);
@@ -417,7 +326,7 @@ export class Mothra {
       if (Math.hypot(e.pos.x - c.x, e.pos.z - c.z) < 150 && c.y < 100) { this.damage(MO.dmg.pulse, true); this.stun(0.5); }
       return;
     }
-    if (c.y > 34) return;                                          // nur beim Flügelsturm erreichbar
+    if (this.state !== 'gust') return;                             // nur beim Flügelsturm erreichbar
     if (Math.hypot(e.pos.x - c.x, e.pos.z - c.z) < e.radius + 26) this.damage(e.kind === 'tail' ? MO.dmg.tail * Math.min(1, e.damage / 100) : MO.dmg.claw, true);
   }
 
