@@ -2,7 +2,10 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#05070c">
 <title>Godzilla – Heisei</title>
 <link rel="icon" href="icons/icon-192.png">
@@ -47,7 +50,14 @@
     <p class="sub">HEISEI</p>
     <p class="level" id="levelName">1984 · Die Rückkehr</p>
     <ul id="levels"></ul>
-    <table class="keys">
+    <table class="keys touchkeys">
+      <tr><td>Steuerkreis</td><td>Gehen – über den Rand ziehen: Sprinten</td></tr>
+      <tr><td>SCHLAG</td><td>Klauen-Kombo</td></tr>
+      <tr><td>STRAHL halten</td><td>Atomstrahl</td></tr>
+      <tr><td>BRÜLL</td><td>Brüllen (heilt, betäubt Gegner)</td></tr>
+      <tr><td>PULS</td><td>Kernpuls</td></tr>
+    </table>
+    <table class="keys deskkeys">
       <tr><td>W A S D</td><td>Gehen</td></tr>
       <tr><td>Shift</td><td>Sprinten (kostet Energie)</td></tr>
       <tr><td>J</td><td>Klauen-Kombo</td></tr>
@@ -58,20 +68,21 @@
       <tr><td>M</td><td>Ton an/aus</td></tr>
       <tr><td>Esc</td><td>Pause</td></tr>
     </table>
-    <p class="blink">Taste drücken</p>
+    <p class="blink"><span class="deskkeys">Taste drücken</span><span class="touchkeys">Antippen zum Starten</span></p>
   </div>
   <div id="paused" hidden>
     <h2>PAUSE</h2>
-    <p class="blink">Esc zum Weiterspielen</p>
+    <p class="blink"><span class="deskkeys">Esc zum Weiterspielen</span><span class="touchkeys">❚❚ zum Weiterspielen</span></p>
   </div>
   <div id="over" hidden>
     <h2 id="overTitle">GODZILLA FÄLLT</h2>
     <p id="overSub" class="level"></p>
     <table class="keys" id="overStats"></table>
-    <p class="blink">Taste drücken für ein neues Spiel</p>
+    <p class="blink"><span class="deskkeys">Taste drücken</span><span class="touchkeys">Antippen</span> für ein neues Spiel</p>
   </div>
 </div>
 
+<div id="rotate"><p>Bitte das Gerät quer halten</p></div>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

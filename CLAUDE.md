@@ -139,6 +139,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (`attack`, `stomp`, `roar`, `breath`, `shake`). Qualität per `?q=low|mid|high`.
 - `js/input.js` – Tastatur + Gamepad (Standard-Mapping: A Klaue, X Atomstrahl, Y Brüllen, B Kernpuls, LB/RB/L3 Sprint,
   Start Pause); Shift = Sprint.
+- `js/touch.js` – Handy/Tablet (nur bei Touch, `IS_TOUCH`): Steuerkreis links (etwas höher gesetzt) – Punkt im Kreis
+  = Gehen (proportional), über den Rand gezogen (> 1,12 Radien) = Sprint, Kreis leuchtet orange; jeder Finger in der
+  linken Bildschirmhälfte steuert. Rechts vier Knöpfe SCHLAG/STRAHL (halten)/PULS/BRÜLL, oben Pause und Ton. Erstes
+  Antippen startet, schaltet Vollbild und sperrt Querformat (`goFullscreen`); Hochformat zeigt „Bitte quer halten“.
+  Auf Touch-Geräten Grafikstufe `low`, kompakter HUD und Titel (`body.touch`), Level per Antippen wählbar.
 - `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt nach **Norden** – kein
   Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl; Nordosten wurde probiert und verworfen, `YAW`). Gesteuert wird
   nach Himmelsrichtung (W = Norden). Mausrad zoomt 320–620 m, Erschütterung bei Treffern. Start: Südwesten der

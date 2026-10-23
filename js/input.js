@@ -1,4 +1,5 @@
-// Tastatur und Gamepad -> einheitliche Aktionen (down = gehalten, pressed = in diesem Frame gedrückt)
+// Tastatur, Gamepad und Touch -> einheitliche Aktionen (down = gehalten, pressed = in diesem Frame gedrückt)
+import { IS_TOUCH, TouchControls } from './touch.js';
 
 const KEYS = {
   KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
@@ -32,9 +33,10 @@ export class Input {
     addEventListener('blur', () => this.kb.clear());
     addEventListener('pointerdown', () => { this.any = true; });
     addEventListener('wheel', e => { this.zoom += Math.sign(e.deltaY); }, { passive: true });
+    this.touch = IS_TOUCH ? new TouchControls(this) : null;
   }
 
-  down(a) { return this.kb.has(a) || this.pad.has(a); }
+  down(a) { return this.kb.has(a) || this.pad.has(a) || (this.touch ? this.touch.down(a) : false); }
   pressed(a) { return this.hit.has(a); }
 
   update() {
@@ -49,6 +51,7 @@ export class Input {
       }
       sx = dead(gp.axes[0] || 0); sy = -dead(gp.axes[1] || 0);
     }
+    if (this.touch) { sx += this.touch.move.x; sy += this.touch.move.y; }
     let x = sx + (this.down('right') ? 1 : 0) - (this.down('left') ? 1 : 0);
     let y = sy + (this.down('up') ? 1 : 0) - (this.down('down') ? 1 : 0);
     const l = Math.hypot(x, y);

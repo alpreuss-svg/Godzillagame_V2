@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Input } from './input.js';
+import { IS_TOUCH, goFullscreen } from './touch.js';
 import { CameraRig } from './camera.js';
 import { Godzilla } from './godzilla.js';
 import { City, P } from './city.js';
@@ -25,7 +26,7 @@ import { Props } from './props.js';
 import { Sound, Music } from './audio.js';
 
 // Qualität: ?q=low für schwache Grafik (z. B. Intel UHD 615), ?q=high für mehr Kantenglättung/Schatten
-const Q = new URLSearchParams(location.search).get('q') || 'mid';
+const Q = new URLSearchParams(location.search).get('q') || (IS_TOUCH ? 'low' : 'mid');   // Handy: schwache Stufe
 const QUALITY = {
   low: { ratio: 1, aa: false, shadow: 512, dust: 500, fire: 250, rain: 400, fireLights: 2, props: 0.45 },
   mid: { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500, rain: 1200, fireLights: 4, props: 1 },
@@ -75,12 +76,15 @@ Music.setLevel(LV.music);
 
 const events = new Events();
 const input = new Input();
+if (input.touch) input.touch.visible = false;
+document.body.classList.toggle('touch', IS_TOUCH);
 const rig = new CameraRig(camera);
 const game = { state: 'loading', events, scene, renderer, camera, rig, input };
 window.game = game;   // zum Ausprobieren in der Konsole
 
 function show(id) {
   for (const s of ['loading', 'title', 'paused', 'over']) $(s).hidden = s !== id;
+  if (input.touch) input.touch.visible = id === null || id === 'paused';   // Steuerkreis und Knöpfe nur im Spiel
   $('screen').classList.toggle('off', !id);
   $('hud').hidden = !(game.state === 'play' || game.state === 'pause');
 }
@@ -261,6 +265,7 @@ function step(dt) {
     const q = new URLSearchParams(location.search); q.set('level', game.pick); game.pick = null; location.search = q;
   }
   else if (game.state === 'title' && input.any) {
+    if (IS_TOUCH) goFullscreen();
     game.state = 'play'; show(null);
     Sound.init(); Music.play('level'); Sound.sfx('siren');          // Ton erst nach der ersten Taste (Browser-Regel)
   }
@@ -443,6 +448,12 @@ function levelMenu() {
     const id = Object.keys(LEVELS).find(k => 'Digit' + LEVELS[k].key === e.code || 'Numpad' + LEVELS[k].key === e.code);
     if (id && id !== LEVEL_ID && game.state === 'title') { e.stopImmediatePropagation(); game.pick = id; }
   }, { capture: true });
+  // Antippen bzw. Klicken auf ein Level wählt es (startet nicht gleich das Spiel)
+  [...$('levels').children].forEach((li, i) => li.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    const id = Object.keys(LEVELS)[i];
+    if (id !== LEVEL_ID && game.state === 'title') game.pick = id;
+  }));
 }
 levelMenu();
 
