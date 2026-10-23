@@ -21,12 +21,12 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 ## Einrichtung auf einem neuen PC
 1. Blender installieren: `winget install --id BlenderFoundation.Blender -e` (entwickelt mit Blender 5.2 LTS).
 2. Modelle neu bauen (optional, die `.glb` liegen schon im Repo):
-   `"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --factory-startup -P blender/build_assets.py -- godzilla,city,units,biollante --preview`
+   `"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b --factory-startup -P blender/build_assets.py -- godzilla,city,units,biollante,ghidorah --preview`
    Vorschaubilder landen in `tools/previews/` (nicht im Repo) und können zur Kontrolle angesehen werden.
 3. Lokaler Server: `powershell -ExecutionPolicy Bypass -File tools\serve.ps1` → http://localhost:8123
 
 ## Aufbau
-- `blender/build_assets.py` – Einstieg; Argument wählt `godzilla`, `city`, `units`, `biollante`.
+- `blender/build_assets.py` – Einstieg; Argument wählt `godzilla`, `city`, `units`, `biollante`, `ghidorah`.
 - `blender/common.py` – Szene, Materialien (sRGB → linear), Bilder aus numpy, glTF-Export, Workbench-Vorschau,
   EEVEE-Nachtvorschau (zeigt Emission).
 - `blender/godzilla.py` – Körper aus **Metaballs** entlang eines Skelettgraphen (Skin-Modifier war lückenhaft),
@@ -88,8 +88,14 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   offenem Maul, Zähne per Spaltenscan, Hauer, Stacheln, ausladende Rankenbeine, glühender Kern), `BI_head`
   (Rankenkopf mit aufgerissenem Maul, zeigt nach +Z). Kern/Saftsack: Material `BI_Glow` mit Zellen-Netz-Textur
   (braucht eine UV-Ebene, sonst fehlen die UVs). Die Ranken selbst baut das Spiel.
+- `blender/ghidorah.py` – King Ghidorah und Mecha-King Ghidorah (1991), nur starre Teile: `GH_body`/`MGH_body`
+  (goldene Schuppen per Vertexfarbe bzw. Chrom mit Brustpanzer, Schulterplatten, Beinringen), `GH_wing`/`MGH_wing`
+  (linker Flügel, Gelenk im Ursprung: Arm, vier Finger, Membran mit gebogtem Hinterrand), `GH_head` (Drachenkopf mit
+  Hörnerkrone, 1,45-fach), `MGH_head` (mechanischer Mittelkopf mit rotem Visier). Gelenkpunkte `NECK_ROOTS`,
+  `TAIL_ROOTS`, `WING_ROOT` müssen zu ghidorah.js passen. Vorschau setzt beide mit Röhren als Hälsen zusammen.
 - `vendor/three/` – Three.js 0.170.0 (build + GLTFLoader, BufferGeometryUtils, SkeletonUtils), per Importmap.
-- `assets/models/godzilla.glb`, `city.glb`, `units.glb`, `biollante.glb` – aktuelle Exporte (Biollante lädt nur Level 1989).
+- `assets/models/godzilla.glb`, `city.glb`, `units.glb`, `biollante.glb`, `ghidorah.glb` – aktuelle Exporte (Monster
+  lädt nur das Level, das sie braucht: `models` in levels.js).
 - `index.html` + `css/style.css` – Importmap, HUD (Leben/Energie), Lade-, Titel- und Pausenbildschirm, Vignette.
 - `js/main.js` – Renderer (ACES, Schatten nur vom Mond um Godzilla), Nachtlicht (Hemisphäre, Mond als Gegenlicht im
   Norden, kameragebundenes Fülllicht), Laden, Zustände `loading → title → play ⇄ pause`, kleiner Event-Bus
@@ -152,6 +158,16 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   betäuben nicht), Godzilla erfasst sie selbst mit dem Strahl. Fire Mirror: schluckt den Strahl und wirft ihn golden
   auf Godzilla zurück (4 Leben/s, ohne Zurückzucken), glüht mit der Hitze auf; nach 4 s Strahl (`MELT`, kühlt 0,25/s ab)
   schmilzt er, danach trifft der Strahl mit 8/s. Hochhaus-Falle wirkt weiter.
+- `js/chain.js` – biegsame Kette (Schlauch mit 10 Knochen, folgt einer Bezierkurve; optional Kopf an der Spitze und
+  Vertexfarben mit Querringen) für Biollantes Ranken und Ghidorahs Hälse und Schwänze.
+- `js/ghidorah.js` – 1991: `KingGhidorah` (Boss-Rolle wie die Super-X) und `MechaKingGhidorah` (Endgegner-Rolle wie
+  Biollante). Rumpf + Flügel (schlagen um das Schultergelenk) + 3 Hälse und 2 Schwänze als Ketten, Köpfe sitzen auf
+  den Halsspitzen und schauen zu Godzilla. Fliegt in ~75 m Höhe im Kreis (weicht Hochhäusern aus), landet alle ~22 s
+  für ~10 s (nur dann treffen Klaue und Schwanz). Gravitationsstrahlen (goldene `Beam`s ohne Licht) aus einem Maul,
+  ab und zu aus allen dreien; Gebäude dazwischen fangen sie ab (`city.raycast`). Am Boden beißt ein Kopf zu.
+  Strahl auf Kopf 6/s, Körper 4/s. Mecha: gepanzert (2,5/s), Mittelkopf feuert einen orangeroten Laser, Fangklammern
+  an Stahlseilen halten Godzilla fest (`g.held`), nur Atomstrahl (1 s) oder Kernpuls befreien (kostet Mecha 8).
+  Absturz → `bossCrash` bzw. `finalGone`.
 - `js/biollante.js` – Endgegner 1989, startet 7 s nach dem Absturz der Super-X2. **Rosenform** wächst aus dem Fluss
   (steht fest, 6 Ranken), **Bestienform** (8 längere Ranken, kriecht mit 5 m/s auf Godzilla zu und walzt Gebäude nieder).
   Ranken = Schlauch mit 10 Knochen (`SkinnedMesh`), die Kette folgt jedes Bild einer Bezierkurve (Ruhe: S-Bogen nach
@@ -171,7 +187,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (additive Kegel auf Kreuzungen um Godzilla, tasten ihn ab), feste Anzahl Punktlichter an den nächsten Bränden
   (Anzahl je Qualitätsstufe, nie wechselnd – sonst übersetzt Three.js die Shader neu). Filmkorn per CSS (`#grain`).
 - `js/audio.js` – Audio aus Teil 1 als ES-Modul (`Sound`: Orchester-Synth, Schrei als gestrichene Saite, Effekte) plus
-  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989). `Music` spielt pro
+  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989, `sapporo` / `ghidorah` / `mecha` für 1991). `Music` spielt pro
   Platz (title, level, boss, over, win; level/boss stellt `Music.setLevel()` je Level um) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
   Suchen sind gewollt), sonst das Synth-Stück. Ton startet mit der ersten Taste (Browser-Regel), M schaltet stumm.
   Ereignis → Geräusch in `hookSounds()` (main.js), häufige Ereignisse gedrosselt.
@@ -179,7 +195,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `js/levels.js` – Level je Film: Stadtplan (`layout`), Start, Boss, Musik (Datei + Synth), Texte. Auswahl per
   `?level=1989` oder im Titelbild mit 1/2 (lädt neu, andere Parameter bleiben). **1984 Tokio** (Shinjuku, Super-X),
   **1989 Osaka** (Umeda-Hochhäuser nördlich des Flusses, Fluss quer in Reihe j = 1, südlich Dōtonbori als Zone `neon`,
-  Burgpark im Osten, Hafen; Boss Super-X2, danach Endgegner Biollante über `final`/`finalGoal`).
+  Burgpark im Osten, Hafen; Boss Super-X2, danach Endgegner Biollante über `final`/`finalGoal`), **1991 Sapporo**
+  (Hochhäuser am Bahnhof im Norden, Ōdōri-Park als Blockreihe quer durch die Stadt, Susukino als `neon`, Hafen;
+  King Ghidorah, danach Mecha-King Ghidorah). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
+  `finalGone`.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
@@ -210,7 +229,8 @@ und `requestAnimationFrame` pausiert), Tasten lassen sich per `dispatchEvent(new
 `game.manual = true` hält die eigene Schleife an, damit Screenshots genau den von Hand gerechneten Stand zeigen.
 
 ## Stand und Fahrplan
-Level „Tokio 1984 – Die Rückkehr“ und „Osaka 1989“ (Super-X2, dann Biollante in zwei Stufen) spielbar. Die Schritte stammen vom ersten PC:
+Level „Tokio 1984 – Die Rückkehr“, „Osaka 1989“ (Super-X2, dann Biollante in zwei Stufen) und „Sapporo 1991“
+(King Ghidorah, dann Mecha-King Ghidorah) spielbar. Die Schritte stammen vom ersten PC:
 1. **Erledigt** – Modelle: Godzilla geprüft (Maul, Zähne), `city` und `units` gebaut. Offen: Kinnspitze etwas kantig.
 2. **Spiel – in Arbeit.** Erledigt: Spielgerüst, Steuerung (Gang und Drehen per IK, Kombo, Atomstrahl, Kernpuls, Brüllen),
    feste Kamera, Teststadt, Zerstörung (sichtbarer Schaden, Brände, Einsturz, Teilruinen, Schutt, Bodenschäden).
@@ -224,4 +244,4 @@ Level „Tokio 1984 – Die Rückkehr“ und „Osaka 1989“ (Super-X2, dann Bi
    Dateien `ASSETS` und `VERSION` in sw.js anpassen).
 Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~230k Dreiecke, Partikel, bis ~80 Draw Calls), Lautstärken
 anhören, Balance (Wellen, Schaden, Bossphase) im echten Spiel prüfen, Biollante-Kampf im echten Spiel abstimmen,
-weitere Level (1991 King Ghidorah usw.).
+Ghidorah-Kampf im echten Spiel abstimmen, weitere Level (1992 Mothra/Battra usw.).

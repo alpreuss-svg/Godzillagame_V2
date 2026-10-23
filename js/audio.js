@@ -247,6 +247,33 @@ export const Sound = (function () {
       timp: 'F#1 . . . . . . . . . . . . . . . ' + '. . . . . . . . D2 . . . . . . . ' + 'C2 . . . . . . . C2 . . . . . . . ' + 'C#2 . . . C#2 . . . C#2 . C#2 . C#2 C#2 C#2 C#2',
       perc: 'c . . . . . . . . . . . . . . . ' + R('. . . . . . . . k . . . . . . .', 2) + ' r r r r . . . . k . . . k . . .'
     },
+    sapporo: {  // Sapporo 1991: kalt und weit, e-Moll, Hörner in Quarten, Streicher-Tremolo, schwerer Schritt
+      bpm: 92, loop: true,
+      brass: 'E3 - - - B3 - - - A3 - - - G3 - - - ' + 'F#3 - - - - - - - E3 - - - - - - - ' +
+        'E4 - - - D4 - - - B3 - - - C4 - - - ' + 'B3 - - - - - - - - - - - F#3 - - - ',
+      str: pad(['E2+G2+B2', 'C2+E2+G2', 'E2+G2+B2', 'B1+D#2+F#2']),
+      low: [ost('E1', 'E2'), ost('C1', 'C2'), ost('E1', 'E2'), ost('B0', 'B1')].join(' '),
+      timp: R('E1 . . . . . . . E1 . . . . . . .', 3) + ' B1 . . . B1 . . . B1 . B1 . B1 B1 B1 B1',
+      perc: R('k . . . s . . . k . k . s . . .', 3) + ' k . s . k . s . r r r r s s s s'
+    },
+    ghidorah: { // King Ghidorah: schrill und drängend, Blech in Tritonus-Sprüngen über einem Ostinato in d
+      bpm: 132, loop: true,
+      brass: 'D4 - G#4 - D5 - - - C5 - G#4 - F4 - - - ' + 'E4 - Bb4 - E5 - - - D5 - A4 - F4 - - - ' +
+        'D5 - - - C#5 - - - C5 - - - B4 - - - ' + 'Bb4 - A4 - G#4 - G4 - F#4 - F4 - E4 - - - ',
+      str: pad(['D3+F3+G#3', 'E3+G3+Bb3', 'D3+F3+A3', 'Bb2+D3+F3']),
+      low: [ost('D2', 'D3'), ost('E2', 'E3'), ost('D2', 'D3'), ost('Bb1', 'Bb2')].join(' '),
+      timp: R('D2 . . D2 . . G#1 . D2 . . . G#1 . G#1 .', 4),
+      perc: R('k . s s k . s . k s s . k s s s', 3) + ' k k s s k k s s r r r r s s s s'
+    },
+    mecha: {    // Mecha-King Ghidorah: mechanischer Marsch, gleichmäßige Achtel, Blech in parallelen Quinten
+      bpm: 120, loop: true,
+      brass: 'A3+E4 - - - A3+E4 - C4+G4 - B3+F#4 - - - G3+D4 - - - ' + 'A3+E4 - - - C4+G4 - D4+A4 - E4+B4 - - - - - - - ' +
+        'F4+C5 - - - E4+B4 - - - D4+A4 - - - C4+G4 - - - ' + 'B3+F#4 - - - - - - - E3+B3 - - - - - - - ',
+      str: pad(['A2+C3+E3', 'C3+E3+G3', 'F2+A2+C3', 'E2+G#2+B2']),
+      low: [ost('A1', 'A2'), ost('C2', 'C3'), ost('F1', 'F2'), ost('E1', 'E2')].join(' '),
+      timp: R('A1 . A1 . . . A1 . A1 . A1 . . . E1 .', 4),
+      perc: R('k . s . k . s . k . s . k s s .', 3) + ' k s k s k s k s r r r r s s s s'
+    },
     dance: {
       bpm: 170, loop: false,
       brass: 'C5 C5 . C5 . A4 C5 . D5 . C5 . A4 . G4 . C5 C5 . C5 . A4 C5 . F5 - - - E5 - - -',
@@ -575,13 +602,13 @@ export const Sound = (function () {
 })();
 
 /* ---------- Musikmanager: eigene Dateien aus music/ haben Vorrang ----------
-   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, gameover, win – siehe music/README.md.
+   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, 1991, 1991_boss, 1991_final, gameover, win – siehe music/README.md.
    Fehlt eine Datei, spielt das Synth-Stück. Die Suche wird pro Platz gemerkt. */
 const SLOTS = {
   title: { file: 'title', synth: 'heisei', loop: true },
   level: { file: '1984', synth: 'tokyo', loop: true },          // level/boss stellt Music.setLevel() je Level um
   boss: { file: '1984_boss', synth: 'superx', loop: true },
-  final: { file: '1989_final', synth: 'biollante', loop: true },
+  final: { file: '1989_final', synth: 'biollante', loop: true },   // level/boss/final stellt Music.setLevel() um
   over: { file: 'gameover', synth: 'over', loop: false },
   win: { file: 'win', synth: 'win', loop: false },
 };

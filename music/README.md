@@ -13,6 +13,9 @@ Dateinamen (Endung .mp3, .ogg oder .m4a):
 | `1989`       | Osaka 1989, Spiel            | „Bio Wars“ (Sugiyama)                   |
 | `1989_boss`  | Bossphase Super-X2           | Super-X2-Marsch (Sugiyama)              |
 | `1989_final` | Endkampf Biollante           | Biollante-Thema (Sugiyama)              |
+| `1991`       | Sapporo 1991, Spiel          | Main Title (Ifukube)                    |
+| `1991_boss`  | Bossphase King Ghidorah      | King-Ghidorah-Thema (Ifukube)           |
+| `1991_final` | Endkampf Mecha-King Ghidorah | Mecha-King-Ghidorah-Thema (Ifukube)     |
 | `gameover`   | Godzilla fällt               | ein ruhiges, trauriges Stück            |
 | `win`        | Sieg                         | Abspann                                 |
 

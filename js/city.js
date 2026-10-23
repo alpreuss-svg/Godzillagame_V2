@@ -586,6 +586,8 @@ function makePark(k) {
   g.strokeRect(50, 50, 156, 156);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(k.i1 - k.i0 + 1, k.j1 - k.j0 + 1);         // ein Wegemuster je Block (lange Parks wie Ōdōri)
   const w = (k.i1 - k.i0 + 1) * P - ROAD, d = (k.j1 - k.j0 + 1) * P - ROAD;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95,
     polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));

@@ -11,6 +11,9 @@ import { seeThrough } from './buildings.js';
 import { Military } from './military.js';
 import { SuperX, SuperX2 } from './boss.js';
 import { Biollante } from './biollante.js';
+import { KingGhidorah, MechaKingGhidorah } from './ghidorah.js';
+const BOSSES = { superx: SuperX, superx2: SuperX2, ghidorah: KingGhidorah };
+const FINALS = { biollante: Biollante, mecha: MechaKingGhidorah };
 import { LEVELS, currentLevel } from './levels.js';
 import { Atmosphere } from './atmosphere.js';
 import { Sound, Music } from './audio.js';
@@ -89,8 +92,11 @@ async function load() {
   const manager = new THREE.LoadingManager();
   manager.onProgress = (url, done, total) => { $('progress').style.width = (100 * done / total) + '%'; };
   const loader = new GLTFLoader(manager);
-  const names = ['godzilla', 'city', 'units'].concat(LV.final ? [LV.final] : []);   // Endgegner-Modell nur, wenn das Level einen hat
-  const [gz, city, units, finalModel] = await Promise.all(names.map(n => loader.loadAsync(`assets/models/${n}.glb`)));
+  // Monster-Modelle nur, wenn das Level sie braucht (LV.models)
+  const names = ['godzilla', 'city', 'units'].concat(LV.models || []);
+  const loaded = await Promise.all(names.map(n => loader.loadAsync(`assets/models/${n}.glb`)));
+  const [gz, city, units] = loaded;
+  const models = Object.fromEntries(names.map((n, i) => [n, loaded[i]]));
 
   const fx = game.fx = {
     dust: new Particles(scene, QUALITY.dust),
@@ -100,8 +106,8 @@ async function load() {
   };
   game.city = new City(city, scene, fx, events, LV.layout);
   game.military = new Military(units, scene, fx, events, game.city);
-  game.boss = new (LV.boss === 'superx2' ? SuperX2 : SuperX)(units, scene, fx, events, game.military);
-  game.final = finalModel ? new Biollante(finalModel, scene, fx, events, fx.glow) : null;
+  game.boss = new BOSSES[LV.boss](units, scene, fx, events, game.military, models);
+  game.final = LV.final ? new FINALS[LV.final](models[LV.finalModel], scene, fx, events, fx.glow, game.military) : null;
   game.minimap = new MiniMap($('minimap'), game.city);
   game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
   const g = game.godzilla = new Godzilla(gz, scene, events);
@@ -158,19 +164,20 @@ async function load() {
     if (game.final) { game.finalT = 7; return; }               // es folgt der Endgegner
     game.result = 'won'; game.endT = 5; Music.play('win');
   });
-  // Endgegner Biollante
-  events.on('biollanteRise', e => {
+  // Endgegner (Biollante, Mecha-King Ghidorah)
+  events.on('finalRise', e => {
     $('boss').hidden = false; $('bossName').textContent = game.final.label;
-    cinema(e.form === 'rose' ? 'BIOLLANTE' : 'BIOLLANTE ERWACHT', 4.5);
+    cinema(e.title, 4.5);
   });
   events.on('biollanteBurn', () => toast('Die Rose verbrennt …', 3));
   events.on('biollanteSpores', () => toast('Goldene Sporen steigen auf – sie verwandelt sich!', 3.5));
   events.on('vineGrab', () => toast('Eine Ranke hält Godzilla fest – Klaue oder Kernpuls!', 2.5));
+  events.on('grabStart', () => toast('Fangklammern! Befreie dich mit Atomstrahl (K) oder Kernpuls (R)!', 3.5));
   events.on('bindStart', () => toast('Ranken fesseln Godzilla – befreie dich mit Atomstrahl (K) oder Kernpuls (R)!', 3.5));
   events.on('biteStart', () => toast('Biollante hat Godzillas Kopf im Maul – Atomstrahl in den Schlund (K)!', 3.5));
   events.on('holdFree', e => { if (e.how === 'beam' && e.kind === 'bite') toast('Volltreffer in den Schlund!', 2); });
-  events.on('biollanteDown', () => { cinema('BIOLLANTE STEIGT ALS LICHT IN DEN HIMMEL', 5); Music.play('win'); });
-  events.on('biollanteGone', () => { game.result = 'won'; game.endT = 3; $('boss').hidden = true; });
+  events.on('finalDown', e => { cinema(e.title, 5); Music.play('win'); });
+  events.on('finalGone', () => { game.result = 'won'; game.endT = 3; $('boss').hidden = true; });
   hookSounds();
 
   game.state = 'title';
@@ -295,15 +302,18 @@ function hookSounds() {
   events.on('bossHit', () => Sound.sfx('boom', true));
   events.on('mirrorMelt', () => { Sound.sfx('boom', true); Sound.sfx('zap'); });
   events.on('biollanteRoar', e => Sound.sfx('roar', e.form === 'rose' ? { kind: 'ghidorah', pitch: 0.6 } : { kind: 'deep', pitch: 0.8 }));
-  events.on('biollanteRise', () => Sound.sfx('heavy'));
+  events.on('finalRise', () => Sound.sfx('heavy'));
   events.on('biollanteBurn', () => Sound.sfx('boom', true));
   events.on('biollanteAcid', () => Sound.sfx('zap'));
   events.on('vineBite', () => once('bite', 0.2, () => Sound.sfx('hit')));
   events.on('vineCut', () => once('cut', 0.2, () => Sound.sfx('whip')));
   events.on('bindStart', () => Sound.sfx('whip'));
+  events.on('grabStart', () => { Sound.sfx('heavy'); Sound.sfx('hit'); });
+  events.on('gravityBeam', e => { Sound.sfx('zap'); if (e.all) Sound.sfx('roar', { kind: 'ghidorah' }); });
+  events.on('ghidorahArrive', () => Sound.sfx('roar', { kind: 'ghidorah' }));
   events.on('biteStart', () => { Sound.sfx('hit'); Sound.sfx('roar', { kind: 'deep', pitch: 0.9 }); });
   events.on('holdFree', e => { if (e.how !== 'timeout') Sound.sfx('boom', true); });
-  events.on('biollanteDown', () => Sound.sfx('roar', { kind: 'deep', pitch: 0.6 }));
+  events.on('finalDown', () => Sound.sfx('roar', { kind: 'deep', pitch: 0.6 }));
 }
 
 // Titelbild: Levelliste, Zifferntasten wählen
