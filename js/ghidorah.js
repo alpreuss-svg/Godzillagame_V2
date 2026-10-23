@@ -242,6 +242,7 @@ class GhidorahBase {
   attacks(dt, g, dist) {
     const K = this.K;
     if (this.state === 'arrive' || g.state === 'dead' || this.hold) return;
+    if (this.stunT > 0) { this.stunT -= dt; return; }          // vom Schrei betäubt
     if ((this.beamT -= dt) <= 0 && dist < 420) {
       this.beamT = K.beamEvery * (0.8 + 0.4 * Math.random());
       const free = this.bolts.filter(b => b.t <= 0);
@@ -365,6 +366,13 @@ class GhidorahBase {
       this.fx.fire.emit(end.x, end.y, end.z, 2, { spread: 4, up: 6, out: 10, size: 10, life: 0.5 });
       if (!onG && end.y < 2) this.fx.dust.emit(end.x, 0, end.z, 2, { spread: 6, up: 4, out: 6, size: 16, life: 2 });
     }
+  }
+
+  // Schrei: kurz betäubt – Blitze brechen ab, kein neuer Angriff
+  stun(t) {
+    if (!this.fighting()) return;
+    this.stunT = t;
+    if (!this.hold) for (const b of this.bolts) b.t = 0;
   }
 
   // Ein neues Loch in einem der Flügel (abwechselnd), an einer zufälligen Stelle der Membran

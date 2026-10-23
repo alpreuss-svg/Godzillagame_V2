@@ -153,7 +153,17 @@ async function load() {
   events.on('collapse', e => healFx(g.heal(e.b.h > 70 ? HEAL.tower : e.b.h > 25 ? HEAL.mid : HEAL.small)));
   events.on('unitDestroyed', () => healFx(g.heal(HEAL.unit)));
   events.on('topple', () => rig.shake(1.6));
-  events.on('roar', () => rig.shake(1.0));
+  // Schrei: heilt (godzilla.js) und betäubt Gegner im Umkreis kurz; Druckwelle zeigt die Reichweite
+  events.on('roar', e => {
+    rig.shake(1.0);
+    g.wave.fire(e.pos.clone().setY(40), ROAR_RANGE * 0.7);
+    game.military.stun(3, e.pos, ROAR_RANGE);
+    for (const m of [game.boss, game.final]) {
+      const at = m && (m.mesh || m.group);
+      if (at && m.stun && Math.hypot(at.position.x - e.pos.x, at.position.z - e.pos.z) < ROAR_RANGE) m.stun(2.5);
+    }
+    if (e.healed > 0) healFx(e.healed);
+  });
   events.on('shake', a => rig.shake(a));
   events.on('death', () => { game.endT = 4; game.result = 'lost'; Sound.breath(false); Music.play('over'); });
   events.on('bossStart', () => { cinema(LV.bossName, 4.5); $('boss').hidden = false; Music.play('boss'); Sound.sfx('siren'); });
@@ -237,6 +247,8 @@ function step(dt) {
     fill.position.copy(g.position).add(FILL_OFS);
     fill.target.position.copy(g.position);
     $('hp').style.width = g.hp + '%';
+    const rc = 1 - (g.roarCd || 0) / 20;                      // Schrei lädt (Streifen unten in der Lebensleiste)
+    if (rc !== game.shownRoar) { game.shownRoar = rc; $('roarCd').style.width = rc * 100 + '%'; $('roarCd').classList.toggle('ready', rc >= 1); }
     $('en').style.width = g.energy + '%';
     if (game.city.destroyed !== shownDestroyed) $('destroyed').textContent = shownDestroyed = game.city.destroyed;
     if (game.military.destroyed !== shownUnits) $('units').textContent = shownUnits = game.military.destroyed;
@@ -252,6 +264,7 @@ game.stats = { time: 0 };
 game.endT = 0;
 game.overT = 0;
 const BOSS_AT = 120;
+const ROAR_RANGE = 450;      // m, so weit betäubt der Schrei
 const HEAL = { tower: 6, mid: 1.5, small: 0.4, unit: 1 };   // Leben pro zerstörtem Gebäude bzw. Einheit          // zerstörte Gebäude, ab denen die Super-X angreift
 
 function objective() {

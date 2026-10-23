@@ -16,7 +16,11 @@ body { font-family: "Segoe UI", system-ui, sans-serif; color: #d8dde6; user-sele
 #hud { position: fixed; inset: 0; pointer-events: none; }
 .bars { position: absolute; left: 24px; top: 20px; display: grid; gap: 8px; }
 .bar { display: grid; grid-template-columns: 80px 260px; align-items: center; font-size: 12px; letter-spacing: .18em; }
-.bar b { height: 10px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .25); }
+.bar b { position: relative; height: 10px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .25); }
+/* Schrei-Aufladung: Streifen unten in der Lebensleiste, leuchtet golden, wenn der Schrei bereit ist */
+#roarCd { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: rgba(255, 210, 122, .55); }
+#roarCd.ready { background: #ffd27a; box-shadow: 0 0 8px #ffb84a; animation: roarReady 1.2s ease-in-out infinite; }
+@keyframes roarReady { 50% { opacity: .55; } }
 .bar i { display: block; height: 100%; width: 100%; transition: width .1s linear; }
 .bar.hp i { background: linear-gradient(90deg, #8a1d16, #e0482c); }
 .bar.en i { background: linear-gradient(90deg, #1d4a9a, #7fd0ff); box-shadow: 0 0 8px #4aa8ff; }

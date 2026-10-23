@@ -74,6 +74,7 @@ export class SuperX {
     this.t += dt;
     const gz = g.position, p = this.mesh.position;
     if (this.dead) { this.crash(dt); return; }
+    this.stunT = Math.max(0, (this.stunT || 0) - dt);
     // kreist langsam in Strahlweite, Bug immer auf Godzilla; ist die Sicht verdeckt, kreist sie schneller weiter
     const dist = Math.hypot(p.x - gz.x, p.z - gz.z);
     const want = (RANGE[0] + RANGE[1]) / 2 + Math.sin(this.t * 0.2) * 25;
@@ -86,7 +87,7 @@ export class SuperX {
     const alt = dist > RANGE[1] + 60 ? ALT_TRAVEL : ALT;
     p.y += (alt + 4 * Math.sin(this.t * 0.8) - p.y) * Math.min(1, dt);
     this.mesh.rotation.y = Math.atan2(gz.x - p.x, gz.z - p.z);
-    this.mesh.rotation.z = 0.04 * Math.sin(this.t * 0.6);
+    this.mesh.rotation.z = 0.04 * Math.sin(this.t * 0.6) + (this.stunT ? 0.18 * Math.sin(this.t * 7) : 0);
     // Scheinwerfer auf Godzillas Brust
     for (const s of this.spots) { s.intensity = 2.2e4; s.target.position.copy(this.mesh.worldToLocal(_v.set(gz.x, 45, gz.z))); }
     for (const b of this.beams) {
@@ -104,7 +105,7 @@ export class SuperX {
       if (this.blocked && !was && Math.random() < 0.4) this.orbit *= -1;
     }
     const inTowers = Math.hypot(gz.x - city.center.x, gz.z - city.center.z) < city.cfg.towerR * 136 + 90;
-    if (dist < RANGE[1] + 80 && !this.blocked) {
+    if (dist < RANGE[1] + 80 && !this.blocked && !this.stunT) {
       if ((this.gunT -= dt) <= 0) { this.gunT = GUN_EVERY; this.shoot(g, false); }
       if (inTowers && (this.cadT -= dt) <= 0) {
         this.cadT = CADMIUM_EVERY;
@@ -115,6 +116,9 @@ export class SuperX {
     }
     this.updateMissiles(dt, g, city);
   }
+
+  // Schrei: kurz betäubt – schießt nicht, schwankt
+  stun(t) { if (this.active && !this.dead) { this.stunT = t; this.cadQueue = 0; } }
 
   // Weicht Gebäuden aus, die höher als die Flughöhe sind (gleitet nicht mehr durch Hochhäuser)
   avoid(city) {

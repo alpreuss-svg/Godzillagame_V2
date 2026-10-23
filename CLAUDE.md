@@ -151,7 +151,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   durch Scheinwerfer mit Lichtkegel bzw. Suchscheinwerfer und Blinklicht. Godzilla zerstört Einheiten mit allen
   Angriffen; der Atomstrahl erfasst beim Laden die nächste Einheit im vorderen Kegel und folgt ihr (`AIM_*`).
   Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab. (Ein Atomtransporter zum Heilen gefiel dem Nutzer nicht und
-  wurde zurückgebaut – Heilen ohne Rückzug ist noch offen.)
+  wurde zurückgebaut.) **Schrei (L)** heilt 15 Leben (`ROAR_HEAL`) und betäubt alles im Umkreis von 450 m
+  (`ROAR_RANGE` in main.js; Militär 3 s, Bosse 2,5 s über `stun()` – Super-X schießt nicht, Ghidorahs Blitze und
+  Biollantes Ranken/Saft brechen ab), Druckwelle zeigt die Reichweite; danach 20 s Aufladen (`ROAR_CD`), angezeigt als
+  goldener Streifen unten in der Lebensleiste (`#roarCd`, leuchtet wenn bereit).
 - `js/boss.js` – Super-X: erscheint ab 120 zerstörten Gebäuden (`BOSS_AT` in main.js) mit Kinobalken, neue Wellen
   stoppen. Fliegt über den Hochhäusern an (`ALT_TRAVEL`, sonst blieb sie an Umeda hängen), schwebt dann in 130–190 m
   Abstand auf ~68 m Höhe, weicht Hochhäusern aus (`avoid`; beim Anstoßen kreist sie schneller weiter), feuert nur mit freier Sicht

@@ -15,6 +15,8 @@ const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m vorau
 const BREATH_COST = 20;         // Energie pro Sekunde
 const AIM_CONE = 0.35, AIM_HOLD = 0.6, AIM_RANGE = 420;   // Zielerfassung: Fangkegel, Haltekegel (rad), Reichweite (m)
 const PULSE_COST = 30;
+const ROAR_CD = 20;             // s, bis der Schrei wieder bereit ist (Anzeige unten in der Lebensleiste)
+const ROAR_HEAL = 15;           // Leben, die der Schrei zurückgibt (er betäubt außerdem Gegner, main.js)
 const SPRINT = 1.65;            // Sprint (Shift): Tempo-Faktor, kostet Energie und lädt solange nichts nach
 const SPRINT_COST = 7;          // Energie pro Sekunde (14 war dem Nutzer zu viel)
 const ENERGY_REGEN = 6;         // Energie pro Sekunde, wenn weder Strahl noch Sprint
@@ -110,6 +112,7 @@ export class Godzilla {
     this.t = 0;
     this.hp = 100;
     this.energy = 100;
+    this.roarCd = 0;
     this.combo = 0;
     this.queued = false;
     this.charge = 0;              // Ladefront der Platten 0..1
@@ -194,7 +197,8 @@ export class Godzilla {
           this.lowerT = 0;
           this.events.emit('charge', { dur: CHARGE_TIME * (1 - this.charge) });
         }
-        else if (input.pressed('roar') && !held) {
+        else if (input.pressed('roar') && !held && this.roarCd <= 0) {
+          this.roarCd = ROAR_CD;
           // Ist ein Boss da, schreit er ihn an (Kopf waagrecht, dreht sich zu ihm), sonst in den Himmel
           this.roarAt = this.roarTarget ? this.roarTarget() : null;
           this.play(this.roarAt ? 'roarFwd' : 'roar'); this.enter('roar'); this.roared = false;
@@ -214,7 +218,11 @@ export class Godzilla {
           const at = this.roarTarget && this.roarTarget();
           if (at) this.turnToward(_dir.set(at.x - this.position.x, 0, at.z - this.position.z), TURN_RATE, dt);
         }
-        if (!this.roared && this.t > 0.6) { this.roared = true; this.events.emit('roar', { pos: this.position }); }
+        if (!this.roared && this.t > 0.6) {
+          this.roared = true;
+          const healed = this.heal(ROAR_HEAL);                      // Kraft aus der Wut
+          this.events.emit('roar', { pos: this.position, healed });
+        }
         if (this.t > this.dur - FADE) this.finish();
         break;
       case 'pulse':
@@ -260,6 +268,7 @@ export class Godzilla {
     if (this.state !== 'free') this.sprinting = false;
     if (this.sprinting) this.energy = Math.max(0, this.energy - SPRINT_COST * dt);
     else if (this.state !== 'breath') this.energy = Math.min(100, this.energy + ENERGY_REGEN * dt);
+    this.roarCd = Math.max(0, (this.roarCd || 0) - dt);
     this.hurt = Math.max(0, (this.hurt || 0) - dt * 4);      // Treffer klingen ab
     this.calm = (this.calm || 0) + dt;                      // nach 3 s ohne Treffer erholt er sich
     if (this.calm > 3 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 1.5 * dt);

@@ -135,6 +135,11 @@ export class Military {
       u.t += dt;
       const p = u.mesh.position;
       const dist = Math.hypot(p.x - gz.x, p.z - gz.z);
+      if (u.stun > 0) {                                  // vom Schrei betäubt: steht still, schießt nicht
+        u.stun -= dt;
+        if (u.T.air) { u.rotor.rotation.y += dt * 40; u.mesh.rotation.z = 0.25 * Math.sin(u.t * 9); }
+        continue;
+      }
       if (u.T.air) this.fly(u, dt, gz, dist);
       else this.drive(u, dt, gz, dist);
       // Feuern, wenn in Reichweite
@@ -255,6 +260,11 @@ export class Military {
       n++;
     }
     return n;
+  }
+
+  // Schrei: Einheiten im Umkreis sind kurz betäubt
+  stun(t, pos, range) {
+    for (const u of this.units) if (Math.hypot(u.mesh.position.x - pos.x, u.mesh.position.z - pos.z) < range) { u.stun = t; u.burst = 0; }
   }
 
   // Atomstrahl: alles nahe der Strahllinie (auch Hubschrauber in der Luft)

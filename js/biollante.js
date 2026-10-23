@@ -299,8 +299,17 @@ export class Biollante {
     }
   }
 
+  // Schrei: kurz betäubt – Ranken ziehen sich zurück, kein Saft, kein neuer Angriff
+  stun(t) {
+    if (!this.fighting() || this.hold) return;
+    this.stunT = t;
+    this.acid = null;
+    for (const v of this.vines[this.form]) if (v.state === 'wind' || v.state === 'strike') { v.state = 'retract'; v.t = 0; }
+  }
+
   fight(dt, g, dist) {
     const F = this.F, G = this.group;
+    if (this.stunT > 0) { this.stunT -= dt; return; }
     // Bestie kriecht auf Godzilla zu und walzt Gebäude nieder
     if (F.speed && dist > F.radius + 70) {
       const k = F.speed * dt / dist;
