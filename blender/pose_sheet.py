@@ -30,6 +30,15 @@ SHEETS = {
     # Klauenhieb links als Bildfolge (Anteil der Animationslänge), oben von vorn, unten von der Seite
     'sheet_klaue': [('clawL', k, dict(FRONT, elev=6, azim=-90)) for k in (0.0, 0.27, 0.5, 0.7)]
                  + [('clawL', k, dict(SIDE)) for k in (0.0, 0.27, 0.5, 0.7)],
+    # Kopf und Hals aus der Nähe: Ruhe und Brüllen (von der Seite, schräg, von vorn)
+    'sheet_kopf': [
+        ('idle', 0, dict(target=(0, -12, 68), dist=55, elev=4, azim=0)),
+        ('idle', 0, dict(target=(0, -12, 68), dist=55, elev=8, azim=-50)),
+        ('idle', 0, dict(target=(0, -10, 66), dist=60, elev=5, azim=-90)),
+        ('roar', 0.45, dict(target=(0, -12, 70), dist=55, elev=4, azim=0)),
+        ('roar', 0.45, dict(target=(0, -12, 70), dist=55, elev=8, azim=-50)),
+        ('roar', 0.45, dict(target=(0, -10, 68), dist=60, elev=5, azim=-90)),
+    ],
     'sheet_angriffe': [
         ('clawR', 0.2, dict(FRONT, elev=6, azim=-90)),      # rechte Klaue holt aus
         ('clawR', 0.35, dict(FRONT, elev=6, azim=-90)),     # rechte Klaue trifft

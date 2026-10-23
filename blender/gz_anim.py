@@ -140,8 +140,8 @@ def pose_roar(t):  # t in Sekunden, Länge 2.2
     r['spine2'] = (-10 * e, 0, 0)
     r['neck1'] = (-12 * e, 0, 0)
     r['neck2'] = (-16 * e, 0, 0)
-    r['head'] = (-22 * e + 3 * S(t * 30) * e, 0, 0)
-    r['jaw'] = (2 + 38 * e, 0, 0)
+    r['head'] = (-18 * e + 3 * S(t * 30) * e, 0, 0)
+    r['jaw'] = (2 + 26 * e, 0, 0)          # 38° klappte den Unterkiefer wie eine Schublade heraus
     for s, sg in (('L', 1), ('R', -1)):
         r['upperarm.' + s] = (-38 * e, 0, ARM_OUT * sg * 22 * e)   # Arme spreizen sich drohend
         r['forearm.' + s] = (-30 * e - 15, 0, 0)

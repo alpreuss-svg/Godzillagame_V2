@@ -45,8 +45,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   und großen, dicken hellen Krallen – die Beingelenke (`P`) sind unverändert, damit die Gang-IK passt.
   Platten: gelappter Ahornblatt-Umriss (`PLATE_OUTLINE`), dick, hell, zwischen Schultern und Hüfte in voller Größe
   (reichen bis etwa Kopfhöhe, `PLATE_TOP` 73 in godzilla.js), zum Hals hin schnell kleiner; Hals verjüngt sich
-  gleichmäßig von den Schultern zum Kopf (flacher, breiter Nackenansatz, Kehle füllt den Übergang zum Kiefer, die
-  Kopfvergrößerung greift nicht mehr auf den Hals über); Haut feiner (Borke statt grober Beulen).
+  gleichmäßig von den Schultern zum Kopf (lang gezogene Ellipsoide entlang der Halsachse – eine flache Scheibe am
+  Ansatz bildete eine Stufe zur Brust; flache Kehle mit Querfalten; Hinterkopf und Schädeldecke ragen nicht über die
+  Nackenlinie; flache Kaumuskeln; die Kopfvergrößerung greift nicht auf den Hals über). Kiefer: kräftiger Unterkiefer
+  mit Kinn, alles unter der Maullinie vor dem Gelenk gehört dem Kiefer, Mundwinkel/Wangen beiden Knochen (dehnen sich
+  beim Öffnen); Brüllen öffnet 26° (38° klappte den Kiefer wie eine Schublade heraus). Bilderbogen `sheet_kopf`; Haut feiner (Borke statt grober Beulen).
   Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Rumpf etwas schlanker als zuerst. Vorbild für
   Schwanz und Platten ist die 1984er Figur (zwei Bilder vom Nutzer): Schwanz ~100 m, wächst tief und ohne Einbuchtung
   aus dem Becken, erstes Viertel fast hüftbreit und hochoval (Ellipsoid-Kette), im zweiten und dritten stark verjüngt,

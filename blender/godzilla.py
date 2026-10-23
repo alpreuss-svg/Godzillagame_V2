@@ -35,7 +35,7 @@ for s, sx in (('L', 1), ('R', -1)):
 RAD = {
     # breitere Brust und Schultern, schlankerer Hals (der Kopf setzt sich ab)
     # Hals wird von den Schultern zum Kopf gleichmäßig schmaler (vorher wölbte er sich wie eine Kugel)
-    'pelvis': 10.7, 'belly': 11.7, 'chest': 11.4, 'shoulder': 10.0, 'neck0': 7.6, 'neck1': 6.2, 'head0': 5.3,
+    'pelvis': 10.7, 'belly': 11.7, 'chest': 11.4, 'shoulder': 10.0, 'neck0': 6.8, 'neck1': 5.6, 'head0': 5.0,
     'skull': 4.9, 'snout': 2.9, 'jaw0': 3.3, 'chin': 1.9,
     # erstes Viertel sehr dick (fast hüftbreit), im zweiten und dritten stark verjüngt, im letzten kaum noch (Seil)
     't1': 11.5, 't2': 10.0, 't3': 8.0, 't4': 5.8, 't5': 3.9, 't6': 2.9, 't7': 2.3,
@@ -209,19 +209,23 @@ def build_body(target_tris=30000):
             e.size_x, e.size_y, e.size_z = r * 0.8 * sx, r * 0.8, r * 0.8 * sz
             e.rotation = q
     # Kopf: flacher Schädel, lange Schnauze, schwere Brauen, Kaumuskeln, Unterkiefer
-    ell((0, -10.5, 72.6), (5.0, 4.4, 4.4))
-    # Hals fließend: breiter, flacher Ansatz zwischen den Schultern (Nackenmuskel), Kehle füllt den Übergang zum Kiefer
-    ell((0, -4.6, 62.0), (8.2, 6.0, 4.6))
-    ell((0, -7.2, 66.4), (6.4, 5.0, 3.8))
-    ell((0, -9.8, 68.6), (4.6, 3.8, 3.0))
+    ell((0, -11.4, 72.8), (4.7, 3.6, 4.1))                    # Hinterkopf, ragt nicht mehr über die Nackenlinie hinaus
+    # Hals: Ellipsoide entlang der Halsachse (Schulter -> Kopfansatz), lang gezogen, damit er ohne Absatz von den
+    # Schultern zum Kopf schmaler wird (eine breite, flache Scheibe am Ansatz bildete eine Stufe zur Brust)
+    nb, nt = V(P['shoulder']), V(P['head0'])
+    tilt = math.degrees(math.atan2(nb.y - nt.y, nt.z - nb.z))
+    for t, (rx, ry, rz) in ((0.12, (8.4, 7.2, 6.0)), (0.4, (7.0, 6.2, 5.6)), (0.68, (5.8, 5.2, 4.8)), (0.88, (4.9, 4.4, 3.8))):
+        ell(tuple(nb.lerp(nt, t)), (rx, ry, rz), rot=(tilt, 0, 0))
+    ell((0, -10.6, 68.6), (3.9, 2.8, 2.4))                    # flache Kehle zum Unterkiefer
     ell((0, -13.8, 75.0), (4.5, 5.2, 3.3), rot=(-6, 0, 0))
     ell((0, -17.8, 74.6), (2.9, 3.5, 2.5), rot=(8, 0, 0))     # hohe Schnauze, nach vorn schmaler
-    ell((0, -11.8, 76.4), (4.0, 4.6, 2.6))                    # gewölbter Schädel hinter den Brauen
+    ell((0, -13.2, 76.5), (3.8, 3.6, 2.3))                    # gewölbter Schädel hinter den Brauen (nicht nach hinten)
     ell((0, -19.0, 75.8), (1.7, 1.6, 1.0))                    # Nasenkuppe
     for sx in (1, -1):
         ell((sx * 2.9, -15.2, 76.6), (1.7, 2.6, 1.25))          # schwere Brauenwülste
-        ell((sx * 3.9, -12.2, 72.6), (2.3, 3.2, 2.6))           # Kaumuskeln, kantiger Kiefer
-    ell((0, -15.8, 71.6), (3.1, 4.4, 1.35), rot=(-4, 0, 0))
+        ell((sx * 3.6, -13.0, 72.6), (1.8, 2.6, 2.0))           # Kaumuskeln, flach (rund wirkten sie wie Beulen)
+    ell((0, -15.8, 71.4), (3.1, 4.4, 1.75), rot=(-4, 0, 0))   # Unterkiefer kräftig (dünn klappte er wie ein Spatel auf)
+    ell((0, -14.4, 70.1), (2.9, 3.6, 1.5))                    # Kinn und Kieferunterseite
     ell((0, -11.8, 71.6), (3.6, 2.6, 1.9))
     # Maulhöhle bis zu den Mundwinkeln, damit der Kiefer sich öffnen kann und Zähne Platz haben
     ell((0, -17.0, 72.85), (3.6, 5.4, 0.85), rot=(-4, 0, 0), neg=True)
@@ -260,6 +264,8 @@ def skin_detail(bm):
         ridge = 0.0
         if n.y < -0.35 and abs(p.x) < 5.5 and 30 < p.z < 50:
             ridge = 0.08 * math.sin(p.z * 1.6)  # Bauchquerfalten, nur mittig und flach
+        if n.y < -0.3 and abs(p.x) < 5.0 and 60 < p.z < 69.5 and p.y < -5:
+            ridge += 0.16 * math.sin(p.z * 2.3)  # Querfalten an der Kehle
         groove = tail_ring(p)                   # Querringe am Schwanz: Wülste mit tiefen Rillen dazwischen
         if groove is not None:
             g, rs = groove
@@ -611,9 +617,12 @@ def weight(ob, arm, nbody, fixed, plate_s, arm_range):
     dsn, _ = _segdist(pts, np.array(P['skull']), np.array(P['snout']))
     dch, _ = _segdist(pts, np.array(P['jaw0']), np.array(P['chin']))
     headzone = (y < -11.2) & (z > 66)
-    jawv = headzone & (dch < dsn)
-    D[headzone & ~jawv, jaw_i] = BIG
-    D[jawv, head_i] = BIG
+    # Unterkiefer = alles unterhalb der Maullinie vor dem Kiefergelenk (sonst klappte nur der Zahnrand als dünne
+    # Platte auf, die Kiefermasse blieb am Hals hängen)
+    jawv = headzone & ((dch < dsn) | ((z < 71.9) & (y < -12.4)))
+    corner = headzone & (y > -14.6)          # hinten im Maul: Mundwinkel und Wangen dehnen sich beim Öffnen mit
+    D[headzone & ~jawv & ~corner, jaw_i] = BIG
+    D[jawv & ~corner, head_i] = BIG
     W = 1.0 / D ** 4
     for vg in names:
         ob.vertex_groups.new(name=vg)
