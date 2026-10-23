@@ -79,6 +79,38 @@ export const LEVELS = {
     finalGoal: () => 'Mecha-King Ghidorah: Atomstrahl auf den Mechanik-Kopf – aus den Greifhaken befreit nur der Kernpuls!',
     win: ['SAPPORO IST GERETTET', 'King Ghidorah und Mecha-King Ghidorah sind besiegt'],
   },
+  1992: {
+    key: '4',
+    title: 'Yokohama 1992 – Godzilla gegen Mothra',
+    short: '1992 · Mothra',
+    city: 'Yokohama',
+    // Yokohama: Minato Mirai am Wasser mit dem Landmark Tower, das Riesenrad Cosmo Clock am Hafen, westlich davon
+    // Chinatown (eng, `neon`), der Yamashita-Park am Ufer, dahinter Büros und Wohnviertel
+    layout: {
+      seed: 1992, center: { x: 1.5, z: 1.4 }, towerR: 1.7, officeR: 3.8,
+      parks: [{ i0: -1, i1: 0, j0: 3, j1: 3 }],
+      specials: [{ type: 'landmark', i: 2, j: 1 }, { type: 'wheel', i: 3, j: 3 }],
+      zoneOf(i, j, city) {
+        if (i >= -1 && i <= 0 && j === 3) return null;                    // Yamashita-Park
+        const z = j * P;
+        if (z > city.bayZ - 2 * P) return 'port';
+        if (i <= -2 && i >= -4 && j >= 0) return 'neon';                    // Chinatown
+        const d = Math.hypot(i * P - city.center.x, z - city.center.z) / P;
+        return d < city.cfg.towerR ? 'tower' : d < city.cfg.officeR ? 'office' : 'mixed';
+      },
+    },
+    start: city => [-4 * P, city.bayZ + 110],
+    boss: 'battra',
+    bossName: 'BATTRA – LARVE',
+    models: ['mothra'],
+    final: 'mothra', finalModel: 'mothra',
+    music: { level: ['1992', 'yokohama'], boss: ['1992_boss', 'battra'], final: ['1992_final', 'mothra'] },
+    bossGoal: boss => boss.dead ? 'Battra ist besiegt' : boss.form === 'imago'
+      ? 'Battra fliegt: Atomstrahl auf sie – stürzt sie sich herab, greif mit Klaue und Schwanz an!'
+      : 'Die Battra-Larve kriecht aus der Bucht: Atomstrahl, Klaue und Schwanz – weich ihrem Horn aus!',
+    finalGoal: () => 'Mothra: Atomstrahl, wenn kein Schuppenpulver glitzert – der Schrei (L) bläst es weg! Beim Flügelsturm ist sie tief genug für Klaue und Schwanz.',
+    win: ['YOKOHAMA GEHÖRT GODZILLA', 'Battra und Mothra sind besiegt'],
+  },
 };
 
 export function currentLevel() {

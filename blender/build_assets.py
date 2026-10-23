@@ -1,18 +1,18 @@
 """Erzeugt alle 3D-Modelle des Spiels als .glb.
-Aufruf: blender -b --factory-startup -P blender/build_assets.py -- [godzilla,city,units,biollante,ghidorah] [--preview]"""
+Aufruf: blender -b --factory-startup -P blender/build_assets.py -- [godzilla,city,units,biollante,ghidorah,mothra] [--preview]"""
 import bpy, sys, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import importlib
-import common, godzilla, gz_anim, city, units, biollante, ghidorah
-for m in (common, gz_anim, godzilla, city, units, biollante, ghidorah):
+import common, godzilla, gz_anim, city, units, biollante, ghidorah, mothra
+for m in (common, gz_anim, godzilla, city, units, biollante, ghidorah, mothra):
     importlib.reload(m)
 
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 PREVIEW = '--preview' in args
 args = [a for a in args if not a.startswith('--')]
-WHAT = args[0].split(',') if args else ['godzilla', 'city', 'units', 'biollante', 'ghidorah']
+WHAT = args[0].split(',') if args else ['godzilla', 'city', 'units', 'biollante', 'ghidorah', 'mothra']
 OUT = os.path.normpath(os.path.join(HERE, '..', 'assets', 'models'))
 PRE = os.path.normpath(os.path.join(HERE, '..', 'tools', 'previews'))
 
@@ -88,3 +88,14 @@ if 'ghidorah' in WHAT:
         common.preview(os.path.join(PRE, 'ghidorah_king.png'), target=(-80, 10, 70), dist=300, elev=10, azim=-75, color='VERTEX')
         common.preview(os.path.join(PRE, 'ghidorah_mecha.png'), target=(80, 10, 70), dist=300, elev=10, azim=-90, color='VERTEX')
         common.preview(os.path.join(PRE, 'ghidorah_mecha_side.png'), target=(80, 10, 70), dist=280, elev=14, azim=-35, color='TEXTURE')
+
+if 'mothra' in WHAT:
+    common.reset()
+    objs = mothra.build()
+    common.export_glb(os.path.join(OUT, 'mothra.glb'), objs)
+    if PREVIEW:
+        mothra.layout_preview(objs)
+        common.preview(os.path.join(PRE, 'mothra_top.png'), target=(0, 5, 40), dist=420, elev=70, azim=-90, color='TEXTURE')
+        common.preview(os.path.join(PRE, 'mothra_mothra.png'), target=(-110, -5, 40), dist=210, elev=25, azim=-70, color='TEXTURE')
+        common.preview(os.path.join(PRE, 'mothra_battra.png'), target=(110, -5, 40), dist=210, elev=25, azim=-110, color='TEXTURE')
+        common.preview(os.path.join(PRE, 'mothra_larva.png'), target=(0, -6, 12), dist=70, elev=15, azim=-60, color='VERTEX')

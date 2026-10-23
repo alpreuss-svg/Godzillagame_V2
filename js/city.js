@@ -87,8 +87,12 @@ export class City {
 
   layout(rand) {
     const out = [];
+    // Wahrzeichen je Level (cfg.specials: {type, i, j, rot}) belegen einen ganzen Block
+    const special = new Map((this.cfg.specials || []).map(s => [s.i + ',' + s.j, s]));
     for (let j = -this.n; j * P < this.bayZ - P * 0.5; j++) {
       for (let i = -this.n; i <= this.n; i++) {
+        const sp = special.get(i + ',' + j);
+        if (sp && this.types[sp.type]) { out.push(this.place(sp.type, i * P, j * P, sp.rot || 0)); continue; }
         const zone = ZONES[this.zoneOf(i, j)];
         if (!zone) continue;                                  // Level-Zonen dürfen Blöcke freilassen (Parks, Flüsse)
         const cx = i * P, cz = j * P;

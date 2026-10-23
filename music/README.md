@@ -16,6 +16,9 @@ Dateinamen (Endung .mp3, .ogg oder .m4a):
 | `1991`       | Sapporo 1991, Spiel          | Main Title (Ifukube)                    |
 | `1991_boss`  | Bossphase King Ghidorah      | King-Ghidorah-Thema (Ifukube)           |
 | `1991_final` | Endkampf Mecha-King Ghidorah | Mecha-King-Ghidorah-Thema (Ifukube)     |
+| `1992`       | Yokohama 1992, Spiel         | Main Title (Ifukube)                    |
+| `1992_boss`  | Bossphase Battra             | Battra-Thema (Ifukube)                  |
+| `1992_final` | Endkampf Mothra              | Mothras Lied (Koseki/Ifukube)           |
 | `gameover`   | Godzilla fällt               | ein ruhiges, trauriges Stück            |
 | `win`        | Sieg                         | Abspann                                 |
 
@@ -33,3 +36,5 @@ sind aus MKG.m4a geschnitten (drei Schreie: 2,15–4,7 s, 6,85–9,3 s, 12,15–
 
 Biollantes Schrei: `bio1` … `bio6` (Rose etwas heller, Bestie tiefer). Aus Bio.m4a geschnitten: bio1 0,0–2,0 s,
 bio2 11,65–15,5 s, bio3 17,75–19,45 s (die drei kräftigen), bio4 3,3–4,45 s und bio5 7,75–9,35 s (zwei leise).
+
+Battra: `batt1` … `batt4`, Mothra: `moth1` … `moth4` (eigene Schreie, optional; sonst Synth-Kreischen).

@@ -315,6 +315,46 @@ def _(bm, uv):
     return (32, 32, 106)
 
 
+@building('landmark')
+def _(bm, uv):   # Yokohama Landmark Tower: hoher, sich verjüngender Turm mit eingezogenen Ecken und Kronenaufbau
+    box(bm, uv, 70, 56, 0, 18, 'shop', 'roof', 0, 6)                                  # Sockel (Einkaufszentrum)
+    w = 44
+    for k, h in enumerate((70, 50, 34)):
+        z = 18 + sum((70, 50, 34)[:k])
+        poly = [(-w / 2 + 5, -w / 2), (w / 2 - 5, -w / 2), (w / 2, -w / 2 + 5), (w / 2, w / 2 - 5),
+                (w / 2 - 5, w / 2), (-w / 2 + 5, w / 2), (-w / 2, w / 2 - 5), (-w / 2, -w / 2 + 5)]
+        prism(bm, uv, poly, z, z + h, 'glass', 'roof', STYLES['glass'][1])
+        w -= 7
+    box(bm, uv, w + 4, w + 4, 172, 6, 'metal', 'metal', 0, 0, (8, 8))                 # Krone
+    rooftop(bm, uv, w, w, 178, 2, False); antenna(bm, uv, 178, 8)
+    return (70, 56, 186)
+
+
+@building('wheel')
+def _(bm, uv):   # Riesenrad Cosmo Clock: Ring, Speichen, Gondeln mit Lichtern, zwei Stützen
+    R, cz = 46, 54
+    def rbar(a, b, t, mat):
+        d = V(b) - V(a)
+        q = d.to_track_quat('Z', 'Y')
+        r = bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation((V(a) + V(b)) / 2) @ q.to_matrix().to_4x4()
+                                  @ Matrix.Diagonal((t, t, d.length, 1)))
+        for f in {f for v in r['verts'] for f in v.link_faces}:
+            f.material_index = MI[mat]
+    N = 36
+    ring = [(R * math.cos(2 * math.pi * i / N), 0, cz + R * math.sin(2 * math.pi * i / N)) for i in range(N)]
+    for i in range(N):
+        rbar(ring[i], ring[(i + 1) % N], 1.6, 'metal')
+        if i % 3 == 0:
+            rbar((0, 0, cz), ring[i], 0.6, 'metal')                                     # Speichen
+            g = V(ring[i]) + V((0, 0, -3))
+            box(bm, uv, 3.5, 3.5, g.z - 2, 3.5, 'neon', 'neon', g.x, 0, (4, 4))        # Gondeln (leuchten)
+    for sx in (-1, 1):
+        rbar((sx * 16, 3, 0), (0, 0, cz), 2.2, 'metal'); rbar((sx * 16, -3, 0), (0, 0, cz), 2.2, 'metal')
+    cyl(bm, uv, 6, cz - 3, 6, 'red', seg=10)                                              # Nabe (Uhr)
+    box(bm, uv, 40, 14, 0, 6, 'shop', 'roof')                                            # Station
+    return (96, 14, cz + R + 2)
+
+
 @building('office_a')
 def _(bm, uv):
     box(bm, uv, 24, 22, 0, 42, 'office'); rooftop(bm, uv, 24, 22, 42)

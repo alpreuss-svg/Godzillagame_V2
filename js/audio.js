@@ -275,6 +275,35 @@ export const Sound = (function () {
       timp: R('A1 . A1 . . . A1 . A1 . A1 . . . E1 .', 4),
       perc: R('k . s . k . s . k . s . k s s .', 3) + ' k s k s k s k s r r r r s s s s'
     },
+    yokohama: { // Yokohama 1992: Hafenstadt bei Nacht, h-Moll, wiegender Puls, Hörner und tiefe Streicher
+      bpm: 84, loop: true,
+      brass: 'B3 - - - - - D4 - C#4 - - - B3 - - - ' + 'F#3 - - - - - - - - - - - . . . . ' +
+        'G3 - - - - - B3 - A3 - - - F#3 - - - ' + 'E3 - - - - - - - F#3 - - - - - - - ' +
+        'B3 - - - - - D4 - E4 - - - F#4 - - - ' + 'G4 - - - F#4 - - - E4 - - - - - - - ' +
+        'D4 - - - - - C#4 - B3 - - - A#3 - - - ' + 'B3 - - - - - - - - - - - . . . . ',
+      str: pad(['B2+D3+F#3', 'B2+D3+F#3', 'G2+B2+D3', 'F#2+A#2+C#3', 'B2+D3+F#3', 'E2+G2+B2', 'G2+B2+D3', 'F#2+A#2+C#3']),
+      low: pad(['B1', 'B1', 'G1', 'F#1', 'B1', 'E1', 'G1', 'F#1']),
+      timp: R('B1 . . . . . . . F#1 . . . . . . .', 7) + ' F#1 . . . F#1 . . . F#1 . F#1 . F#1 F#1 F#1 F#1',
+      perc: R('k . . . s . . k . . s . . . . .', 7) + ' k . . . s . . . r r r r s . s .'
+    },
+    battra: {   // Battra: wild und schwarz, c-Moll, rasende Achtel, Blech in kleinen Sekunden
+      bpm: 144, loop: true,
+      brass: 'C4 Db4 C4 - G3 - C4 - Eb4 - D4 Db4 C4 - - - ' + 'Ab3 - G3 - F#3 - G3 - C4 - - - Bb3 - - - ' +
+        'C5 Db5 C5 - G4 - C5 - Eb5 - D5 Db5 C5 - - - ' + 'Ab4 - G4 - F4 - Eb4 - D4 - - - G3 - - - ',
+      str: pad(['C3+Eb3+G3', 'Ab2+C3+Eb3', 'C3+Eb3+G3', 'G2+B2+D3']),
+      low: [ost('C2', 'C3'), ost('Ab1', 'Ab2'), ost('C2', 'C3'), ost('G1', 'G2')].join(' '),
+      timp: R('C2 . C2 . G1 . C2 . C2 . G1 . C2 C2 G1 .', 4),
+      perc: R('k s k s k s s . k s k s k s s s', 3) + ' k k s s k k s s r r r r s s s s'
+    },
+    mothra: {   // Mothra: hell und feierlich, F-Dur, getragene Melodie über wiegenden Streichern (eigene Melodie)
+      bpm: 76, loop: true,
+      brass: 'F4 - - - A4 - - - C5 - - - - - - - ' + 'Bb4 - - - A4 - - - G4 - - - - - - - ' +
+        'A4 - - - C5 - - - D5 - - - C5 - - - ' + 'Bb4 - - - A4 - - - G4 - - - F4 - - - ',
+      str: pad(['F3+A3+C4', 'G3+Bb3+D4', 'F3+A3+C4', 'C3+E3+G3']),
+      low: pad(['F1', 'G1', 'F1', 'C2']),
+      timp: 'F1 . . . . . . . . . . . . . . . ' + '. . . . . . . . . . . . . . . . ' + 'F1 . . . . . . . . . . . . . . . ' + 'C2 . . . . . . . C2 . . . C2 . . . ',
+      perc: 'c . . . . . . . . . . . . . . . ' + R('. . . . . . . . . . . . . . . .', 2) + ' r r r r . . . . . . . . . . . .'
+    },
     dance: {
       bpm: 170, loop: false,
       brass: 'C5 C5 . C5 . A4 C5 . D5 . C5 . A4 . G4 . C5 C5 . C5 . A4 C5 . F5 - - - E5 - - -',
@@ -496,8 +525,10 @@ export const Sound = (function () {
   // mkg1… für Mecha-King Ghidorah, bio1… für Biollante. Feste Reihenfolge nach Dateinummer.
   // Fehlen sie, schreit der Synthesizer. Die 404-Meldungen beim Suchen sind gewollt.
   var VOICES = { godzilla: ['roar1', 'roar2', 'roar3'], kg: ['kg1', 'kg2', 'kg3', 'kg4', 'kg5', 'kg6'], mkg: ['mkg1', 'mkg2', 'mkg3', 'mkg4'],
-    bio: ['bio1', 'bio2', 'bio3', 'bio4', 'bio5', 'bio6'] };
-  var roarFiles = { godzilla: [], kg: [], mkg: [], bio: [] }, roarNext = { godzilla: 0, kg: 0, mkg: 0, bio: 0 };
+    bio: ['bio1', 'bio2', 'bio3', 'bio4', 'bio5', 'bio6'], batt: ['batt1', 'batt2', 'batt3', 'batt4'],
+    moth: ['moth1', 'moth2', 'moth3', 'moth4'] };
+  var roarFiles = { godzilla: [], kg: [], mkg: [], bio: [], batt: [], moth: [] },
+    roarNext = { godzilla: 0, kg: 0, mkg: 0, bio: 0, batt: 0, moth: 0 };
   function loadRoarFiles() {
     Object.keys(VOICES).forEach(function (v) { VOICES[v].forEach(function (n, i) { loadVoice(v, n, i); }); });
   }
@@ -637,7 +668,7 @@ export const Sound = (function () {
 })();
 
 /* ---------- Musikmanager: eigene Dateien aus music/ haben Vorrang ----------
-   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, 1991, 1991_boss, 1991_final, gameover, win – siehe music/README.md.
+   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, 1991, 1991_boss, 1991_final, 1992, 1992_boss, 1992_final, gameover, win – siehe music/README.md.
    Fehlt eine Datei, spielt das Synth-Stück. Die Suche wird pro Platz gemerkt. */
 const SLOTS = {
   title: { file: 'title', synth: 'heisei', loop: true },

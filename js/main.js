@@ -12,8 +12,9 @@ import { Military } from './military.js';
 import { SuperX, SuperX2 } from './boss.js';
 import { Biollante } from './biollante.js';
 import { KingGhidorah, MechaKingGhidorah } from './ghidorah.js';
-const BOSSES = { superx: SuperX, superx2: SuperX2, ghidorah: KingGhidorah };
-const FINALS = { biollante: Biollante, mecha: MechaKingGhidorah };
+import { Battra, Mothra } from './moths.js';
+const BOSSES = { superx: SuperX, superx2: SuperX2, ghidorah: KingGhidorah, battra: Battra };
+const FINALS = { biollante: Biollante, mecha: MechaKingGhidorah, mothra: Mothra };
 import { LEVELS, currentLevel } from './levels.js';
 import { Atmosphere } from './atmosphere.js';
 import { Sound, Music } from './audio.js';
@@ -181,6 +182,11 @@ async function load() {
     $('boss').hidden = false; $('bossName').textContent = game.final.label;
     cinema(e.title, 4.5);
   });
+  // 1992: Battra und Mothra
+  events.on('battraChange', e => { cinema(e.title, 4); $('bossName').textContent = game.boss.label; });
+  events.on('powderStart', () => toast('Mothra streut Schuppenpulver – es wirft den Atomstrahl zurück! Schrei (L) bläst es weg.', 3.5));
+  events.on('powderGone', () => toast('Das Schuppenpulver ist verweht', 2));
+  events.on('gustStart', () => toast('Flügelsturm! Mothra ist tief – Klaue und Schwanz!', 2.5));
   events.on('biollanteBurn', () => toast('Die Rose verbrennt …', 3));
   events.on('biollanteSpores', () => toast('Goldene Sporen steigen auf – sie verwandelt sich!', 3.5));
   events.on('vineGrab', () => toast('Eine Ranke hält Godzilla fest – Klaue oder Kernpuls!', 2.5));
@@ -342,6 +348,12 @@ function hookSounds() {
   events.on('ghidorahArrive', kgRoar);
   events.on('ghidorahLand', kgRoar);
   events.on('ghidorahHurt', kgRoar);
+  // Battra und Mothra: eigene Aufnahmen (music/batt1…, moth1…), sonst Synth-Kreischen
+  events.on('battraRoar', () => once('battRoar', 2, () => Sound.sfx('roar', { kind: 'rodan', voice: 'batt', pitch: Sound.hasVoice('batt') ? 1 : 0.7 })));
+  events.on('mothraRoar', () => once('mothRoar', 2, () => Sound.sfx('roar', { kind: 'rodan', voice: 'moth', pitch: Sound.hasVoice('moth') ? 1 : 1.25 })));
+  events.on('prismBeam', () => Sound.sfx('zap'));
+  events.on('mothraBeam', () => Sound.sfx('zap'));
+  events.on('gustStart', () => Sound.sfx('heavy'));
   events.on('biteStart', () => { Sound.sfx('hit'); bioRoar(); });
   events.on('holdFree', e => { if (e.how !== 'timeout') Sound.sfx('boom', true); });
   events.on('finalDown', () => { if (LV.final === 'biollante') bioRoar(); });   // Mecha schreit über ghidorahHurt
