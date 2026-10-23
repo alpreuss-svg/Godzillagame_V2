@@ -36,8 +36,8 @@ SHEETS = {
         ('idle', 0, dict(target=(0, -12, 68), dist=55, elev=8, azim=-50)),
         ('idle', 0, dict(target=(0, -10, 66), dist=60, elev=5, azim=-90)),
         ('roar', 0.45, dict(target=(0, -12, 70), dist=55, elev=4, azim=0)),
-        ('roar', 0.45, dict(target=(0, -12, 70), dist=55, elev=8, azim=-50)),
-        ('roar', 0.45, dict(target=(0, -10, 68), dist=60, elev=5, azim=-90)),
+        ('roar', 0.45, dict(target=(0, -8, 60), dist=95, elev=8, azim=-50)),
+        ('roarFwd', 0.45, dict(target=(0, -8, 58), dist=110, elev=6, azim=-70)),
     ],
     'sheet_angriffe': [
         ('clawR', 0.2, dict(FRONT, elev=6, azim=-90)),      # rechte Klaue holt aus

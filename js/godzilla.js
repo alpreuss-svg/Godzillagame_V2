@@ -190,7 +190,11 @@ export class Godzilla {
           this.firing = false; this.play('breathUpper'); this.enter('breath');
           this.events.emit('charge', { dur: CHARGE_TIME * (1 - this.charge) });
         }
-        else if (input.pressed('roar') && !held) { this.play('roar'); this.enter('roar'); this.roared = false; }
+        else if (input.pressed('roar') && !held) {
+          // Ist ein Boss da, schreit er ihn an (Kopf waagrecht, dreht sich zu ihm), sonst in den Himmel
+          this.roarAt = this.roarTarget ? this.roarTarget() : null;
+          this.play(this.roarAt ? 'roarFwd' : 'roar'); this.enter('roar'); this.roared = false;
+        }
         else if (input.pressed('pulse') && this.energy >= PULSE_COST) {
           this.energy -= PULSE_COST; this.play('roar', 1.5); this.enter('pulse'); this.released = false;
         }
@@ -202,6 +206,10 @@ export class Godzilla {
       case 'dead': break;
       case 'breath': this.updateBreath(dt, input, mag); break;
       case 'roar':
+        if (this.roarAt) {
+          const at = this.roarTarget && this.roarTarget();
+          if (at) this.turnToward(_dir.set(at.x - this.position.x, 0, at.z - this.position.z), TURN_RATE, dt);
+        }
         if (!this.roared && this.t > 0.6) { this.roared = true; this.events.emit('roar', { pos: this.position }); }
         if (this.t > this.dur - FADE) this.finish();
         break;
@@ -229,7 +237,7 @@ export class Godzilla {
     }
     if (this.speedCap < this.speed) this.speed = this.speedCap;     // z. B. von einer Ranke umschlungen (biollante.js)
     p.addScaledVector(this.forward(), this.speed * dt);
-    if (this.state === 'free' || this.state === 'breath') this.applyTurn(this.turnVel * dt);
+    if (this.state === 'free' || this.state === 'breath' || (this.state === 'roar' && this.roarAt)) this.applyTurn(this.turnVel * dt);
     else { this.turnVel = approach(this.turnVel, 0, TURN_ACCEL * dt); this.wantLead = 0; }
     const B = this.bounds;                                   // Kartenrand (vom Spiel gesetzt), im Süden die Bucht
     p.x = THREE.MathUtils.clamp(p.x, -B, B);

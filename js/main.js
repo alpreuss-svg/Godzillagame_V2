@@ -113,6 +113,12 @@ async function load() {
     return game.final ? game.final.rayHit(o, d, m) : m;
   };
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
+  // Schrei-Ziel: der aktive Boss bzw. Biollante (dann schreit Godzilla ihn an statt in den Himmel)
+  g.roarTarget = () => {
+    if (game.final && game.final.fighting()) return game.final.group.position;
+    if (game.boss.active && !game.boss.dead) return game.boss.mesh.position;
+    return null;
+  };
   g.aimTargets = () => game.military.targets().concat(game.boss.targets(), game.final ? game.final.targets() : []);
   rig.snap(g.position);
 

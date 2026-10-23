@@ -57,7 +57,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Querringe mit dunklen Rillen (`tail_ring`), Körper mit 32k Dreiecken, damit die Ringe sichtbar bleiben.
   Plattengröße nach Metern entlang der Wirbelsäule (`bell`): Maximum zwischen Brust und Bauch, zum Hals schnell, zum
   Schwanz langsam kleiner, kleiner Zackenkamm bis ans Ende; Seitenreihen enden in der Schwanzmitte.
-- `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, breath, clawL, clawR, tail, hit, down, death, turn.
+- `blender/gz_anim.py` – Animationen als Actions: idle, walk, roar, roarFwd, breath, clawL, clawR, tail, hit, down, death, turn.
+  Schrei wie die Figur (Bild vom Nutzer): Arme schräg nach außen unten, Unterarme nach vorn, Pranken offen; `roar` mit
+  Kopf in den Himmel, `roarFwd` mit Kopf waagrecht – das Spiel nimmt `roarFwd`, wenn ein Boss da ist
+  (`g.roarTarget` in main.js), und dreht Godzilla während des Schreis zu ihm (Kopf eilt voraus).
   Klauenhieb: seitlich auf Schulterhöhe ausholen (Ellbogen gebeugt, Pranke hinter dem Kopf), dann nach vorn unten
   vor die Brust durchschlagen, Oberkörper dreht mit (`ARM_OUT` = −1: negative Z-Drehung hebt den Arm seitlich – seit
   den freien Armen umgekehrt). `POSTURE`: Oberkörper, Hals und Kopf leicht nach vorn, Blick geradeaus (in allen

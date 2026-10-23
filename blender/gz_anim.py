@@ -133,19 +133,28 @@ def pose_idle(t):
     return r, hips_drop(dz)
 
 
-def pose_roar(t):  # t in Sekunden, Länge 2.2
+def pose_roar(t, up=True):  # t in Sekunden, Länge 2.2; up: Kopf in den Himmel, sonst waagrecht nach vorn (zum Gegner)
     e = env(t, 0.0, 0.45, 1.6, 2.2)
     r, loc = pose_idle(0)
-    r['spine1'] = (-6 * e, 0, 0)
-    r['spine2'] = (-10 * e, 0, 0)
-    r['neck1'] = (-12 * e, 0, 0)
-    r['neck2'] = (-16 * e, 0, 0)
-    r['head'] = (-18 * e + 3 * S(t * 30) * e, 0, 0)
+    shake = 3 * S(t * 30) * e
+    if up:
+        r['spine1'] = (-6 * e, 0, 0)
+        r['spine2'] = (-10 * e, 0, 0)
+        r['neck1'] = (-12 * e, 0, 0)
+        r['neck2'] = (-16 * e, 0, 0)
+        r['head'] = (-18 * e + shake, 0, 0)
+    else:
+        r['spine1'] = (-2 * e, 0, 0)
+        r['spine2'] = (-3 * e, 0, 0)
+        r['neck1'] = (-3 * e, 0, 0)
+        r['neck2'] = (-4 * e, 0, 0)
+        r['head'] = (-6 * e + shake, 0, 0)
     r['jaw'] = (2 + 26 * e, 0, 0)          # 38° klappte den Unterkiefer wie eine Schublade heraus
     for s, sg in (('L', 1), ('R', -1)):
-        r['upperarm.' + s] = (-38 * e, 0, ARM_OUT * sg * 22 * e)   # Arme spreizen sich drohend
-        r['forearm.' + s] = (-30 * e - 15, 0, 0)
-        r['hand.' + s] = (-10 - 20 * e, 0, ARM_OUT * sg * -10 * e)
+        # wie die Figur: Arme weit zur Seite und etwas nach vorn, Ellbogen gebeugt, Pranken offen auf Brusthöhe
+        r['upperarm.' + s] = (-16 * e, 0, ARM_OUT * sg * 28 * e)
+        r['forearm.' + s] = (-12 - 26 * e, 0, 0)
+        r['hand.' + s] = (-8 + 26 * e, 0, 0)
     r.update(tail(t * 4, 6 * e, 0, 0.5, 8 * e))
     return r, (0, 0.5 * e, 0)
 
@@ -285,6 +294,7 @@ def pose_turn(t):
 
 ANIMS = [  # Name, Funktion, Länge in s, zyklisch (Funktion bekommt 0..1)
     ('idle', pose_idle, 3.0, True), ('walk', pose_walk, WALK_T, True), ('roar', pose_roar, 2.2, False),
+    ('roarFwd', lambda t: pose_roar(t, False), 2.2, False),
     ('breath', pose_breath, 0.8, False), ('clawL', lambda t: pose_claw(t, 'L'), 0.75, False),
     ('clawR', lambda t: pose_claw(t, 'R'), 0.75, False), ('tail', pose_tail, 1.1, False),
     ('hit', pose_hit, 0.55, False), ('down', pose_down, 1.6, False), ('death', pose_death, 3.0, False),
