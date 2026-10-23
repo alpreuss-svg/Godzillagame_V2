@@ -16,6 +16,7 @@ const ZONES = {
   office: { lots: 2, types: ['office_a', 'office_b', 'office_c', 'apt_a', 'apt_b', 'apt_b'] },
   mixed: { lots: 4, types: ['shop_a', 'shop_b', 'apt_b', 'house_a', 'house_b', 'house_a', 'house_b'] },
   port: { lots: 2, types: ['warehouse', 'warehouse', 'oiltank'] },
+  neon: { lots: 4, types: ['shop_a', 'shop_b', 'shop_a', 'shop_b', 'apt_b'] },   // Vergnügungsviertel: Läden dicht an dicht
 };
 
 function rng(seed) {
@@ -47,6 +48,11 @@ export class City {
     this.scars = new GroundScars(this.groundSize);
     this.decals = new Decals(scene);
     scene.add(makeGround(this.scars, this.groundSize), makeWater(this.bayZ));
+    // Flüsse (Wasserstreifen quer über die Karte, z0..z1 in m) und Parks (leere Blöcke i0..i1, j0..j1) je Level
+    this.rivers = L.rivers || [];
+    this.parks = L.parks || [];
+    for (const r of this.rivers) scene.add(makeRiver(r, this.groundSize));
+    for (const k of this.parks) scene.add(makePark(k));
     this.fx = fx;
     this.events = events;
     this.time = 0;
@@ -557,6 +563,36 @@ function makeGround(scars, size) {
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   return ground;
+}
+
+function makeRiver(r, size) {
+  const w = new THREE.Mesh(new THREE.PlaneGeometry(size, r.z1 - r.z0),
+    new THREE.MeshStandardMaterial({ color: 0x0c1a28, roughness: 0.45, metalness: 0.15 }));
+  w.rotation.x = -Math.PI / 2;
+  w.position.set(0, 0.35, (r.z0 + r.z1) / 2);
+  w.receiveShadow = true;
+  return w;
+}
+
+// Park: dunkle Wiese über den leeren Blöcken samt der Straßen dazwischen, Wege als hellere Streifen
+function makePark(k) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#18241a'; g.fillRect(0, 0, 256, 256);
+  for (let n = 0; n < 900; n++) { g.fillStyle = `rgba(${20 + Math.random() * 30},${40 + Math.random() * 30},${20 + Math.random() * 20},.6)`; g.fillRect(Math.random() * 256, Math.random() * 256, 3, 3); }
+  g.strokeStyle = '#3a3a32'; g.lineWidth = 5;
+  g.beginPath(); g.moveTo(0, 128); g.lineTo(256, 128); g.moveTo(128, 0); g.lineTo(128, 256); g.stroke();
+  g.strokeRect(50, 50, 156, 156);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const w = (k.i1 - k.i0 + 1) * P - ROAD, d = (k.j1 - k.j0 + 1) * P - ROAD;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  m.rotation.x = -Math.PI / 2;
+  m.position.set((k.i0 + k.i1) / 2 * P, 0.15, (k.j0 + k.j1) / 2 * P);
+  m.receiveShadow = true;
+  return m;
 }
 
 function makeWater(bayZ) {

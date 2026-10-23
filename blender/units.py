@@ -28,6 +28,8 @@ def mats():
         ('hull', dict(color=(0.32, 0.12, 0.1), rough=0.7)),
         ('silver', dict(color=(0.7, 0.72, 0.74), rough=0.35, metal=0.6)),
         ('green', dict(color=(0.35, 0.72, 0.3), rough=0.5)),
+        ('sx2', dict(color=(0.16, 0.17, 0.2), rough=0.35, metal=0.7)),
+        ('mirror', dict(color=(0.95, 0.75, 0.35), rough=0.12, metal=1.0, emit=(0.9, 0.6, 0.25), emit_strength=0.35)),
     ]
     out = []
     for i, (k, kw) in enumerate(defs):
@@ -132,6 +134,24 @@ def superx(bm):
     cube(bm, (0.6, 0.6, 0.4), (0, 9, 1.8), 'red')
 
 
+def superx2(bm):
+    """Super-X2 (1989): schlanker, dunkler Pfeilrumpf, zwei Triebwerksgondeln, vorn der große goldene Fire Mirror."""
+    cube(bm, (12, 34, 3.0), (0, 1, 0), 'sx2', taper=(0.45, 0.7))           # Rumpf, vorn spitz zulaufend
+    cube(bm, (26, 12, 0.8), (0, 8, -0.6), 'sx2', taper=(0.5, 0.75))         # Flügel
+    cube(bm, (6, 10, 2.0), (0, 4, 2.2), 'sx2', taper=(0.6, 0.6))            # Rücken
+    cube(bm, (3.4, 2.6, 0.9), (0, -3.5, 2.3), 'glass', rot=(-15, 0, 0))     # Kamerakuppel (ferngesteuert)
+    for x in (-6.5, 6.5):
+        cylinder(bm, 1.8, 1.6, 14, (x, 9, -0.6), 'gun', rot=(90, 0, 0), seg=12)     # Triebwerksgondeln
+        cylinder(bm, 1.3, 1.3, 0.5, (x, 16.2, -0.6), 'lamp', rot=(90, 0, 0), seg=12)   # Düsenglühen
+        cube(bm, (0.5, 5, 4.2), (x * 0.55, 14, 2.4), 'sx2', rot=(0, -12 if x > 0 else 12, 0), taper=(1, 0.5))
+    # Fire Mirror: runde Spiegelfläche mit Rahmen am Bug
+    cylinder(bm, 6.4, 6.4, 0.8, (0, -15.8, 0.6), 'gun', rot=(90, 0, 0), seg=24)
+    cylinder(bm, 5.8, 5.8, 0.6, (0, -16.3, 0.6), 'mirror', rot=(90, 0, 0), seg=24)
+    for x in (-3.2, 3.2):
+        cylinder(bm, 0.6, 0.7, 0.5, (x, -12.5, -1.6), 'lamp', rot=(90, 0, 0), seg=10)  # Scheinwerfer
+    cube(bm, (0.6, 0.6, 0.4), (0, 12, 1.6), 'red')
+
+
 def car(bm):
     cube(bm, (1.7, 4.3, 0.8), (0, 0, 0.7), 'white')
     cube(bm, (1.5, 2.2, 0.7), (0, 0.3, 1.4), 'white', taper=(0.9, 0.8))
@@ -192,7 +212,7 @@ def debris(bm, k):
         f.smooth = False
 
 
-ITEMS = [('tank', tank), ('truck', truck), ('heli', heli), ('heli_rotor', heli_rotor), ('superx', superx),
+ITEMS = [('tank', tank), ('truck', truck), ('heli', heli), ('heli_rotor', heli_rotor), ('superx', superx), ('superx2', superx2),
          ('car', car), ('train', train), ('ship', ship), ('tree', tree), ('lamp', lamp), ('pole', pole),
          ('debris0', lambda b: debris(b, 0)), ('debris1', lambda b: debris(b, 1)), ('debris2', lambda b: debris(b, 2))]
 

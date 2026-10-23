@@ -55,7 +55,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   knicken kann. Schutt: zwei Varianten `B_rubble`/`B_rubble_b` (runder Hügel, Betonplatten, Fassadenbrocken mit
   Fenstern, Stahlträger, verkohlte Brocken).
   Custom Property `size` (Breite, Tiefe, Höhe in m) landet als glTF-`extras` im Export.
-- `blender/units.py` – Panzer Typ 74, Raketen-LKW, AH-1 (+ Rotor separat), **Super-X**, Auto, Yamanote-Zug, Frachter,
+- `blender/units.py` – Panzer Typ 74, Raketen-LKW, AH-1 (+ Rotor separat), **Super-X**, **Super-X2** (dunkler
+  Pfeilrumpf, Triebwerksgondeln, goldener Fire Mirror am Bug, Material `mirror`), Auto, Yamanote-Zug, Frachter,
   Baum, Laterne, Strommast, Trümmer (`U_debris0..2`). Läuft unter Blender 5.2, Vorschau geprüft.
 - `vendor/three/` – Three.js 0.170.0 (build + GLTFLoader, BufferGeometryUtils, SkeletonUtils), per Importmap.
 - `assets/models/godzilla.glb`, `city.glb`, `units.glb` – aktuelle Exporte.
@@ -107,27 +108,37 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Angriffen; der Atomstrahl erfasst beim Laden die nächste Einheit im vorderen Kegel und folgt ihr (`AIM_*`).
   Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab.
 - `js/boss.js` – Super-X: erscheint ab 120 zerstörten Gebäuden (`BOSS_AT` in main.js) mit Kinobalken, neue Wellen
-  stoppen. Schwebt in 130–190 m Abstand auf ~68 m Höhe, weicht Hochhäusern aus (`avoid`), feuert nur mit freier Sicht
+  stoppen. Fliegt über den Hochhäusern an (`ALT_TRAVEL`, sonst blieb sie an Umeda hängen), schwebt dann in 130–190 m
+  Abstand auf ~68 m Höhe, weicht Hochhäusern aus (`avoid`; beim Anstoßen kreist sie schneller weiter), feuert nur mit freier Sicht
   (sonst kreist sie schneller weiter), Geschosse explodieren an Gebäuden. Bordgeschütz; Kadmium (alle 18 s zwei Raketen,
   `cadmium()`: 3,5 s wehrlos) nur, wenn Godzilla im Hochhausviertel steht – sonst nagelt sie ihn auf dem Weg fest. Kadmium-Raketen lassen sich mit
   dem Strahl erfassen und abschießen. Gepanzert: Strahl nur 1,5/s. Schwachstelle wie im Film: ein kippendes Hochhaus,
   dessen Fall-Linie unter ihr durchgeht (`topple`-Ereignis), 38 Schaden – drei Türme. Absturz → Sieg → Bewertung.
+  Der Atomstrahl endet am Rumpf (`rayHit`). **`SuperX2`** (1989, Unterklasse): Raketensalven statt Kadmium (2,5 Schaden,
+  betäuben nicht), Godzilla erfasst sie selbst mit dem Strahl. Fire Mirror: schluckt den Strahl und wirft ihn golden
+  auf Godzilla zurück (4 Leben/s, ohne Zurückzucken), glüht mit der Hitze auf; nach 4 s Strahl (`MELT`, kühlt 0,25/s ab)
+  schmilzt er, danach trifft der Strahl mit 8/s. Hochhaus-Falle wirkt weiter.
 - `js/atmosphere.js` – Nachtstimmung: Regen (LineSegments in einem Kasten um den Blickpunkt), 5 Flak-Suchscheinwerfer
   (additive Kegel auf Kreuzungen um Godzilla, tasten ihn ab), feste Anzahl Punktlichter an den nächsten Bränden
   (Anzahl je Qualitätsstufe, nie wechselnd – sonst übersetzt Three.js die Shader neu). Filmkorn per CSS (`#grain`).
 - `js/audio.js` – Audio aus Teil 1 als ES-Modul (`Sound`: Orchester-Synth, Schrei als gestrichene Saite, Effekte) plus
-  drei eigene Heisei-Stücke (`heisei` Titel, `tokyo` Spiel, `superx` Boss-Marsch). `Music` spielt pro Platz (title,
-  level, boss, over, win) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
+  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` für 1989). `Music` spielt pro
+  Platz (title, level, boss, over, win; level/boss stellt `Music.setLevel()` je Level um) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
   Suchen sind gewollt), sonst das Synth-Stück. Ton startet mit der ersten Taste (Browser-Regel), M schaltet stumm.
   Ereignis → Geräusch in `hookSounds()` (main.js), häufige Ereignisse gedrosselt.
-- `js/minimap.js` – Mini-Map oben rechts (Gebäude, Zerstörung, Godzilla als Pfeil, Militär, Super-X).
+- `js/minimap.js` – Mini-Map oben rechts (Gebäude, Flüsse, Parks, Zerstörung, Godzilla als Pfeil, Militär, Boss).
+- `js/levels.js` – Level je Film: Stadtplan (`layout`), Start, Boss, Musik (Datei + Synth), Texte. Auswahl per
+  `?level=1989` oder im Titelbild mit 1/2 (lädt neu, andere Parameter bleiben). **1984 Tokio** (Shinjuku, Super-X),
+  **1989 Osaka** (Umeda-Hochhäuser nördlich des Flusses, Fluss quer in Reihe j = 1, südlich Dōtonbori als Zone `neon`,
+  Burgpark im Osten, Hafen; Boss Super-X2). Biollante als Endgegner fehlt noch.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
   Trümmer (InstancedMesh aus `U_debris0..2`, Schwerkraft, ein Abpraller).
 - `js/city.js` – Stadt: Raster 136 m, Kartenform je Level über `layout` (`DEFAULT_LAYOUT`: 6 Blöcke vom Zentrum,
   Bucht ab Reihe 4,5, Hochhausviertel in der Mitte – eine größere Karte war dem Nutzer zu groß; optional eigene
-  `zoneOf`), Zonen (Türme, Büros, Wohn-/Ladenviertel, Hafen), `city.extent`/`bayZ`/`center` für andere Module,
+  `zoneOf`, `rivers` als Wasserstreifen, `parks` als Wiese über leeren Blöcken), Zonen (Türme, Büros, Wohn-/Ladenviertel,
+  Hafen, `neon`), `city.extent`/`bayZ`/`center` für andere Module,
   Bucht südlich `BAY_Z`, ein InstancedMesh pro Typ und Material (~46 Draw Calls bei ~3900 Gebäuden),
   Raycast für den Strahl (ignoriert Gebäude, in denen das Maul steckt). Zerstörung: HP = 20 + 2,5·Höhe;
   `damage()` (Umkreis, Abfall, Trefferhöhe `height`), `crush()` (Godzillas Körper, 320 Schaden/s, bremst auf 5 bzw.
@@ -150,7 +161,7 @@ und `requestAnimationFrame` pausiert), Tasten lassen sich per `dispatchEvent(new
 `game.manual = true` hält die eigene Schleife an, damit Screenshots genau den von Hand gerechneten Stand zeigen.
 
 ## Stand und Fahrplan
-Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
+Level „Tokio 1984 – Die Rückkehr“ spielbar, „Osaka 1989“ mit Super-X2 spielbar (Biollante folgt). Die Schritte stammen vom ersten PC:
 1. **Erledigt** – Modelle: Godzilla geprüft (Maul, Zähne), `city` und `units` gebaut. Offen: Kinnspitze etwas kantig.
 2. **Spiel – in Arbeit.** Erledigt: Spielgerüst, Steuerung (Gang und Drehen per IK, Kombo, Atomstrahl, Kernpuls, Brüllen),
    feste Kamera, Teststadt, Zerstörung (sichtbarer Schaden, Brände, Einsturz, Teilruinen, Schutt, Bodenschäden).
@@ -163,4 +174,5 @@ Prototyp „Tokio 1984 – Die Rückkehr“. Die Schritte stammen vom ersten PC:
    Bewertung, PWA (`manifest.webmanifest`, `sw.js`: Netz zuerst, Cache offline; mit `?nosw` abschaltbar; bei neuen
    Dateien `ASSETS` und `VERSION` in sw.js anpassen).
 Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~230k Dreiecke, Partikel, bis ~80 Draw Calls), Lautstärken
-anhören, Balance (Wellen, Schaden, Bossphase) im echten Spiel prüfen, weitere Level (1989 Biollante usw.).
+anhören, Balance (Wellen, Schaden, Bossphase) im echten Spiel prüfen, 1989: Biollante als Endgegner (Rosen-Form,
+dann Monsterform), weitere Level (1991 King Ghidorah usw.).

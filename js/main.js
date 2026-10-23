@@ -9,7 +9,8 @@ import { MiniMap } from './minimap.js';
 import { Particles, Debris } from './effects.js';
 import { seeThrough } from './buildings.js';
 import { Military } from './military.js';
-import { SuperX } from './boss.js';
+import { SuperX, SuperX2 } from './boss.js';
+import { LEVELS, currentLevel } from './levels.js';
 import { Atmosphere } from './atmosphere.js';
 import { Sound, Music } from './audio.js';
 
@@ -58,6 +59,10 @@ const fill = new THREE.DirectionalLight(0x8090b0, 0.9);
 scene.add(fill, fill.target);
 const FILL_OFS = new THREE.Vector3();
 
+// Level aus der Adresse (?level=1989); im Titelbild wechseln 1/2 das Level (Neuladen mit anderer Adresse)
+const LEVEL_ID = currentLevel(), LV = LEVELS[LEVEL_ID];
+Music.setLevel(LV.music);
+
 const events = new Events();
 const input = new Input();
 const rig = new CameraRig(camera);
@@ -90,15 +95,16 @@ async function load() {
     fire: new Particles(scene, QUALITY.fire, { ramp: [[1.0, 0.72, 0.3], [0.45, 0.05, 0.0]], additive: true, opacity: 0.9, grow: 0.5 }),
     debris: new Debris(scene, [0, 1, 2].map(i => units.scene.getObjectByName('U_debris' + i))),
   };
-  game.city = new City(city, scene, fx, events);
+  game.city = new City(city, scene, fx, events, LV.layout);
   game.military = new Military(units, scene, fx, events, game.city);
-  game.boss = new SuperX(units, scene, fx, events, game.military);
+  game.boss = new (LV.boss === 'superx2' ? SuperX2 : SuperX)(units, scene, fx, events, game.military);
   game.minimap = new MiniMap($('minimap'), game.city);
   game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
   const g = game.godzilla = new Godzilla(gz, scene, events);
-  g.position.set(-3 * P, 0, game.city.bayZ + 110);   // kommt im Südwesten aus der Bucht, Shinjuku liegt in der Kartenmitte
+  const [sx, sz] = LV.start(game.city);
+  g.position.set(sx, 0, sz);                         // kommt im Südwesten aus der Bucht
   g.bounds = game.city.extent + 60;
-  g.raycast = (o, d, max) => game.city.raycast(o, d, max);
+  g.raycast = (o, d, max) => game.boss.rayHit(o, d, game.city.raycast(o, d, max));
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
   g.aimTargets = () => game.military.targets().concat(game.boss.targets());
   rig.snap(g.position);
@@ -124,11 +130,12 @@ async function load() {
   events.on('roar', () => rig.shake(1.0));
   events.on('shake', a => rig.shake(a));
   events.on('death', () => { game.endT = 4; game.result = 'lost'; Sound.breath(false); Music.play('over'); });
-  events.on('bossStart', () => { cinema('SUPER-X', 4.5); $('boss').hidden = false; Music.play('boss'); Sound.sfx('siren'); });
-  events.on('cadmiumWarning', () => toast('KADMIUM-RAKETEN!', 2));
+  events.on('bossStart', () => { cinema(LV.bossName, 4.5); $('boss').hidden = false; Music.play('boss'); Sound.sfx('siren'); });
+  events.on('cadmiumWarning', e => toast(e.text, 2));
+  events.on('mirrorMelt', () => toast('Der Fire Mirror schmilzt!', 3));
   events.on('cadmium', () => toast('Godzilla ist betäubt', 2.5));
   events.on('bossHit', () => toast('Volltreffer!', 1.5));
-  events.on('bossCrash', () => { game.result = 'won'; game.endT = 5; $('boss').hidden = true; cinema('DIE SUPER-X IST BESIEGT', 4); Sound.sfx('boom', true); Music.play('win'); });
+  events.on('bossCrash', () => { game.result = 'won'; game.endT = 5; $('boss').hidden = true; cinema(`DIE ${LV.bossName} IST BESIEGT`, 4); Sound.sfx('boom', true); Music.play('win'); });
   hookSounds();
 
   game.state = 'title';
@@ -140,7 +147,10 @@ function step(dt) {
   input.update();
   const g = game.godzilla;
 
-  if (game.state === 'title' && input.any) {
+  if (game.state === 'title' && game.pick) {                         // anderes Level: neu laden, ?q usw. bleiben
+    const q = new URLSearchParams(location.search); q.set('level', game.pick); game.pick = null; location.search = q;
+  }
+  else if (game.state === 'title' && input.any) {
     game.state = 'play'; show(null);
     Sound.init(); Music.play('level'); Sound.sfx('siren');          // Ton erst nach der ersten Taste (Browser-Regel)
   }
@@ -198,8 +208,8 @@ const BOSS_AT = 120;          // zerstörte Gebäude, ab denen die Super-X angre
 
 function objective() {
   const d = game.city.destroyed;
-  if (d < BOSS_AT) return `Ziel: Verwüste Tokio (${d} / ${BOSS_AT})`;
-  return game.boss.dead ? 'Die Super-X ist besiegt' : 'Locke die Super-X nach Shinjuku und lass ein Hochhaus auf sie stürzen!';
+  if (d < BOSS_AT) return `Ziel: Verwüste ${LV.city} (${d} / ${BOSS_AT})`;
+  return game.boss.dead ? LV.win[1] : LV.bossGoal(game.boss);
 }
 
 // Spielende: Bilanz anzeigen, Taste startet neu
@@ -207,8 +217,8 @@ function endGame() {
   game.state = 'over';
   game.overT = 0;
   const won = game.result === 'won';
-  $('overTitle').textContent = won ? 'TOKIO LIEGT IN TRÜMMERN' : 'GODZILLA FÄLLT';
-  $('overSub').textContent = won ? 'Die Super-X ist besiegt' : 'Die Selbstverteidigungsstreitkräfte haben gesiegt';
+  $('overTitle').textContent = won ? LV.win[0] : 'GODZILLA FÄLLT';
+  $('overSub').textContent = won ? LV.win[1] : 'Die Selbstverteidigungsstreitkräfte haben gesiegt';
   const t = game.stats.time, mm = Math.floor(t / 60), ss = Math.floor(t % 60);
   const rows = [['Zeit', `${mm}:${String(ss).padStart(2, '0')}`], ['Gebäude zerstört', game.city.destroyed],
     ['Einheiten zerstört', game.military.destroyed]];
@@ -243,7 +253,22 @@ function hookSounds() {
   events.on('cadmiumWarning', () => Sound.sfx('alarm'));
   events.on('cadmium', () => Sound.sfx('hit'));
   events.on('bossHit', () => Sound.sfx('boom', true));
+  events.on('mirrorMelt', () => { Sound.sfx('boom', true); Sound.sfx('zap'); });
 }
+
+// Titelbild: Levelliste, Zifferntasten wählen
+function levelMenu() {
+  $('levelName').textContent = LV.short;
+  $('goalTitle').textContent = LV.title;
+  $('bossName').textContent = LV.bossName;
+  $('levels').innerHTML = Object.entries(LEVELS).map(([id, l]) =>
+    `<li class="${id === LEVEL_ID ? 'on' : ''}"><b>${l.key}</b> ${l.title}</li>`).join('');
+  addEventListener('keydown', e => {
+    const id = Object.keys(LEVELS).find(k => 'Digit' + LEVELS[k].key === e.code || 'Numpad' + LEVELS[k].key === e.code);
+    if (id && id !== LEVEL_ID && game.state === 'title') { e.stopImmediatePropagation(); game.pick = id; }
+  }, { capture: true });
+}
+levelMenu();
 
 function cinema(text, sec) { $('cinemaText').textContent = text; $('cinema').classList.add('on'); game.cinemaT = sec; }
 function toast(text, sec) { $('toast').textContent = text; $('toast').classList.add('on'); game.toastT = sec; }

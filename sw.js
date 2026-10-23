@@ -1,11 +1,11 @@
 /* Service Worker: Spiel offline spielbar und installierbar machen.
    Netz zuerst (beim Entwickeln immer der neueste Stand), Cache als Rückfall ohne Verbindung.
    Eigene Musik aus music/ wird nicht zwischengespeichert. Bei neuen Dateien ASSETS und VERSION anpassen. */
-const VERSION = 'godzilla-heisei-v2';
+const VERSION = 'godzilla-heisei-v3';
 const ASSETS = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './js/main.js', './js/input.js', './js/camera.js', './js/godzilla.js', './js/effects.js', './js/city.js',
-  './js/buildings.js', './js/ground.js', './js/military.js', './js/boss.js', './js/atmosphere.js', './js/audio.js', './js/minimap.js',
+  './js/buildings.js', './js/ground.js', './js/military.js', './js/boss.js', './js/atmosphere.js', './js/audio.js', './js/minimap.js', './js/levels.js',
   './vendor/three/build/three.module.min.js', './vendor/three/addons/loaders/GLTFLoader.js',
   './vendor/three/addons/utils/BufferGeometryUtils.js', './vendor/three/addons/utils/SkeletonUtils.js',
   './assets/models/godzilla.glb', './assets/models/city.glb', './assets/models/units.glb',

@@ -218,6 +218,26 @@ export const Sound = (function () {
       timp: R('E2 . . . B1 . . . E2 . . . B1 . B1 .', 4),
       perc: 'c . s s k . s . k . s s k s s s ' + R('k . s s k . s . k . s s k s s s', 3)
     },
+    osaka: {    // Osaka 1989: unruhig, g-Moll, Streicher-Ostinato in Achteln, Blech mit Tritonus (Db) – Biollante-Zeit
+      bpm: 104, loop: true,
+      brass: 'G3 - - - - - - - Db4 - - - C4 - - - ' + 'Bb3 - - - A3 - - - G3 - - - - - - - ' +
+        'G4 - - - F4 - - - Eb4 - - - D4 - - - ' + 'Db4 - - - - - - - C4 - - - D4 - - - ' +
+        'G4 - - - Bb4 - - - A4 - - - G4 - - - ' + 'F#4 - - - - - - - D4 - - - - - - - ' +
+        'Eb4 - - - D4 - - - C4 - - - Bb3 - - - ' + 'A3 - - - - - - - D4 - - - - - - - ',
+      str: pad(['G2+Bb2+D3', 'Eb3+G3+Bb3', 'C3+Eb3+G3', 'Db3+F3+Ab3', 'G2+Bb2+D3', 'D3+F#3+A3', 'C3+Eb3+G3', 'D3+F#3+A3']),
+      low: [ost('G1', 'G2'), ost('Eb2', 'Eb3'), ost('C2', 'C3'), ost('Db2', 'Db3'), ost('G1', 'G2'), ost('D2', 'D3'), ost('C2', 'C3'), ost('D2', 'D3')].join(' '),
+      timp: R('G1 . . . . . . . G1 . . . . . . .', 6) + ' D2 . . . . . . . D2 . . . D2 . . . ' + 'D2 . D2 . D2 . D2 . D2 D2 D2 D2 D2 . . .',
+      perc: R('k . . s . . k . . . s . k . . .', 7) + ' k . s . k . s . r r r r s s s s'
+    },
+    superx2: {  // Super-X2: kühler, mechanischer Marsch in c-Moll, Synkopen, Fanfare mit erhöhter Quarte
+      bpm: 136, loop: true,
+      brass: 'C4 - - G3 C4 - Eb4 - F#4 - G4 - - - - - ' + 'Ab4 - G4 - F4 - Eb4 - D4 - - - G3 - - - ' +
+        'C5 - - G4 C5 - Eb5 - F#5 - G5 - - - - - ' + 'Ab5 - G5 - F5 - Eb5 - D5 - C5 - B4 - - - ',
+      str: pad(['C3+Eb3+G3', 'Ab2+C3+Eb3', 'C3+Eb3+G3', 'G2+B2+D3']),
+      low: [ost('C2', 'C3'), ost('Ab1', 'Ab2'), ost('C2', 'C3'), ost('G1', 'G2')].join(' '),
+      timp: R('C2 . . C2 . . G1 . C2 . . . G1 . G1 .', 4),
+      perc: R('k . s . . s k . k . s . k s . s', 3) + ' k . s . k . s . r r r r s s s s'
+    },
     dance: {
       bpm: 170, loop: false,
       brass: 'C5 C5 . C5 . A4 C5 . D5 . C5 . A4 . G4 . C5 C5 . C5 . A4 C5 . F5 - - - E5 - - -',
@@ -546,11 +566,11 @@ export const Sound = (function () {
 })();
 
 /* ---------- Musikmanager: eigene Dateien aus music/ haben Vorrang ----------
-   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, gameover, win – siehe music/README.md.
+   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, gameover, win – siehe music/README.md.
    Fehlt eine Datei, spielt das Synth-Stück. Die Suche wird pro Platz gemerkt. */
 const SLOTS = {
   title: { file: 'title', synth: 'heisei', loop: true },
-  level: { file: '1984', synth: 'tokyo', loop: true },
+  level: { file: '1984', synth: 'tokyo', loop: true },          // level/boss stellt Music.setLevel() je Level um
   boss: { file: '1984_boss', synth: 'superx', loop: true },
   over: { file: 'gameover', synth: 'over', loop: false },
   win: { file: 'win', synth: 'win', loop: false },
@@ -590,4 +610,6 @@ export const Music = {
     }
   },
   mute(m) { if (current) current.volume = m ? 0 : this.volume; },
+  // Musik des gewählten Levels: { level: [Datei, Synth], boss: [Datei, Synth] }
+  setLevel(m) { for (const k in m) Object.assign(SLOTS[k], { file: m[k][0], synth: m[k][1] }); },
 };

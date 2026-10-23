@@ -28,9 +28,9 @@
     <div class="bar hp"><span>LEBEN</span><b><i id="hp"></i></b></div>
     <div class="bar en"><span>ENERGIE</span><b><i id="en"></i></b></div>
   </div>
-  <div id="boss" hidden><span>SUPER-X</span><b><i id="bossHp"></i></b></div>
+  <div id="boss" hidden><span id="bossName">SUPER-X</span><b><i id="bossHp"></i></b></div>
   <canvas id="minimap" width="180" height="180"></canvas>
-  <div id="goal">Tokio 1984 – Die Rückkehr<br>
+  <div id="goal"><span id="goalTitle">Tokio 1984 – Die Rückkehr</span><br>
     <small>Gebäude: <span id="destroyed">0</span> · Einheiten: <span id="units">0</span></small><br>
     <small id="objective"></small></div>
 </div>
@@ -45,7 +45,8 @@
   <div id="title" hidden>
     <h1>GODZILLA</h1>
     <p class="sub">HEISEI</p>
-    <p class="level">1984 · Die Rückkehr</p>
+    <p class="level" id="levelName">1984 · Die Rückkehr</p>
+    <ul id="levels"></ul>
     <table class="keys">
       <tr><td>W A S D</td><td>Gehen</td></tr>
       <tr><td>J</td><td>Klauen-Kombo</td></tr>

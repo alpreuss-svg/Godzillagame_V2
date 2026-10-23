@@ -32,6 +32,10 @@ h1 { font-size: clamp(48px, 9vw, 110px); letter-spacing: .22em; margin: 0; font-
 h2 { font-size: 42px; letter-spacing: .3em; margin: 0 0 12px; }
 .sub { letter-spacing: 1.2em; margin: 4px 0 28px; color: #7fb8ff; padding-left: 1.2em; }
 .level { font-size: 18px; letter-spacing: .2em; color: #e0482c; margin: 0 0 22px; }
+#levels { list-style: none; padding: 0; margin: -10px auto 22px; font-size: 14px; }
+#levels li { padding: 2px 0; opacity: .5; }
+#levels li.on { opacity: 1; color: #e9edf3; }
+#levels b { color: #7fb8ff; margin-right: 8px; }
 .progress { width: min(320px, 70vw); height: 4px; margin: 0 auto; background: rgba(255, 255, 255, .12); }
 .progress i { display: block; height: 100%; width: 0; background: #7fb8ff; }
 #loadtext { font-size: 13px; opacity: .7; }

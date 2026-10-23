@@ -63,3 +63,5 @@ if 'units' in WHAT:
         common.preview(os.path.join(PRE, 'units_military.png'), target=(14, -8, 2), dist=48, elev=28, azim=-110)
         common.preview(os.path.join(PRE, 'units_superx.png'), target=next(o for o in objs if o.name == 'U_superx').location[:],
                        dist=55, elev=25, azim=-130)
+        common.preview(os.path.join(PRE, 'units_superx2.png'), target=next(o for o in objs if o.name == 'U_superx2').location[:],
+                       dist=60, elev=20, azim=-115)

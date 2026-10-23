@@ -1,4 +1,4 @@
-// Mini-Map oben rechts: Land, Bucht, Gebäude (Hochhäuser heller, zerstörte rot), Godzilla als Pfeil, Militär, Super-X.
+// Mini-Map oben rechts: Land, Bucht, Flüsse, Parks, Gebäude (Hochhäuser heller, zerstörte rot), Godzilla als Pfeil, Militär, Super-X.
 // Die Gebäudeschicht wird nur neu gezeichnet, wenn sich die Zerstörung geändert hat.
 
 
@@ -22,6 +22,9 @@ export class MiniMap {
     const g = this.base.getContext('2d'), S = this.base.width, s = S / (2 * this.half);
     g.fillStyle = '#16191f'; g.fillRect(0, 0, S, S);
     g.fillStyle = '#0d2236'; g.fillRect(0, this.px(this.bayZ), S, S);          // Bucht
+    for (const r of this.city.rivers) g.fillRect(0, this.px(r.z0), S, (r.z1 - r.z0) * s);   // Flüsse
+    g.fillStyle = '#17261a';                                                  // Parks
+    for (const k of this.city.parks) g.fillRect(this.px((k.i0 - 0.5) * 136), this.px((k.j0 - 0.5) * 136), (k.i1 - k.i0 + 1) * 136 * s, (k.j1 - k.j0 + 1) * 136 * s);
     g.strokeStyle = 'rgba(255,255,255,.18)'; g.lineWidth = 1;                // Shinjuku
     g.beginPath(); g.arc(this.px(this.shinjuku.x), this.px(this.shinjuku.z), this.city.cfg.towerR * 136 * s, 0, Math.PI * 2); g.stroke();
     for (const b of this.city.buildings) {
