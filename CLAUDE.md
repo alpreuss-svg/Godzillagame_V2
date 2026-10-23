@@ -204,6 +204,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Platz (title, level, boss, over, win; level/boss stellt `Music.setLevel()` je Level um) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
   Suchen sind gewollt), sonst das Synth-Stück. Ton startet mit der ersten Taste (Browser-Regel), M schaltet stumm.
   Ereignis → Geräusch in `hookSounds()` (main.js), häufige Ereignisse gedrosselt.
+  Godzillas Schrei: liegen `music/roar1`, `roar2` (bis `roar3`; ogg/mp3/m4a/wav), spielt das Spiel diese eigenen
+  Aufnahmen abwechselnd statt des Synth-Schreis (`loadRoarFiles`). roar1/roar2 sind aus den Nutzerdateien G1/G2.m4a
+  geschnitten (Blenders `aud`-Modul kann m4a lesen und ogg schreiben, kein ffmpeg nötig): G1 1,0–4,4 s, G2 0,95–6,0 s,
+  auf Spitze 0,95 angehoben, 40 ms ein- und am Ende ausgeblendet.
 - `js/minimap.js` – Mini-Map oben rechts (Gebäude, Flüsse, Parks, Zerstörung, Godzilla als Pfeil, Militär, Boss).
 - `js/levels.js` – Level je Film: Stadtplan (`layout`), Start, Boss, Musik (Datei + Synth), Texte. Auswahl per
   `?level=1989` oder im Titelbild mit 1/2 (lädt neu, andere Parameter bleiben). **1984 Tokio** (Shinjuku, Super-X),

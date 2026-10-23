@@ -31,6 +31,7 @@ export const Sound = (function () {
     verb.buffer = ir;
     var vg = ctx.createGain(); vg.gain.value = 0.35; verb.connect(vg); vg.connect(comp);
     setTimeout(function () { Object.keys(ROARS).forEach(function (k) { makeRoar(k); }); }, 300);
+    loadRoarFiles();
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     var nd = noiseBuf.getChannelData(0);
     for (i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
@@ -491,8 +492,34 @@ export const Sound = (function () {
     roarBufs[kind] = buf;
     return buf;
   }
+  // Eigene Schrei-Aufnahmen für Godzilla aus music/ (roar1, roar2 …; bleiben lokal wie die Musik). Fehlen sie, schreit
+  // der Synthesizer. Die 404-Meldungen beim Suchen sind gewollt.
+  var roarFiles = [], roarNext = 0;
+  function loadRoarFiles() {
+    ['roar1', 'roar2', 'roar3'].forEach(function (n) {
+      ['ogg', 'mp3', 'm4a', 'wav'].reduce(function (p, ext) {
+        return p.then(function (done) {
+          if (done) return true;
+          return fetch('music/' + n + '.' + ext).then(function (r) { return r.ok ? r.arrayBuffer() : null; })
+            .then(function (ab) { return ab ? ctx.decodeAudioData(ab).then(function (b) { roarFiles.push(b); return true; }) : false; })
+            .catch(function () { return false; });
+        });
+      }, Promise.resolve(false));
+    });
+  }
+
   function roar(kind, pitch) {
     kind = ROARS[kind] ? kind : 'godzilla';
+    if (kind === 'godzilla' && roarFiles.length) {         // eigene Aufnahme, abwechselnd
+      var t0 = ctx.currentTime, s0 = ctx.createBufferSource(), g0 = ctx.createGain();
+      s0.buffer = roarFiles[roarNext++ % roarFiles.length];
+      s0.playbackRate.value = pitch || 1;
+      g0.gain.value = 0.55;
+      s0.connect(g0); g0.connect(sfx);
+      var w0 = ctx.createGain(); w0.gain.value = 0.18; g0.connect(w0); w0.connect(verb);
+      s0.start(t0);
+      return;
+    }
     var t = ctx.currentTime, src = ctx.createBufferSource(), g = ctx.createGain(), hp = ctx.createBiquadFilter();
     src.buffer = makeRoar(kind);
     src.playbackRate.value = (pitch || 1) / (src.buffer.slow || 1);

@@ -20,3 +20,7 @@ Dateinamen (Endung .mp3, .ogg oder .m4a):
 | `win`        | Sieg                         | Abspann                                 |
 
 Beispiel: `music/1984_boss.mp3`
+
+Godzillas Schrei: `roar1`, `roar2` (bis `roar3`) – eigene Aufnahmen, abwechselnd abgespielt; fehlen sie, schreit der
+Synthesizer. Zurechtgeschnitten aus G1/G2 mit Blenders Audio-Bibliothek (siehe CLAUDE.md): Stille vorn weg, Knackser
+hinten weg, auf volle Lautstärke angehoben, kurz ein- und ausgeblendet.
