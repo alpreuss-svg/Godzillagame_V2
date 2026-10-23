@@ -47,11 +47,10 @@ export class City {
     this.instanced = this.instantiate(scene);
     this.scars = new GroundScars(this.groundSize);
     this.decals = new Decals(scene);
-    scene.add(makeGround(this.scars, this.groundSize), makeWater(this.bayZ));
+    scene.add(makeGround(this.scars, this.groundSize));                 // Bucht und Flüsse: water.js
     // Flüsse (Wasserstreifen quer über die Karte, z0..z1 in m) und Parks (leere Blöcke i0..i1, j0..j1) je Level
     this.rivers = L.rivers || [];
     this.parks = L.parks || [];
-    for (const r of this.rivers) scene.add(makeRiver(r, this.groundSize));
     for (const k of this.parks) scene.add(makePark(k));
     this.fx = fx;
     this.events = events;
@@ -142,10 +141,14 @@ export class City {
         return im;
       });
       const attrs = addInstanceAttributes(meshes.map(im => im.geometry), bs.length);
+      const tint = new THREE.Color();
       bs.forEach((b, k) => {
         b.meshes = meshes; b.index = k; b.attrs = attrs;
         m.compose(new THREE.Vector3(b.x, 0, b.z), q.setFromAxisAngle(up, b.rot), new THREE.Vector3(1, 1, 1));
-        for (const im of meshes) im.setMatrixAt(k, m);
+        // jedes Gebäude etwas anders getönt (Alter, Material, Schmutz) – sonst wirkt die Stadt wie aus einer Form
+        const v = 0.78 + 0.3 * Math.random(), warm = (Math.random() - 0.5) * 0.12;
+        tint.setRGB(v * (1 + warm), v, v * (1 - warm * 1.2));
+        for (const im of meshes) { im.setMatrixAt(k, m); im.setColorAt(k, tint); }
       });
       for (const im of meshes) im.computeBoundingSphere();
     }

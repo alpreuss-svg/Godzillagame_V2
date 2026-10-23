@@ -17,15 +17,17 @@ const BOSSES = { superx: SuperX, superx2: SuperX2, ghidorah: KingGhidorah, battr
 const FINALS = { biollante: Biollante, mecha: MechaKingGhidorah, mothra: Mothra };
 import { LEVELS, currentLevel } from './levels.js';
 import { Atmosphere } from './atmosphere.js';
+import { Water } from './water.js';
+import { Props } from './props.js';
 import { Sound, Music } from './audio.js';
 
 // Qualität: ?q=low für schwache Grafik (z. B. Intel UHD 615), ?q=high für mehr Kantenglättung/Schatten
 const Q = new URLSearchParams(location.search).get('q') || 'mid';
 const QUALITY = {
-  low: { ratio: 1, aa: false, shadow: 512, dust: 500, fire: 250, rain: 400, fireLights: 2 },
-  mid: { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500, rain: 1200, fireLights: 4 },
-  high: { ratio: 2, aa: true, shadow: 2048, dust: 1600, fire: 800, rain: 2000, fireLights: 6 },
-}[Q] || { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500, rain: 1200, fireLights: 4 };
+  low: { ratio: 1, aa: false, shadow: 512, dust: 500, fire: 250, rain: 400, fireLights: 2, props: 0.45 },
+  mid: { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500, rain: 1200, fireLights: 4, props: 1 },
+  high: { ratio: 2, aa: true, shadow: 2048, dust: 1600, fire: 800, rain: 2000, fireLights: 6, props: 1.4 },
+}[Q] || { ratio: 1.25, aa: true, shadow: 1024, dust: 1000, fire: 500, rain: 1200, fireLights: 4, props: 1 };
 
 class Events {
   constructor() { this.map = new Map(); }
@@ -112,10 +114,13 @@ async function load() {
   for (const m of [game.boss, game.final]) if (m) m.camera = camera;     // Blitzbänder richten sich zur Kamera aus
   game.minimap = new MiniMap($('minimap'), game.city);
   game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
+  game.water = new Water(scene, game.city, MOON_OFS);
+  game.props = new Props(units, scene, game.city, fx, QUALITY.props);
   const g = game.godzilla = new Godzilla(gz, scene, events);
   const [sx, sz] = LV.start(game.city);
   g.position.set(sx, 0, sz);                         // kommt im Südwesten aus der Bucht
   g.bounds = game.city.extent + 60;
+  g.waterDepth = (x, z) => game.water.depth(x, z);
   g.raycast = (o, d, max) => {
     const m = game.boss.rayHit(o, d, game.city.raycast(o, d, max));
     return game.final ? game.final.rayHit(o, d, m) : m;
@@ -134,7 +139,11 @@ async function load() {
   events.on('attack', e => {
     game.city.damage(e.pos, e.radius, e.damage, e.from, e.falloff, e.height ?? e.pos.y, e.hitSet);
     if (e.kind !== 'beam') game.military.damage(e.pos, e.kind === 'claw' ? e.radius + 12 : e.radius, e.damage, e.from);
-    if (e.kind === 'beam' && e.pos.y < 3 && Math.random() < 0.5) game.city.scars.burn(e.pos.x, e.pos.z, 9);
+    game.props.knock(e.pos, e.radius + 6);
+    if (e.kind === 'beam' && e.pos.y < 3 && game.water.depth(e.pos.x, e.pos.z) > 0.2) {      // Strahl ins Wasser: Dampf
+      if (Math.random() < 0.6) fx.dust.emit(e.pos.x, 1, e.pos.z, 2, { spread: 8, up: 10, out: 5, size: 22, life: 2.5, color: [0.7, 0.74, 0.8] });
+      if (Math.random() < 0.15) game.water.splash(e.pos.x, e.pos.z, 0.8);
+    } else if (e.kind === 'beam' && e.pos.y < 3 && Math.random() < 0.5) game.city.scars.burn(e.pos.x, e.pos.z, 9);
     if (e.kind === 'pulse') game.city.scars.scorch(e.pos.x, e.pos.z, e.radius * 0.9, 0.6);
     if (game.boss.attack) game.boss.attack(e);          // King Ghidorah: Klaue, Schwanz, Kernpuls
     if (game.final) game.final.attack(e);
@@ -142,13 +151,21 @@ async function load() {
   events.on('beamLine', e => { game.military.damageLine(e.from, e.to, 14, e.dps * e.dt); game.boss.beamLine(e.from, e.to, e.dt); if (game.final) game.final.beamLine(e.from, e.to, e.dps, e.dt); });
   events.on('stomp', e => {
     rig.shake(0.35 * e.strength);
+    game.props.knock(e.pos, 20);
+    if (game.water.splash(e.pos.x, e.pos.z, 0.5 + 0.5 * e.strength)) { splash(e.pos.x, e.pos.z, 1); return; }   // Schritt im Wasser
     game.military.damage(e.pos, 16, 999, e.pos);
     game.city.damage(e.pos, 14, 60, e.pos, false, 3);
     game.city.decals.add('impact', e.pos.x, e.pos.z, Math.random() * 6.3, 16 + Math.random() * 10);
     game.city.scars.blob(e.pos.x, e.pos.z, 12, [0, 0.3, 0.1]);
     fx.dust.emit(e.pos.x, 0, e.pos.z, 3, { spread: 6, up: 1.5, out: 6, size: 12, life: 2 });
   });
-  events.on('collapse', e => rig.shake(e.topple ? 0.6 : 0.25));
+  events.on('collapse', e => { rig.shake(e.topple ? 0.6 : 0.25); game.props.knock(e.b, Math.max(e.b.hw, e.b.hd) + 14); });
+  // Gischt: weiße Tropfen und feiner Nebel
+  const splash = (x, z, k) => {
+    fx.dust.emit(x, 1, z, Math.round(4 * k), { spread: 6 * k, up: 14 * k, out: 9 * k, size: 6, life: 1.2, color: [0.7, 0.75, 0.8] });
+    if (k >= 1) fx.dust.emit(x, 1, z, 1, { spread: 8, up: 3, out: 5, size: 12, life: 1.6, color: [0.36, 0.4, 0.46] });
+  };
+  game.splash = splash;
   // Heilen durch Zerstörung: Hochhäuser geben am meisten zurück, Häuser kaum
   const healFx = n => { if (n > 0) { $('hpBar').classList.remove('heal'); void $('hpBar').offsetWidth; $('hpBar').classList.add('heal'); } };
   events.on('collapse', e => healFx(g.heal(e.b.h > 70 ? HEAL.tower : e.b.h > 25 ? HEAL.mid : HEAL.small)));
@@ -232,6 +249,8 @@ function step(dt) {
       if (game.finalT > 0 && (game.finalT -= dt) <= 0) { game.final.start(g.position, game.city); Music.play('final'); }
       if (game.final) game.final.update(dt, g);
       game.minimap.update(dt, g, game.military, game.boss);
+      game.props.update(dt, g);
+      updateWaders(dt, g);
       $('bossHp').style.width = (game.final && game.final.active ? game.final.hp : game.boss.hp) + '%';
       for (const k of ['cinemaT', 'toastT']) if (game[k] > 0 && (game[k] -= dt) <= 0) $(k === 'cinemaT' ? 'cinema' : 'toast').classList.remove('on');
       game.fx.debris.update(dt);
@@ -242,6 +261,7 @@ function step(dt) {
       game.fx.fire.update(dt, camera, renderer.domElement.height);
       game.fx.glow.update(dt, camera, renderer.domElement.height);
       game.atmo.update(dt, camera, g, game.city, rig.target);
+      game.water.update(dt, camera);
       seeThrough.uTime.value += dt;
     }
     if (game.state !== 'pause') rig.update(dt, g.position, game.state === 'play' ? input : IDLE);
@@ -372,6 +392,27 @@ function levelMenu() {
   }, { capture: true });
 }
 levelMenu();
+
+// Wer gerade im Wasser steht, zieht Schaumringe und Bugwellen; beim Gehen spritzt es
+function updateWaders(dt, g) {
+  const w = game.water, list = [];
+  const add = (x, z, r, moving) => {
+    const d = w.depth(x, z);
+    if (d <= 0.3) return;
+    list.push({ x, z, r, k: Math.min(1, 0.3 + d / 8) });
+    if (moving && (game.wakeT = (game.wakeT || 0) - dt) <= 0) {
+      game.wakeT = 0.35;
+      w.splash(x, z, 0.35);
+      game.splash(x + (Math.random() - 0.5) * r, z + (Math.random() - 0.5) * r, 0.6);
+    }
+  };
+  add(g.position.x, g.position.z, 12, g.speed > 2);
+  const b = game.boss, f = game.final;
+  if (b && b.active && b.form === 'larva') add(b.pos.x, b.pos.z, 16, true);
+  if (b && b.active && b.group && b.group.position.y < 8) add(b.group.position.x, b.group.position.z, 22, false);
+  if (f && f.active && f.group && f.group.position.y < 10) add(f.group.position.x, f.group.position.z, 22, false);
+  w.setWaders(list);
+}
 
 function cinema(text, sec) { $('cinemaText').textContent = text; $('cinema').classList.add('on'); game.cinemaT = sec; }
 function toast(text, sec) { $('toast').textContent = text; $('toast').classList.add('on'); game.toastT = sec; }

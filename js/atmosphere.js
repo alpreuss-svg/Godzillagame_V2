@@ -5,7 +5,7 @@ import * as THREE from 'three';
 const P = 136;
 
 export class Atmosphere {
-  constructor(scene, { rain = 1200, fireLights = 4, searchlights = 5 } = {}) {
+  constructor(scene, { rain = 1200, fireLights = 4, searchlights = 2 } = {}) {   // 5 waren dem Nutzer zu unruhig
     this.scene = scene;
     // Regen: kurze Schlieren in einem Kasten, der mit dem Blickpunkt mitwandert
     this.rainN = rain;
@@ -27,7 +27,7 @@ export class Atmosphere {
 
     // Flak-Suchscheinwerfer: additive Lichtkegel von Kreuzungen rund um Godzilla
     const cone = new THREE.CylinderGeometry(16, 1.5, 1, 18, 1, true).translate(0, 0.5, 0).rotateX(Math.PI / 2);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xbfd0ff, transparent: true, opacity: 0.045, depthWrite: false,
+    const mat = new THREE.MeshBasicMaterial({ color: 0xbfd0ff, transparent: true, opacity: 0.03, depthWrite: false,
       blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false });
     this.lights = [];
     for (let i = 0; i < searchlights; i++) {
@@ -80,8 +80,8 @@ export class Atmosphere {
         s.placed = true;
       }
       // tasten pendelnd um Godzillas Oberkörper und streifen gelegentlich in den Himmel
-      const t = this.time * 0.35 + s.phase;
-      _w.set(gz.x + Math.sin(t * 1.3) * 40, 55 + Math.sin(t * 0.7) * 35 + Math.max(0, Math.sin(t * 0.23)) * 160, gz.z + Math.cos(t * 1.1) * 40);
+      const t = this.time * 0.15 + s.phase;                       // ruhig suchend statt hektisch
+      _w.set(gz.x + Math.sin(t * 1.3) * 30, 60 + Math.sin(t * 0.7) * 20 + Math.max(0, Math.sin(t * 0.23)) * 80, gz.z + Math.cos(t * 1.1) * 30);
       s.mesh.position.copy(s.base);
       s.mesh.lookAt(_w);
       s.mesh.scale.set(1, 1, s.base.distanceTo(_w) * 1.25);

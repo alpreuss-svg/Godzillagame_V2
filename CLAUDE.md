@@ -210,8 +210,19 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Schaden an ihr: Strahl 2,2/s (Rose) bzw. 1,6/s, am Kern ×1,5 bzw. ×2; Strahl erfasst Rankenköpfe und Kern (`targets`), endet am Körper
   (`rayHit`); Godzilla kann nicht durch sie hindurch. Ablauf: rise → rose → burn → spores (goldene Sporen) → emerge →
   beast → dying (löst sich in Sporen auf) → Sieg. Ein festes Punktlicht für das Glühen.
-- `js/atmosphere.js` – Nachtstimmung: Regen (LineSegments in einem Kasten um den Blickpunkt), 5 Flak-Suchscheinwerfer
-  (additive Kegel auf Kreuzungen um Godzilla, tasten ihn ab), feste Anzahl Punktlichter an den nächsten Bränden
+- `js/water.js` – Bucht und Flüsse mit eigenem Shader (das flache Wasser sah dem Nutzer furchtbar aus): laufende
+  Wellenschichten, Fresnel-Spiegelung des Nachthimmels, Mondglitzern (mit glatterer Normale), gespiegelte Hafenlichter
+  in Ufernähe, Schaum an der Uferlinie, Regenringe, Wellenringe (`splash`, 16 Stück) und Schaumringe um Monster im
+  Wasser (`setWaders`, max. 4); Kaimauern entlang der Ufer. `depth(x, z)`: Bucht fällt vom Ufer flach ab (bis 20 m),
+  Flüsse bis 9 m. Godzilla taucht ein (bis 17 m, `g.waterDepth`, watet bis 25 % langsamer), Schritte im Wasser
+  spritzen statt Bodenschäden, beim Waten Bugwellen und Gischt (`updateWaders` in main.js), der Strahl im Wasser dampft.
+- `js/props.js` – Leben in der Stadt (sie wirkte steril): Straßenlaternen mit warmen Lichtkegeln auf dem Asphalt,
+  Bäume in Parks und an Straßen der Wohn-/Büroviertel, geparkte Autos und ~100 fahrende Autos mit Scheinwerferkegel,
+  die vor Godzilla fliehen und zertreten werden. Alles InstancedMesh, Menge je Qualitätsstufe (`props`: low 0,45,
+  mid 1, high 1,4); Schritte, Angriffe und Einstürze werfen Requisiten im Umkreis um (`knock`). Gebäude sind je
+  Instanz leicht unterschiedlich getönt (`setColorAt` in city.js).
+- `js/atmosphere.js` – Nachtstimmung: Regen (LineSegments in einem Kasten um den Blickpunkt), 2 Flak-Suchscheinwerfer
+  (additive Kegel auf Kreuzungen um Godzilla, tasten ihn langsam ab – 5 schnelle waren dem Nutzer zu viel), feste Anzahl Punktlichter an den nächsten Bränden
   (Anzahl je Qualitätsstufe, nie wechselnd – sonst übersetzt Three.js die Shader neu). Filmkorn per CSS (`#grain`).
 - `js/audio.js` – Audio aus Teil 1 als ES-Modul (`Sound`: Orchester-Synth, Schrei als gestrichene Saite, Effekte) plus
   eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989, `sapporo` / `ghidorah` / `mecha` für 1991, `yokohama` / `battra` / `mothra` für 1992). `Music` spielt pro
@@ -283,6 +294,6 @@ Level „Tokio 1984 – Die Rückkehr“, „Osaka 1989“ (Super-X2, dann Bioll
 5. **HUD und Rahmen** – erledigt: Leben/Energie, Zähler, Ziel, Bossleiste, Kinobalken, Meldungen, Endbildschirm mit
    Bewertung, PWA (`manifest.webmanifest`, `sw.js`: Netz zuerst, Cache offline; mit `?nosw` abschaltbar; bei neuen
    Dateien `ASSETS` und `VERSION` in sw.js anpassen).
-Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~230k Dreiecke, Partikel, bis ~80 Draw Calls), Lautstärken
+Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~370k Dreiecke mit Requisiten, ~70 Draw Calls; `?q=low`), Lautstärken
 anhören, Balance (Wellen, Schaden, Bossphase) im echten Spiel prüfen, Biollante-Kampf im echten Spiel abstimmen,
 Kämpfe im echten Spiel abstimmen, Mothra/Battra nach Bildvorlagen verfeinern, weitere Level (1993 Mechagodzilla usw.).

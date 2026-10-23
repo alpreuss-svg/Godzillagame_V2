@@ -248,7 +248,12 @@ export class Godzilla {
       if (block > 14) this.speed = Math.min(this.speed, block > 70 ? 4 : block > 35 ? 8 : 12);
     }
     if (this.speedCap < this.speed) this.speed = this.speedCap;     // z. B. von einer Ranke umschlungen (biollante.js)
-    p.addScaledVector(this.forward(), this.speed * dt);
+    // Wasser: taucht je nach Tiefe ein (bis 17 m), watet etwas langsamer
+    this.depth = this.waterDepth ? this.waterDepth(p.x, p.z) : 0;
+    const sink = Math.min(17, this.depth * 0.85);
+    this.sink = (this.sink || 0) + (sink - (this.sink || 0)) * (1 - Math.exp(-2.5 * dt));
+    p.y = -this.sink;
+    p.addScaledVector(this.forward(), this.speed * (1 - Math.min(0.25, this.depth / 60)) * dt);
     if (this.state === 'free' || this.state === 'breath' || (this.state === 'roar' && this.roarAt)) this.applyTurn(this.turnVel * dt);
     else { this.turnVel = approach(this.turnVel, 0, TURN_ACCEL * dt); this.wantLead = 0; }
     const B = this.bounds;                                   // Kartenrand (vom Spiel gesetzt), im Süden die Bucht
@@ -504,7 +509,7 @@ export class Godzilla {
 
   updateStomp() {
     for (const side of ['L', 'R']) {
-      const y = this.bones['foot' + side].getWorldPosition(_v).y;   // GLTFLoader entfernt den Punkt aus "foot.L"
+      const y = this.bones['foot' + side].getWorldPosition(_v).y - this.position.y;   // relativ: auch im Wasser
       if (this.speed > 1.5 && this.footY[side] > STOMP_Y && y <= STOMP_Y) {
         this.events.emit('stomp', { pos: _v.clone().setY(0), strength: this.speed / WALK_SPEED, heading: this.heading });
       }
