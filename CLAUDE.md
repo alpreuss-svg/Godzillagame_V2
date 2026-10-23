@@ -208,7 +208,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Aufnahmen abwechselnd statt des Synth-Schreis (`loadRoarFiles`). roar1/roar2 sind aus den Nutzerdateien G1/G2.m4a
   geschnitten (Blenders `aud`-Modul kann m4a lesen und ogg schreiben, kein ffmpeg nötig): G1 1,0–4,4 s, G2 0,95–6,0 s,
   auf Spitze 0,95 angehoben, 40 ms ein- und am Ende ausgeblendet.
-  King Ghidorah: `music/kg1` … `kg6` (Stimme `voice: 'kg'`), der Reihe nach, Mecha-King Ghidorah mit Tonhöhe 0,85;
+  King Ghidorah: `music/kg1` … `kg6` (Stimme `voice: 'kg'`), der Reihe nach; Mecha-King Ghidorah: `mkg1` … `mkg4`
+  (aus MKG.m4a, drei Schreie; fehlen sie, King Ghidorahs Schreie mit Tonhöhe 0,85, `Sound.hasVoice`);
   kg1–kg5 aus KG.m4a (fünf Schreie in einer Tonspur, Schnitte in music/README.md). Er schreit beim Auftauchen, beim
   Landen, bei der Dreifach-Salve, bei schweren Treffern und beim Absturz (`ghidorahArrive/Land/Hurt`, gedrosselt 2,5 s).
 - `js/minimap.js` – Mini-Map oben rechts (Gebäude, Flüsse, Parks, Zerstörung, Godzilla als Pfeil, Militär, Boss).

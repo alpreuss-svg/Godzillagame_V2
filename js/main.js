@@ -324,9 +324,13 @@ function hookSounds() {
   events.on('vineCut', () => once('cut', 0.2, () => Sound.sfx('whip')));
   events.on('bindStart', () => Sound.sfx('whip'));
   events.on('grabStart', () => { Sound.sfx('heavy'); Sound.sfx('hit'); });
-  // King Ghidorah schreit mit den eigenen Aufnahmen (music/kg1…), Mecha-King Ghidorah dieselben etwas tiefer
-  const kgRoar = () => once('kgRoar', 2.5, () => Sound.sfx('roar', { kind: 'ghidorah', voice: 'kg',
-    pitch: game.final && game.final.active && game.final.mecha ? 0.85 : 1 }));
+  // King Ghidorah schreit mit den eigenen Aufnahmen (music/kg1…), Mecha-King Ghidorah mit music/mkg1… (fehlen die,
+  // mit King Ghidorahs Schreien etwas tiefer)
+  const kgRoar = () => once('kgRoar', 2.5, () => {
+    const mecha = game.final && game.final.active && game.final.mecha;
+    if (mecha && Sound.hasVoice('mkg')) Sound.sfx('roar', { kind: 'mecha', voice: 'mkg' });
+    else Sound.sfx('roar', { kind: 'ghidorah', voice: 'kg', pitch: mecha ? 0.85 : 1 });
+  });
   events.on('gravityBeam', e => { Sound.sfx('zap'); if (e.all) kgRoar(); });
   events.on('ghidorahArrive', kgRoar);
   events.on('ghidorahLand', kgRoar);

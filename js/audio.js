@@ -492,10 +492,11 @@ export const Sound = (function () {
     roarBufs[kind] = buf;
     return buf;
   }
-  // Eigene Schrei-Aufnahmen aus music/ (bleiben lokal wie die Musik): roar1… für Godzilla, kg1… für King Ghidorah.
+  // Eigene Schrei-Aufnahmen aus music/ (bleiben lokal wie die Musik): roar1… für Godzilla, kg1… für King Ghidorah,
+  // mkg1… für Mecha-King Ghidorah.
   // Fehlen sie, schreit der Synthesizer. Die 404-Meldungen beim Suchen sind gewollt.
-  var VOICES = { godzilla: ['roar1', 'roar2', 'roar3'], kg: ['kg1', 'kg2', 'kg3', 'kg4', 'kg5', 'kg6'] };
-  var roarFiles = { godzilla: [], kg: [] }, roarNext = { godzilla: 0, kg: 0 };
+  var VOICES = { godzilla: ['roar1', 'roar2', 'roar3'], kg: ['kg1', 'kg2', 'kg3', 'kg4', 'kg5', 'kg6'], mkg: ['mkg1', 'mkg2', 'mkg3', 'mkg4'] };
+  var roarFiles = { godzilla: [], kg: [], mkg: [] }, roarNext = { godzilla: 0, kg: 0, mkg: 0 };
   function loadRoarFiles() {
     Object.keys(VOICES).forEach(function (v) { VOICES[v].forEach(function (n) { loadVoice(v, n); }); });
   }
@@ -630,7 +631,8 @@ export const Sound = (function () {
     return muted;
   }
 
-  return { songs: SONGS, roarBuf: function (k) { init(); return makeRoar(k); }, setVol: setVol, init: init, play: play, stop: stopMusic, sfx: sfxPlay, breath: breath, toggleMute: toggleMute, isMuted: function () { return muted; } };
+  return { songs: SONGS, roarBuf: function (k) { init(); return makeRoar(k); }, setVol: setVol, init: init, play: play, stop: stopMusic, sfx: sfxPlay, breath: breath, toggleMute: toggleMute, isMuted: function () { return muted; },
+    hasVoice: function (v) { return !!(roarFiles[v] && roarFiles[v].length); } };
 })();
 
 /* ---------- Musikmanager: eigene Dateien aus music/ haben Vorrang ----------
