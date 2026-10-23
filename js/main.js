@@ -10,6 +10,7 @@ import { Particles, Debris } from './effects.js';
 import { seeThrough } from './buildings.js';
 import { Military } from './military.js';
 import { SuperX, SuperX2 } from './boss.js';
+import { Biollante } from './biollante.js';
 import { LEVELS, currentLevel } from './levels.js';
 import { Atmosphere } from './atmosphere.js';
 import { Sound, Music } from './audio.js';
@@ -88,25 +89,31 @@ async function load() {
   const manager = new THREE.LoadingManager();
   manager.onProgress = (url, done, total) => { $('progress').style.width = (100 * done / total) + '%'; };
   const loader = new GLTFLoader(manager);
-  const [gz, city, units] = await Promise.all(['godzilla', 'city', 'units'].map(n => loader.loadAsync(`assets/models/${n}.glb`)));
+  const names = ['godzilla', 'city', 'units'].concat(LV.final ? [LV.final] : []);   // Endgegner-Modell nur, wenn das Level einen hat
+  const [gz, city, units, finalModel] = await Promise.all(names.map(n => loader.loadAsync(`assets/models/${n}.glb`)));
 
   const fx = game.fx = {
     dust: new Particles(scene, QUALITY.dust),
     fire: new Particles(scene, QUALITY.fire, { ramp: [[1.0, 0.72, 0.3], [0.45, 0.05, 0.0]], additive: true, opacity: 0.9, grow: 0.5 }),
     debris: new Debris(scene, [0, 1, 2].map(i => units.scene.getObjectByName('U_debris' + i))),
+    glow: new Particles(scene, 600, { additive: true, opacity: 0.9, grow: 0.4 }),   // Saft und Sporen (Biollante)
   };
   game.city = new City(city, scene, fx, events, LV.layout);
   game.military = new Military(units, scene, fx, events, game.city);
   game.boss = new (LV.boss === 'superx2' ? SuperX2 : SuperX)(units, scene, fx, events, game.military);
+  game.final = finalModel ? new Biollante(finalModel, scene, fx, events, fx.glow) : null;
   game.minimap = new MiniMap($('minimap'), game.city);
   game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
   const g = game.godzilla = new Godzilla(gz, scene, events);
   const [sx, sz] = LV.start(game.city);
   g.position.set(sx, 0, sz);                         // kommt im Südwesten aus der Bucht
   g.bounds = game.city.extent + 60;
-  g.raycast = (o, d, max) => game.boss.rayHit(o, d, game.city.raycast(o, d, max));
+  g.raycast = (o, d, max) => {
+    const m = game.boss.rayHit(o, d, game.city.raycast(o, d, max));
+    return game.final ? game.final.rayHit(o, d, m) : m;
+  };
   g.collide = (c, r, dt) => game.city.crush(c, r, dt);
-  g.aimTargets = () => game.military.targets().concat(game.boss.targets());
+  g.aimTargets = () => game.military.targets().concat(game.boss.targets(), game.final ? game.final.targets() : []);
   rig.snap(g.position);
 
   // Treffer-Effekte (Brocken, Staub, Brände) erzeugt die Stadt selbst am Einschlagpunkt
@@ -115,8 +122,9 @@ async function load() {
     if (e.kind !== 'beam') game.military.damage(e.pos, e.kind === 'claw' ? e.radius + 12 : e.radius, e.damage, e.from);
     if (e.kind === 'beam' && e.pos.y < 3 && Math.random() < 0.5) game.city.scars.burn(e.pos.x, e.pos.z, 9);
     if (e.kind === 'pulse') game.city.scars.scorch(e.pos.x, e.pos.z, e.radius * 0.9, 0.6);
+    if (game.final) game.final.attack(e);
   });
-  events.on('beamLine', e => { game.military.damageLine(e.from, e.to, 14, e.dps * e.dt); game.boss.beamLine(e.from, e.to, e.dt); });
+  events.on('beamLine', e => { game.military.damageLine(e.from, e.to, 14, e.dps * e.dt); game.boss.beamLine(e.from, e.to, e.dt); if (game.final) game.final.beamLine(e.from, e.to, e.dps, e.dt); });
   events.on('stomp', e => {
     rig.shake(0.35 * e.strength);
     game.military.damage(e.pos, 16, 999, e.pos);
@@ -135,7 +143,21 @@ async function load() {
   events.on('mirrorMelt', () => toast('Der Fire Mirror schmilzt!', 3));
   events.on('cadmium', () => toast('Godzilla ist betäubt', 2.5));
   events.on('bossHit', () => toast('Volltreffer!', 1.5));
-  events.on('bossCrash', () => { game.result = 'won'; game.endT = 5; $('boss').hidden = true; cinema(`DIE ${LV.bossName} IST BESIEGT`, 4); Sound.sfx('boom', true); Music.play('win'); });
+  events.on('bossCrash', () => {
+    $('boss').hidden = true; cinema(`DIE ${LV.bossName} IST BESIEGT`, 4); Sound.sfx('boom', true);
+    if (game.final) { game.finalT = 7; return; }               // es folgt der Endgegner
+    game.result = 'won'; game.endT = 5; Music.play('win');
+  });
+  // Endgegner Biollante
+  events.on('biollanteRise', e => {
+    $('boss').hidden = false; $('bossName').textContent = game.final.label;
+    cinema(e.form === 'rose' ? 'BIOLLANTE' : 'BIOLLANTE ERWACHT', 4.5);
+  });
+  events.on('biollanteBurn', () => toast('Die Rose verbrennt …', 3));
+  events.on('biollanteSpores', () => toast('Goldene Sporen steigen auf – sie verwandelt sich!', 3.5));
+  events.on('vineGrab', () => toast('Eine Ranke hält Godzilla fest – Klaue oder Kernpuls!', 2.5));
+  events.on('biollanteDown', () => { cinema('BIOLLANTE STEIGT ALS LICHT IN DEN HIMMEL', 5); Music.play('win'); });
+  events.on('biollanteGone', () => { game.result = 'won'; game.endT = 3; $('boss').hidden = true; });
   hookSounds();
 
   game.state = 'title';
@@ -169,8 +191,10 @@ function step(dt) {
       if (!game.boss.active && !game.boss.dead) game.military.updateWaves(dt, g.position, game.city.destroyed);
       game.military.update(dt, g, game.city);
       game.boss.update(dt, g, game.city);
+      if (game.finalT > 0 && (game.finalT -= dt) <= 0) { game.final.start(g.position, game.city); Music.play('final'); }
+      if (game.final) game.final.update(dt, g);
       game.minimap.update(dt, g, game.military, game.boss);
-      $('bossHp').style.width = game.boss.hp + '%';
+      $('bossHp').style.width = (game.final && game.final.active ? game.final.hp : game.boss.hp) + '%';
       for (const k of ['cinemaT', 'toastT']) if (game[k] > 0 && (game[k] -= dt) <= 0) $(k === 'cinemaT' ? 'cinema' : 'toast').classList.remove('on');
       game.fx.debris.update(dt);
     }
@@ -178,6 +202,7 @@ function step(dt) {
     if (game.state !== 'pause') {
       game.fx.dust.update(dt, camera, renderer.domElement.height);
       game.fx.fire.update(dt, camera, renderer.domElement.height);
+      game.fx.glow.update(dt, camera, renderer.domElement.height);
       game.atmo.update(dt, camera, g, game.city, rig.target);
       seeThrough.uTime.value += dt;
     }
@@ -208,7 +233,8 @@ const BOSS_AT = 120;          // zerstörte Gebäude, ab denen die Super-X angre
 
 function objective() {
   const d = game.city.destroyed;
-  if (d < BOSS_AT) return `Ziel: Verwüste ${LV.city} (${d} / ${BOSS_AT})`;
+  if (game.final && (game.final.active || game.finalT > 0)) return game.final.active ? LV.finalGoal(game.final) : 'Etwas regt sich im Fluss …';
+  if (d < BOSS_AT && !game.boss.active && !game.boss.dead) return `Ziel: Verwüste ${LV.city} (${d} / ${BOSS_AT})`;
   return game.boss.dead ? LV.win[1] : LV.bossGoal(game.boss);
 }
 
@@ -254,6 +280,13 @@ function hookSounds() {
   events.on('cadmium', () => Sound.sfx('hit'));
   events.on('bossHit', () => Sound.sfx('boom', true));
   events.on('mirrorMelt', () => { Sound.sfx('boom', true); Sound.sfx('zap'); });
+  events.on('biollanteRoar', e => Sound.sfx('roar', e.form === 'rose' ? { kind: 'ghidorah', pitch: 0.6 } : { kind: 'deep', pitch: 0.8 }));
+  events.on('biollanteRise', () => Sound.sfx('heavy'));
+  events.on('biollanteBurn', () => Sound.sfx('boom', true));
+  events.on('biollanteAcid', () => Sound.sfx('zap'));
+  events.on('vineBite', () => once('bite', 0.2, () => Sound.sfx('hit')));
+  events.on('vineCut', () => once('cut', 0.2, () => Sound.sfx('whip')));
+  events.on('biollanteDown', () => Sound.sfx('roar', { kind: 'deep', pitch: 0.6 }));
 }
 
 // Titelbild: Levelliste, Zifferntasten wählen

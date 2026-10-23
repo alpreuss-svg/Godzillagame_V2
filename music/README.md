@@ -12,6 +12,7 @@ Dateinamen (Endung .mp3, .ogg oder .m4a):
 | `1984_boss`  | Bossphase Super-X            | Super-X-Marsch (Koroku)                 |
 | `1989`       | Osaka 1989, Spiel            | „Bio Wars“ (Sugiyama)                   |
 | `1989_boss`  | Bossphase Super-X2           | Super-X2-Marsch (Sugiyama)              |
+| `1989_final` | Endkampf Biollante           | Biollante-Thema (Sugiyama)              |
 | `gameover`   | Godzilla fällt               | ein ruhiges, trauriges Stück            |
 | `win`        | Sieg                         | Abspann                                 |
 

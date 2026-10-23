@@ -39,10 +39,14 @@ export const LEVELS = {
     start: city => [-2 * P, city.bayZ + 110],
     boss: 'superx2',
     bossName: 'SUPER-X2',
-    music: { level: ['1989', 'osaka'], boss: ['1989_boss', 'superx2'] },
-    bossGoal: boss => boss.melted ? 'Der Fire Mirror ist geschmolzen – Atomstrahl auf die Super-X2!'
+    music: { level: ['1989', 'osaka'], boss: ['1989_boss', 'superx2'], final: ['1989_final', 'biollante'] },
+    final: 'biollante',                          // danach der Endgegner: Biollante (Rose, dann Bestie)
+    finalGoal: b => b.form === 'rose'
+      ? 'Biollante wächst aus dem Fluss: Ranken abschlagen, die Rose mit dem Atomstrahl verbrennen!'
+      : 'Biollante erwacht: Atomstrahl auf den glühenden Kern in ihrer Brust!',
+    bossGoal: boss => boss.dead ? 'Die Super-X2 ist besiegt' : boss.melted ? 'Der Fire Mirror ist geschmolzen – Atomstrahl auf die Super-X2!'
       : 'Überhitze den Fire Mirror mit dem Atomstrahl oder lass ein Hochhaus in Umeda auf die Super-X2 stürzen!',
-    win: ['OSAKA LIEGT IN TRÜMMERN', 'Die Super-X2 ist besiegt'],
+    win: ['BIOLLANTE IST ERLÖST', 'Super-X2 und Biollante sind besiegt'],
   },
 };
 

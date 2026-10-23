@@ -218,6 +218,7 @@ export class Godzilla {
       // Häuser bremsen gar nicht, mittlere Gebäude etwas, nur Hochhäuser deutlich
       if (block > 14) this.speed = Math.min(this.speed, block > 70 ? 4 : block > 35 ? 8 : 12);
     }
+    if (this.speedCap < this.speed) this.speed = this.speedCap;     // z. B. von einer Ranke umschlungen (biollante.js)
     p.addScaledVector(this.forward(), this.speed * dt);
     if (this.state === 'free' || this.state === 'breath') this.applyTurn(this.turnVel * dt);
     else { this.turnVel = approach(this.turnVel, 0, TURN_ACCEL * dt); this.wantLead = 0; }

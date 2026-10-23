@@ -238,6 +238,15 @@ export const Sound = (function () {
       timp: R('C2 . . C2 . . G1 . C2 . . . G1 . G1 .', 4),
       perc: R('k . s . . s k . k . s . k s . s', 3) + ' k . s . k . s . r r r r s s s s'
     },
+    biollante: { // Biollante: langsam, klagend, fis-Moll, Streicherflächen mit Ganztonschritten, wie ein Chor
+      bpm: 72, loop: true,
+      brass: 'F#3 - - - - - - - G#3 - - - A3 - - - ' + 'C4 - - - - - - - B3 - - - A3 - - - ' +
+        'F#4 - - - - - - - E4 - - - D4 - - - ' + 'C4 - - - - - - - - - - - . . . . ',
+      str: pad(['F#2+A2+C#3', 'D2+F#2+A2', 'C2+E2+G#2', 'C#2+F2+G#2']),
+      low: pad(['F#1', 'D1', 'C1', 'C#1']),
+      timp: 'F#1 . . . . . . . . . . . . . . . ' + '. . . . . . . . D2 . . . . . . . ' + 'C2 . . . . . . . C2 . . . . . . . ' + 'C#2 . . . C#2 . . . C#2 . C#2 . C#2 C#2 C#2 C#2',
+      perc: 'c . . . . . . . . . . . . . . . ' + R('. . . . . . . . k . . . . . . .', 2) + ' r r r r . . . . k . . . k . . .'
+    },
     dance: {
       bpm: 170, loop: false,
       brass: 'C5 C5 . C5 . A4 C5 . D5 . C5 . A4 . G4 . C5 C5 . C5 . A4 C5 . F5 - - - E5 - - -',
@@ -566,12 +575,13 @@ export const Sound = (function () {
 })();
 
 /* ---------- Musikmanager: eigene Dateien aus music/ haben Vorrang ----------
-   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, gameover, win – siehe music/README.md.
+   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, gameover, win – siehe music/README.md.
    Fehlt eine Datei, spielt das Synth-Stück. Die Suche wird pro Platz gemerkt. */
 const SLOTS = {
   title: { file: 'title', synth: 'heisei', loop: true },
   level: { file: '1984', synth: 'tokyo', loop: true },          // level/boss stellt Music.setLevel() je Level um
   boss: { file: '1984_boss', synth: 'superx', loop: true },
+  final: { file: '1989_final', synth: 'biollante', loop: true },
   over: { file: 'gameover', synth: 'over', loop: false },
   win: { file: 'win', synth: 'win', loop: false },
 };

@@ -1,18 +1,18 @@
 """Erzeugt alle 3D-Modelle des Spiels als .glb.
-Aufruf: blender -b --factory-startup -P blender/build_assets.py -- [godzilla,city,units] [--preview]"""
+Aufruf: blender -b --factory-startup -P blender/build_assets.py -- [godzilla,city,units,biollante] [--preview]"""
 import bpy, sys, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import importlib
-import common, godzilla, gz_anim, city, units
-for m in (common, gz_anim, godzilla, city, units):
+import common, godzilla, gz_anim, city, units, biollante
+for m in (common, gz_anim, godzilla, city, units, biollante):
     importlib.reload(m)
 
 args = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 PREVIEW = '--preview' in args
 args = [a for a in args if not a.startswith('--')]
-WHAT = args[0].split(',') if args else ['godzilla', 'city', 'units']
+WHAT = args[0].split(',') if args else ['godzilla', 'city', 'units', 'biollante']
 OUT = os.path.normpath(os.path.join(HERE, '..', 'assets', 'models'))
 PRE = os.path.normpath(os.path.join(HERE, '..', 'tools', 'previews'))
 
@@ -65,3 +65,15 @@ if 'units' in WHAT:
                        dist=55, elev=25, azim=-130)
         common.preview(os.path.join(PRE, 'units_superx2.png'), target=next(o for o in objs if o.name == 'U_superx2').location[:],
                        dist=60, elev=20, azim=-115)
+
+if 'biollante' in WHAT:
+    common.reset()
+    objs = biollante.build()
+    common.export_glb(os.path.join(OUT, 'biollante.glb'), objs)
+    if PREVIEW:
+        biollante.layout_preview(objs)
+        common.preview(os.path.join(PRE, 'biollante.png'), color='VERTEX', target=(0, 0, 45), dist=300, elev=12, azim=-80)
+        common.preview(os.path.join(PRE, 'biollante_rose.png'), target=(-70, 0, 55), dist=170, elev=10, azim=-75)
+        common.preview(os.path.join(PRE, 'biollante_beast.png'), target=(60, -10, 50), dist=170, elev=12, azim=-60)
+        common.preview(os.path.join(PRE, 'biollante_head.png'), target=(0, 0, 30), dist=40, elev=10, azim=-50)
+        common.night_preview(os.path.join(PRE, 'biollante_night.png'), target=(0, 0, 45), dist=300, elev=12, azim=-80)
