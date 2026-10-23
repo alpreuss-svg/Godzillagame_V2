@@ -160,6 +160,9 @@ async function load() {
   events.on('biollanteBurn', () => toast('Die Rose verbrennt …', 3));
   events.on('biollanteSpores', () => toast('Goldene Sporen steigen auf – sie verwandelt sich!', 3.5));
   events.on('vineGrab', () => toast('Eine Ranke hält Godzilla fest – Klaue oder Kernpuls!', 2.5));
+  events.on('bindStart', () => toast('Ranken fesseln Godzilla – befreie dich mit Atomstrahl (K) oder Kernpuls (R)!', 3.5));
+  events.on('biteStart', () => toast('Biollante hat Godzillas Kopf im Maul – Atomstrahl in den Schlund (K)!', 3.5));
+  events.on('holdFree', e => { if (e.how === 'beam' && e.kind === 'bite') toast('Volltreffer in den Schlund!', 2); });
   events.on('biollanteDown', () => { cinema('BIOLLANTE STEIGT ALS LICHT IN DEN HIMMEL', 5); Music.play('win'); });
   events.on('biollanteGone', () => { game.result = 'won'; game.endT = 3; $('boss').hidden = true; });
   hookSounds();
@@ -291,6 +294,9 @@ function hookSounds() {
   events.on('biollanteAcid', () => Sound.sfx('zap'));
   events.on('vineBite', () => once('bite', 0.2, () => Sound.sfx('hit')));
   events.on('vineCut', () => once('cut', 0.2, () => Sound.sfx('whip')));
+  events.on('bindStart', () => Sound.sfx('whip'));
+  events.on('biteStart', () => { Sound.sfx('hit'); Sound.sfx('roar', { kind: 'deep', pitch: 0.9 }); });
+  events.on('holdFree', e => { if (e.how !== 'timeout') Sound.sfx('boom', true); });
   events.on('biollanteDown', () => Sound.sfx('roar', { kind: 'deep', pitch: 0.6 }));
 }
 

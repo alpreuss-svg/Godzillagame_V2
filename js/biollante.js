@@ -17,18 +17,23 @@ const FORMS = {
       const r = Math.PI / 180 * a, R = 13 - h * 0.06;   // Grad in Blender-XY, vorn = 270°
       return { root: [Math.cos(r) * R, h, -Math.sin(r) * R], dir: [Math.cos(r), 0.35, -Math.sin(r)] };
     }),
-    attackEvery: 3.0, hitDamage: 2, grabDps: 0.8, grabChance: 0.2,
-    acidEvery: 10, acidDur: 1.8, acidDps: 1.2, acidRange: 330,
-    dmg: { beam: 7, core: 2, claw: 6, tail: 9, pulse: 10, vine: 3 },
+    attackEvery: 4.5, hitDamage: 2, grabDps: 0, grabChance: 0,
+    acidEvery: 14, acidDur: 1.8, acidDps: 1.2, acidRange: 330,
+    bindEvery: 24, bindDps: 1.5, bindVines: 3, bindMax: 6,
+    // wie im Film: viel Ausdauer, wenige Angriffe
+    dmg: { beam: 2.2, core: 1.5, claw: 1.8, tail: 2.5, pulse: 4, vine: 1 },
   },
   beast: {
     hp: 100, radius: 34, coreR: 15, speed: 5, turn: 0.45, vineLen: 118, vineR: [3.8, 2.4],
     core: [0, 40, 23.5], mouth: [0, 75, 44], chest: 45,
     vines: [[24, 48, -8], [-24, 48, -8], [30, 40, 8], [-30, 40, 8], [18, 60, 16], [-18, 60, 16], [34, 30, -14], [-34, 30, -14]]
       .map(([x, h, y]) => ({ root: [x, h, -y], dir: [Math.sign(x) * 0.9, 0.55, -y / 30] })),
-    attackEvery: 2.3, hitDamage: 2.4, grabDps: 1.0, grabChance: 0.2,
-    acidEvery: 9, acidDur: 2.0, acidDps: 1.6, acidRange: 340,
-    dmg: { beam: 5, core: 2.2, claw: 5, tail: 8, pulse: 8, vine: 3 },
+    attackEvery: 1.4, hitDamage: 4, grabDps: 0, grabChance: 0,
+    acidEvery: 7, acidDur: 2.2, acidDps: 2.5, acidRange: 340,
+    bindEvery: 17, bindDps: 2.5, bindVines: 3, bindMax: 6,
+    biteEvery: 20, biteDps: 3.5, biteMax: 7, biteFree: 0.8, biteRange: 95,
+    // zäh und angriffslustig; der Strahl in den Schlund beim Biss trifft hart (biteBeam)
+    dmg: { beam: 1.6, core: 2, claw: 1.5, tail: 2.2, pulse: 3, vine: 0.8, biteBeam: 12 },
   },
 };
 const VINE_HP = 25, REGROW = 15;
@@ -191,6 +196,9 @@ export class Biollante {
     this.hp = this.F.hp;
     this.attackT = 3;
     this.acidT = this.F.acidEvery * 0.6;
+    this.bindT = this.F.bindEvery * 0.5;
+    this.biteT = (this.F.biteEvery || 0) * 0.6;
+    this.hold = null;
   }
 
   enter(state) { this.state = state; this.st = 0; }
@@ -209,11 +217,13 @@ export class Biollante {
     const c = _a.copy(this.group.position).setY(this.group.position.y + this.F.chest);
     const ox = c.x - o.x, oy = c.y - o.y, oz = c.z - o.z, R = this.F.radius;
     const t = ox * d.x + oy * d.y + oz * d.z, q = ox * ox + oy * oy + oz * oz - t * t;
+    if (ox * ox + oy * oy + oz * oz < R * R) return Math.min(max, 14);   // Maul steckt in ihr (Biss): Explosion im Schlund
     if (t < 0 || q > R * R) return max;
     return Math.min(max, t - Math.sqrt(R * R - q));
   }
 
   update(dt, g) {
+    this.g = g;
     if (!this.active) return;
     g.speedCap = Infinity;
     this.st += dt;
@@ -273,11 +283,89 @@ export class Biollante {
         break;
       }
     }
+    this.updateHold(dt, g);
     this.updateVines(dt, g);
     this.updateAcid(dt, g);
     // Godzilla kann nicht durch sie hindurchlaufen
     const minD = F.radius + 16;
-    if (this.state !== 'dying' && dist < minD && dist > 0.01) { gp.x = G.position.x + dx / dist * minD; gp.z = G.position.z + dz / dist * minD; }
+    if (this.state !== 'dying' && !this.hold && dist < minD && dist > 0.01) { gp.x = G.position.x + dx / dist * minD; gp.z = G.position.z + dz / dist * minD; }
+  }
+
+  // ---------- Festhalten: Ranken-Fessel (beide Formen) und Kopf im Maul (Bestie) ----------
+  startBind(g) {
+    const free = this.vines[this.form].filter(v => v.state === 'idle' && v.grow > 0.95);
+    if (free.length < 2) return false;
+    free.sort((a, b) => a.tip.distanceTo(g.position) - b.tip.distanceTo(g.position));
+    const vs = free.slice(0, this.F.bindVines);
+    vs.forEach((v, i) => { v.state = 'bind'; v.t = 0; v.slot = i; v.from = v.tip.clone(); });
+    this.hold = { kind: 'vines', t: 0, vines: vs };
+    g.held = 'vines';
+    this.events.emit('bindStart', {});
+    return true;
+  }
+
+  startBite(g) {
+    this.hold = { kind: 'bite', t: 0, fire: 0 };
+    g.held = 'bite';
+    this.events.emit('biteStart', {});
+    this.events.emit('shake', 1.2);
+  }
+
+  release(g, how) {
+    const h = this.hold;
+    if (!h) return;
+    this.hold = null;
+    g.held = null;
+    if (h.kind === 'vines') {
+      for (const v of h.vines) {
+        if (v.state !== 'bind') continue;
+        if (how === 'timeout') { v.state = 'retract'; v.t = 0; }
+        else { v.state = 'cut'; v.t = 0; v.head.visible = false; v.target.hp = 0; }
+      }
+      this.bindT = this.F.bindEvery * (0.8 + 0.4 * Math.random());
+    } else {
+      this.biteT = this.F.biteEvery * (0.8 + 0.4 * Math.random());
+      this.recoil = how === 'beam' ? 1 : 0.4;
+      if (how === 'beam') {
+        const m = _a.set(...this.F.mouth).applyMatrix4(this.group.matrixWorld);
+        this.fx.fire.emit(m.x, m.y, m.z, 14, { spread: 10, up: 6, out: 14, size: 26, life: 1.2 });
+        this.events.emit('shake', 1.5);
+      }
+    }
+    this.events.emit('holdFree', { kind: h.kind, how });
+    if (how !== 'timeout' && this.fighting()) this.damage(h.kind === 'bite' ? this.F.dmg.biteBeam : 0);
+  }
+
+  updateHold(dt, g) {
+    const lean = this.models.beast;
+    // Bestie: beim Biss nach vorn gebeugt, danach federt sie zurück
+    const want = this.hold && this.hold.kind === 'bite' ? 0.08 : 0;
+    this.recoil = Math.max(0, (this.recoil || 0) - dt * 1.5);
+    lean.rotation.x += (want - this.recoil * 0.25 - lean.rotation.x) * Math.min(1, dt * 4);
+    const h = this.hold;
+    if (!h) return;
+    if (!this.fighting() || g.state === 'dead') { this.release(g, 'timeout'); return; }
+    h.t += dt;
+    g.speedCap = 0;
+    if (Math.random() < dt * 3) this.events.emit('shake', 0.25);
+    if (h.kind === 'vines') {
+      g.takeDamage(this.F.bindDps * dt, g.position);
+      g.hurt = 0;
+      if (g.firing && h.t > 0.3) this.release(g, 'beam');            // Strahl verbrennt die Ranken
+      else if (h.t > this.F.bindMax) this.release(g, 'timeout');
+    } else {
+      // Godzilla steht vor ihr, sein Kopf steckt in ihrem Maul
+      const G = this.group, fx = Math.sin(G.rotation.y), fz = Math.cos(G.rotation.y);
+      const d = this.F.mouth[2] + 6 + 17;                 // Maul (vorgebeugt ~6 m weiter vorn) + Godzillas Kopf vor seinem Körper
+      g.position.x += (G.position.x + fx * d - g.position.x) * Math.min(1, dt * 6);
+      g.position.z += (G.position.z + fz * d - g.position.z) * Math.min(1, dt * 6);
+      g.heading = Math.atan2(-fx, -fz);
+      g.takeDamage(this.F.biteDps * dt, g.position);
+      g.hurt = 0;
+      if (g.firing) h.fire += dt;
+      if (h.fire > this.F.biteFree) this.release(g, 'beam');        // Strahl in den Schlund
+      else if (h.t > this.F.biteMax) this.release(g, 'timeout');
+    }
   }
 
   fight(dt, g, dist) {
@@ -290,8 +378,14 @@ export class Biollante {
       if (this.city) this.city.crush(_a.copy(G.position), F.radius + 12, dt);
     }
     if (F.speed && Math.random() < dt * 1.5) this.events.emit('shake', 0.15);
+    // Festhalten: Biss, wenn Godzilla direkt vor ihr steht, sonst Ranken-Fessel
+    if (!this.hold) {
+      const front = Math.cos(Math.atan2(g.position.x - G.position.x, g.position.z - G.position.z) - G.rotation.y) > 0.6;
+      if (F.biteEvery && (this.biteT -= dt) <= 0 && dist < F.biteRange && front && g.state !== 'dead') this.startBite(g);
+      else if ((this.bindT -= dt) <= 0 && dist < F.vineLen * 1.1 && g.state !== 'dead' && !this.startBind(g)) this.bindT = 2;
+    }
     // Rankenangriff: eine freie Ranke holt aus und schlägt zu
-    if ((this.attackT -= dt) <= 0) {
+    if (!this.hold && (this.attackT -= dt) <= 0) {
       this.attackT = F.attackEvery * (0.7 + 0.6 * Math.random());
       const free = this.vines[this.form].filter(v => v.state === 'idle' && v.grow > 0.95);
       const reach = free.filter(v => v.tip.distanceTo(_a.copy(g.position).setY(45)) < v.len * 1.25);
@@ -299,7 +393,7 @@ export class Biollante {
       if (v) { v.state = 'wind'; v.t = 0; v.windTip = v.tip.clone(); }
     }
     // ätzender Saft aus Rose bzw. Maul
-    if ((this.acidT -= dt) <= 0 && dist < F.acidRange) {
+    if (!this.hold && (this.acidT -= dt) <= 0 && dist < F.acidRange) {
       this.acidT = F.acidEvery * (0.8 + 0.4 * Math.random());
       this.acid = { t: 0 };
       this.events.emit('biollanteAcid', {});
@@ -382,6 +476,21 @@ export class Biollante {
         g.speedCap = Math.min(g.speedCap, 3);
         g.takeDamage(F.grabDps * dt, chest);
         if (v.t > 3.5) { v.state = 'retract'; v.t = 0; }
+      } else if (v.state === 'bind') {
+        const k = ease(Math.min(1, v.t / 0.4));
+        let at;
+        if (v.slot === 0) at = g.bones.handL.getWorldPosition(new THREE.Vector3());       // durch die Handfläche
+        else at = chest.clone().add(new THREE.Vector3(Math.sin(v.t * 2 + v.slot * 2.1) * 9, (v.slot === 1 ? 6 : -14) + Math.sin(v.t * 3) * 2,
+          Math.cos(v.t * 2 + v.slot * 2.1) * 9));                                      // umschlingt Brust und Bauch
+        tip = v.from.clone().lerp(at, k);
+        c1 = root.clone().addScaledVector(out, L * 0.3).addScaledVector(up, L * 0.25);
+        c2 = tip.clone().addScaledVector(toG, -L * 0.2).addScaledVector(up, L * 0.2);
+        aim = at.clone().sub(root).setY(0);
+        if (v.slot === 0 && v.t > 0.4 && !v.pierced) {
+          v.pierced = true;
+          this.fx.dust.emit(at.x, at.y, at.z, 4, { spread: 2, up: 2, out: 6, size: 8, life: 1, color: [0.35, 0.12, 0.1] });
+          this.events.emit('vineBite', { pos: at.clone() });
+        }
       } else if (v.state === 'retract') {
         if (v.t > 0.8) { v.state = 'idle'; v.t = 0; }
       } else if (v.state === 'cut') {              // abgerissen: Kopf weg, Ranke fällt und zieht sich zurück
@@ -394,7 +503,8 @@ export class Biollante {
         if (v.grow >= 1) v.state = 'idle';
       }
       // weiche Übergänge: die Spitze folgt dem Ziel mit Trägheit (außer beim Zuschlagen)
-      if (v.state !== 'strike' && v.state !== 'grab') {
+      if (v.state !== 'bind') v.pierced = false;
+      if (v.state !== 'strike' && v.state !== 'grab' && v.state !== 'bind') {
         v.smooth ??= tip.clone();
         v.smooth.lerp(tip, 1 - Math.exp(-5 * dt));
         tip = v.smooth;
@@ -424,6 +534,7 @@ export class Biollante {
   // Nahkampf und Kernpuls (Ereignis 'attack' von Godzilla)
   attack(e) {
     if (!this.fighting() || e.kind === 'beam') return;
+    if (e.kind === 'pulse' && this.hold && this.hold.kind === 'vines') this.release(this.g, 'pulse');
     const D = this.F.dmg;
     const r = e.radius + 4;
     this.hitVines(v => v.dist(e.pos) < r + 4, e.kind === 'pulse' ? 40 : e.damage);
@@ -453,7 +564,8 @@ export class Biollante {
     this.hp = Math.max(0, this.hp - n);
     if (this.hp > 0) return;
     this.acid = null;
-    for (const v of this.vines[this.form]) if (v.state === 'grab') v.state = 'retract';
+    if (this.hold && this.g) this.release(this.g, 'timeout');
+    for (const v of this.vines[this.form]) if (v.state === 'grab' || v.state === 'bind') v.state = 'retract';
     if (this.form === 'rose') { this.enter('burn'); this.events.emit('biollanteBurn', {}); }
     else { this.enter('dying'); this.dead = true; this.events.emit('biollanteDown', {}); }
   }

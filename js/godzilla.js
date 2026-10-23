@@ -177,17 +177,20 @@ export class Godzilla {
 
     switch (this.state) {
       case 'free': {
-        const d = this.turnToward(mag > 0.15 ? _dir : null, TURN_RATE, dt);
-        if (mag > 0.15) targetSpeed = WALK_SPEED * mag * Math.max(0, Math.cos(d)) ** 2;
+        // festgehalten (Biollante: 'vines' = Ranken-Fessel, 'bite' = Kopf im Maul): kein Gehen, keine Klaue,
+        // nur Atomstrahl und Kernpuls befreien
+        const held = this.held;
+        const d = this.turnToward(mag > 0.15 && held !== 'bite' ? _dir : null, held ? TURN_RATE * 0.3 : TURN_RATE, dt);
+        if (mag > 0.15 && !held) targetSpeed = WALK_SPEED * mag * Math.max(0, Math.cos(d)) ** 2;
         // Sprint: nur beim Gehen, solange Energie da ist (Anlauf braucht etwas Reserve)
         this.sprinting = input.down('sprint') && targetSpeed > 0.5 * WALK_SPEED && this.energy > (this.sprinting ? 0 : 8);
         if (this.sprinting) targetSpeed *= SPRINT;
-        if (input.pressed('claw')) this.attack(0);
+        if (input.pressed('claw') && !held) this.attack(0);
         else if (input.pressed('breath') && this.energy > 10) {
           this.firing = false; this.play('breathUpper'); this.enter('breath');
           this.events.emit('charge', { dur: CHARGE_TIME * (1 - this.charge) });
         }
-        else if (input.pressed('roar')) { this.play('roar'); this.enter('roar'); this.roared = false; }
+        else if (input.pressed('roar') && !held) { this.play('roar'); this.enter('roar'); this.roared = false; }
         else if (input.pressed('pulse') && this.energy >= PULSE_COST) {
           this.energy -= PULSE_COST; this.play('roar', 1.5); this.enter('pulse'); this.released = false;
         }

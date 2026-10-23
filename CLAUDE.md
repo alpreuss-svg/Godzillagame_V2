@@ -133,8 +133,14 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Ranken = Schlauch mit 10 Knochen (`SkinnedMesh`), die Kette folgt jedes Bild einer Bezierkurve (Ruhe: S-Bogen nach
   außen/oben, Kopf schaut zu Godzilla; Angriff: ausholen → zuschnellen → Biss, manchmal umschlingen = Godzilla max.
   3 m/s über `g.speedCap`, nur eine Ranke gleichzeitig). Ranken haben 25 HP: Klaue, Schwanz, Kernpuls und Strahl
-  reißen sie ab, nach 15 s wachsen sie nach. Ätzender Saft aus Rose bzw. Maul (Partikelstrahl, `fx.glow`). Schaden an
-  ihr: Strahl 7/s (Rose) bzw. 5/s, am Kern ×2; Strahl erfasst Rankenköpfe und Kern (`targets`), endet am Körper
+  reißen sie ab, nach 15 s wachsen sie nach. Ätzender Saft aus Rose bzw. Maul (Partikelstrahl, `fx.glow`).
+  **Festhalten** (Szenen aus dem Film, `hold`, Godzilla bekommt `g.held`: kein Gehen, keine Klaue, kein Brüllen):
+  Ranken-Fessel (beide Formen, alle ~24 s bzw. ~17 s: drei Ranken, eine durch die linke Handfläche `handL`, zwei um
+  Brust/Bauch; nur Atomstrahl oder Kernpuls befreien, die Ranken reißen dabei ab; sonst nach 6 s) und Kopf im Maul
+  (nur Bestie, alle ~20 s, wenn Godzilla vorn innerhalb 95 m steht: sie beugt sich vor, Godzilla wird vor ihr
+  festgehalten; nur 0,8 s Atomstrahl in den Schlund befreit und kostet sie 12 HP; sonst nach 7 s).
+  Abstimmung nach Nutzerwunsch (wie im Film): Rose sehr zäh, wenige Angriffe; Bestie zäh und angriffslustig.
+  Schaden an ihr: Strahl 2,2/s (Rose) bzw. 1,6/s, am Kern ×1,5 bzw. ×2; Strahl erfasst Rankenköpfe und Kern (`targets`), endet am Körper
   (`rayHit`); Godzilla kann nicht durch sie hindurch. Ablauf: rise → rose → burn → spores (goldene Sporen) → emerge →
   beast → dying (löst sich in Sporen auf) → Sieg. Ein festes Punktlicht für das Glühen.
 - `js/atmosphere.js` – Nachtstimmung: Regen (LineSegments in einem Kasten um den Blickpunkt), 5 Flak-Suchscheinwerfer
