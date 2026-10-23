@@ -28,6 +28,7 @@ Dateinamen (Endung .mp3, .ogg oder .m4a):
 | `1995`       | Tokio 1995, Spiel            | Main Title (Ifukube)                    |
 | `1995_boss`  | Bossphase Destoroyah         | Destoroyah-Thema (Ifukube)              |
 | `1995_final` | Endkampf Destoroyah          | Destoroyah-Thema / Kampf (Ifukube)      |
+| `1995_end`   | Kernschmelze, Godzillas Tod  | „Godzillas Tod“ (Ifukube)               |
 | `gameover`   | Godzilla fällt               | ein ruhiges, trauriges Stück            |
 | `win`        | Sieg                         | Abspann                                 |
 

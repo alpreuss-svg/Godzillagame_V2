@@ -171,6 +171,38 @@ export const LEVELS = {
       : 'Der Energiestrom ist unterbrochen – greif SpaceGodzilla an! Aus dem Sog befreit nur der Kernpuls.',
     win: ['SPACEGODZILLA IST BESIEGT', 'Moguera und SpaceGodzilla sind besiegt'],
   },
+  1995: {
+    key: '7',
+    title: 'Tokio 1995 – Godzilla gegen Destoroyah',
+    short: '1995 · Destoroyah (Finale)',
+    city: 'Tokio',
+    // Finale: Tokio an der Bucht – Hochhäuser in Shinjuku/Shiodome, das Ausstellungsgelände Big Sight in Ariake am
+    // Wasser, Hamarikyū-Garten, Hafen. Godzillas Herz steht vor der Kernschmelze (Burning Godzilla).
+    layout: {
+      seed: 1995, center: { x: -0.3, z: -0.8 }, towerR: 2.2, officeR: 4.1,
+      parks: [{ i0: 3, i1: 4, j0: 1, j1: 2 }],
+      specials: [{ type: 'bigsight', i: -1, j: 3 }],
+      zoneOf(i, j, city) {
+        if (i >= 3 && i <= 4 && j >= 1 && j <= 2) return null;            // Hamarikyū-Garten
+        const z = j * P;
+        if (z > city.bayZ - 2 * P) return 'port';
+        const d = Math.hypot(i * P - city.center.x, z - city.center.z) / P;
+        return d < city.cfg.towerR ? 'tower' : d < city.cfg.officeR ? 'office' : 'mixed';
+      },
+    },
+    start: city => [2 * P, city.bayZ + 110],
+    boss: 'destoroyah',
+    bossName: 'DESTOROYAH-FLUGFORM',
+    models: ['kaiju95'],
+    final: 'destoroyah', finalModel: 'kaiju95',
+    burning: true,
+    music: { level: ['1995', 'ariake'], boss: ['1995_boss', 'destoroyah'], final: ['1995_final', 'burning'], end: ['1995_end', 'requiem'] },
+    bossGoal: boss => boss.dead ? 'Destoroyah stürzt ab' : boss.form === 'swarm'
+      ? 'Destoroyahs Jungtiere kriechen aus der Bucht: Kernpuls, Klaue und Strahl – sie springen dich an!'
+      : 'Die Flugform: Atomstrahl – im Sturzflug Klaue und Schwanz!',
+    finalGoal: () => 'Destoroyah: Mikro-Sauerstoff und Laserhorn – aus der Schwanzschere befreit nur der Kernpuls. Godzillas Herz glüht …',
+    win: ['DAS ENDE DER HEISEI-ÄRA', 'Destoroyah ist besiegt – und Godzilla stirbt in der Kernschmelze'],
+  },
 };
 
 export function currentLevel() {

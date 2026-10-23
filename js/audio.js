@@ -331,6 +331,42 @@ export const Sound = (function () {
       timp: R('Bb1 . . . F1 . . . Bb1 . . . F1 . F1 .', 4),
       perc: 'c . s s k . s . k . s s k s s s ' + R('k . s s k . s . k . s s k s s s', 3)
     },
+    ariake: {   // Tokio 1995: drohend, e-Moll, Herzschlag in den Pauken (Godzillas Herz vor der Kernschmelze)
+      bpm: 84, loop: true,
+      brass: 'E3 - - - - - - - G3 - - - F#3 - - - ' + 'E3 - - - B2 - - - C3 - - - B2 - - - ' +
+        'E4 - - - D4 - - - C4 - - - B3 - - - ' + 'A3 - - - C4 - - - B3 - - - - - - - ',
+      str: pad(['E2+G2+B2', 'C2+E2+G2', 'A2+C3+E3', 'B2+D#3+F#3']),
+      low: pad(['E1', 'C1', 'A1', 'B1']),
+      timp: R('E1 . E1 . . . . . E1 . E1 . . . . .', 4),
+      perc: R('k . k . . . . . k . k . . . s .', 4)
+    },
+    destoroyah: {  // Destoroyah: grell und dissonant, Tritonus-Fanfaren, gehetzte Streicher
+      bpm: 126, loop: true,
+      brass: 'D4 - G#4 - D4 - - - C#4 - G4 - C#4 - - - ' + 'D4 - G#4 - A4 - G#4 - D4 - - - - - - - ' +
+        'F4 - B4 - F4 - - - E4 - Bb4 - E4 - - - ' + 'D5 - C#5 - C5 - B4 - Bb4 - - - A4 - - - ',
+      str: pad(['D3+F3+G#3', 'C#3+E3+G3', 'D3+F3+A3', 'D3+F3+G#3']),
+      low: [ost('D1', 'G#1'), ost('C#1', 'G1'), ost('D1', 'A1'), ost('D1', 'G#1')].join(' '),
+      timp: R('D1 . . D1 . . G#1 . D1 . . D1 . . G#1 .', 4),
+      perc: R('k . s k . k s . k . s k k . s s', 4)
+    },
+    burning: {  // Endkampf: Burning Godzilla – breit und tragisch, d-Moll, das Hauptmotiv in Moll gewendet
+      bpm: 96, loop: true,
+      brass: 'D4 - - - A3 - D4 - F4 - - - E4 - D4 - ' + 'C4 - - - A3 - - - Bb3 - - - A3 - - - ' +
+        'D4 - - - A3 - D4 - F4 - - - G4 - A4 - ' + 'Bb4 - - - A4 - G4 - A4 - - - - - - - ',
+      str: pad(['D3+F3+A3', 'A2+C#3+E3', 'D3+F3+A3', 'Bb2+D3+F3']),
+      low: [ost('D1', 'D2'), ost('A1', 'A2'), ost('D1', 'D2'), ost('Bb1', 'Bb2')].join(' '),
+      timp: R('D1 . . . A1 . . . D1 . . . A1 . A1 .', 4),
+      perc: 'c . . . s . . . k . s . k s s s ' + R('k . . . s . . . k . s . k . s .', 3)
+    },
+    requiem: {  // Godzillas Tod: langsames Klagelied, a-Moll, verklingt
+      bpm: 54, loop: false,
+      brass: 'A3 - - - - - - - C4 - - - B3 - - - ' + 'A3 - - - - - - - E3 - - - - - - - ' +
+        'F3 - - - - - - - E3 - - - D3 - - - ' + 'E3 - - - - - - - - - - - - - - - ' + 'A2 - - - - - - - - - - - - - - - . . . .',
+      str: pad(['A2+C3+E3', 'A2+C3+E3', 'F2+A2+C3', 'E2+G#2+B2', 'A2+C3+E3']) + ' . . . .',
+      low: pad(['A1', 'A1', 'F1', 'E1', 'A1']) + ' . . . .',
+      timp: 'A1 . . . . . . . . . . . . . . . ' + '. . . . . . . . . . . . . . . . ' + 'F1 . . . . . . . . . . . . . . . ' + 'E1 . . . E1 . . . E1 . . . E1 . . . ' + 'A1 . . . . . . . . . . . . . . . . . . .',
+      perc: R('. . . . . . . . . . . . . . . .', 4) + ' c . . . . . . . . . . . . . . . . . . .'
+    },
     fukuoka: {  // Fukuoka 1994: unruhig-mystisch, cis-Moll, Synth-Streicher in Quartschichtungen
       bpm: 98, loop: true,
       brass: 'C#4 - - - G#4 - - - F#4 - E4 - D#4 - - - ' + 'E4 - - - B3 - - - C#4 - - - - - - - ' +
@@ -723,7 +759,7 @@ export const Sound = (function () {
 })();
 
 /* ---------- Musikmanager: eigene Dateien aus music/ haben Vorrang ----------
-   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, 1991, 1991_boss, 1991_final, 1992, 1992_boss, 1992_final, 1993, 1993_boss, 1993_final, 1994, 1994_boss, 1994_final, 1995, 1995_boss, 1995_final, gameover, win – siehe music/README.md.
+   Dateinamen (mp3, ogg oder m4a): title, 1984, 1984_boss, 1989, 1989_boss, 1989_final, 1991, 1991_boss, 1991_final, 1992, 1992_boss, 1992_final, 1993, 1993_boss, 1993_final, 1994, 1994_boss, 1994_final, 1995, 1995_boss, 1995_final, 1995_end, gameover, win – siehe music/README.md.
    Fehlt eine Datei, spielt das Synth-Stück. Die Suche wird pro Platz gemerkt. */
 const SLOTS = {
   title: { file: 'title', synth: 'heisei', loop: true },
@@ -732,6 +768,7 @@ const SLOTS = {
   final: { file: '1989_final', synth: 'biollante', loop: true },   // level/boss/final stellt Music.setLevel() um
   over: { file: 'gameover', synth: 'over', loop: false },
   win: { file: 'win', synth: 'win', loop: false },
+  end: { file: '1995_end', synth: 'requiem', loop: false },     // 1995: Godzillas Tod (Kernschmelze)
 };
 const EXT = ['mp3', 'ogg', 'm4a'];
 const found = {};

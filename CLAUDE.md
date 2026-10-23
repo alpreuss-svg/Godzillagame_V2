@@ -79,7 +79,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Fenstern, Stahlträger, verkohlte Brocken).
   Custom Property `size` (Breite, Tiefe, Höhe in m) landet als glTF-`extras` im Export. Wahrzeichen (nur über
   `specials` eines Levels gesetzt): `B_landmark` (Yokohama Landmark Tower, 186 m, gestuft mit eingezogenen Ecken),
-  `B_wheel` (Riesenrad Cosmo Clock, 102 m, leuchtende Gondeln), `B_messe` (Makuhari Messe, flache Halle mit Tonnendach), `B_ftower` (Fukuoka Tower, 234 m, Dreiecksschaft).
+  `B_wheel` (Riesenrad Cosmo Clock, 102 m, leuchtende Gondeln), `B_messe` (Makuhari Messe, flache Halle mit Tonnendach), `B_ftower` (Fukuoka Tower, 234 m, Dreiecksschaft), `B_bigsight` (Tokyo Big Sight, vier umgedrehte Stufenpyramiden).
 - `blender/units.py` – Panzer Typ 74, Raketen-LKW, AH-1 (+ Rotor separat), **Super-X**, **Super-X2** (dunkler
   Pfeilrumpf, Triebwerksgondeln, goldener Fire Mirror am Bug, Material `mirror`), Auto, Yamanote-Zug, Frachter,
   Baum, Laterne, Strommast, Trümmer (`U_debris0..2`). Läuft unter Blender 5.2, Vorschau geprüft.
@@ -107,6 +107,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   `MG_arm`, `MG_thigh`, `MG_shin`, `MG_garuda`; Ursprung je Teil im Gelenk `JOINTS`, muss zu kaiju93.js passen).
 - `blender/kaiju94.py` – Moguera (`MOG_body` auf Ketten, `MOG_drill` für Nase und Hände, `DRILLS`) und `SG_crystal`
   (Kristallgruppe für SpaceGodzillas Schultern/Stirn und die Kristalltürme).
+- `blender/kaiju95.py` – Destoroyah: `DE_juvenile` (krabbenartiges Jungtier), Flugform `DEF_body`/`DEF_wing`
+  (Namen passend zu `Moth` in kaiju.js, Flügelwurzel `WING_FLY`), Endform `DE_body` (~110 m, Laserhorn, leuchtendes
+  Maul), `DE_wing` (Fledermausflügel, Wurzel `WING_FINAL`), `DE_pincer` (Schwanzschere, zeigt entlang +Y der Kette).
 - `vendor/three/` – Three.js 0.170.0 (build + GLTFLoader, BufferGeometryUtils, SkeletonUtils), per Importmap.
 - `assets/models/godzilla.glb`, `city.glb`, `units.glb`, `biollante.glb`, `ghidorah.glb` – aktuelle Exporte (Monster
   lädt nur das Level, das sie braucht: `models` in levels.js).
@@ -213,6 +216,12 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Kristallgeschosse, Gravitationssog (hält fest, nur der Kernpuls befreit). Kraft über den Fukuoka Tower (Schild:
   nur 30 % Schaden, heilt) und 4 Kristalltürme (heilen, zerstörbar), sichtbar als violette Energieströme. Die
   Endgegner-Klasse bekommt alle geladenen Modelle (`models`) als 7. Argument.
+- `js/kaiju95.js` – 1995 (Finale): `DestoroyahSwarm` (Boss): 6 Jungtiere kriechen aus der Bucht, umkreisen Godzilla
+  im Zickzack, springen ihn an, spucken Mikro-Sauerstoff (purpur); Kernpuls trifft alle (14), Klaue/Schwanz anteilig.
+  Sind alle tot, verschmelzen sie (`desMerge`) zur Flugform (`desChange`; Strahl, Sturzflug – nur dann Nahkampf).
+  `Destoroyah` (Endgegner): landet, geht langsam heran, Mikro-Sauerstoff-Strahl, Laserhorn schwenkt quer über Godzilla,
+  Schwanzschere (`Chain` 105 m) packt ihn und saugt ihn aus (nur der Kernpuls befreit, kostet Destoroyah 8),
+  Flugsprünge auf die andere Seite; besiegt steigt er brennend auf und zerbirst. Haut wird nachts aufgehellt (`brighten`).
 - `js/moths.js` – 1992: `Battra` (Boss-Rolle) in zwei Stufen – Larve (Kette 120 m mit Kopf, kriecht aus der Bucht,
   folgt ihrer Spur wie eine Schlange, walzt Gebäude nieder, rammt mit dem Horn (6 Schaden, stößt Godzilla zurück),
   roter Prismenstrahl aus dem Horn), besiegt gräbt sie sich ein und steigt als Falter auf (fliegt, rote Strahlen aus
@@ -250,8 +259,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (additive Kegel auf Kreuzungen um Godzilla, tasten ihn langsam ab – 5 schnelle waren dem Nutzer zu viel), feste Anzahl Punktlichter an den nächsten Bränden
   (Anzahl je Qualitätsstufe, nie wechselnd – sonst übersetzt Three.js die Shader neu). Filmkorn per CSS (`#grain`).
 - `js/audio.js` – Audio aus Teil 1 als ES-Modul (`Sound`: Orchester-Synth, Schrei als gestrichene Saite, Effekte) plus
-  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989, `sapporo` / `ghidorah` / `mecha` für 1991, `yokohama` / `battra` / `mothra` für 1992, `makuhari` / `rodan` / `gforce` für 1993, `fukuoka` / `moguera` / `spaceg` für 1994). `Music` spielt pro
-  Platz (title, level, boss, over, win; level/boss stellt `Music.setLevel()` je Level um) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
+  eigene Heisei-Stücke (`heisei` Titel, `tokyo` / `superx` für 1984, `osaka` / `superx2` / `biollante` für 1989, `sapporo` / `ghidorah` / `mecha` für 1991, `yokohama` / `battra` / `mothra` für 1992, `makuhari` / `rodan` / `gforce` für 1993, `fukuoka` / `moguera` / `spaceg` für 1994, `ariake` / `destoroyah` / `burning` für 1995, `requiem` für Godzillas Tod). `Music` spielt pro
+  Platz (title, level, boss, final, over, win, end; level/boss stellt `Music.setLevel()` je Level um) zuerst eine eigene Datei aus `music/` (Namen in music/README.md; die 404-Meldungen beim
   Suchen sind gewollt), sonst das Synth-Stück. Ton startet mit der ersten Taste (Browser-Regel), M schaltet stumm.
   Ereignis → Geräusch in `hookSounds()` (main.js), häufige Ereignisse gedrosselt.
   Godzillas Schrei: liegen `music/roar1`, `roar2` (bis `roar3`; ogg/mp3/m4a/wav), spielt das Spiel diese eigenen
@@ -274,7 +283,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   am Hafen, Chinatown als `neon`, Yamashita-Park; Battra, danach Mothra; Wahrzeichen über `layout.specials`
   {type, i, j}, die einen Block belegen), **1993 Makuhari** (Bürotürme, drei Messehallen am Wasser, Strandpark;
   Rodan/Fire Rodan, danach Mechagodzilla), **1994 Fukuoka** (Tenjin-Hochhäuser, Fukuoka Tower am Wasser,
-  Ōhori-Park, Hafen; Moguera, danach SpaceGodzilla). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
+  Ōhori-Park, Hafen; Moguera, danach SpaceGodzilla), **1995 Tokio – Finale** (Big Sight in Ariake am Wasser,
+  Hamarikyū-Garten; Destoroyah-Jungtiere/Flugform, danach Destoroyah). `burning: true` macht Godzilla zum Burning
+  Godzilla (`setBurning()` in godzilla.js: glühende Flecken per Shader auf `GZ_Body`, rot-orange Platten und Strahl,
+  `power` 1,25). Nach dem Sieg folgt die Kernschmelze (`meltdown()`: Glut wächst, Dampf, Explosion, Musikplatz `end`,
+  Endbildschirm „Das Ende der Heisei-Ära“). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
   `finalGone`.
 - `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes (eine aufwendigere Strahl-
   Optik mit Spiralen, Pulsen und Funken gefiel dem Nutzer nicht und wurde zurückgebaut). `Lightning`: Ghidorahs Blitze
@@ -309,7 +322,9 @@ und `requestAnimationFrame` pausiert), Tasten lassen sich per `dispatchEvent(new
 
 ## Stand und Fahrplan
 Level „Tokio 1984 – Die Rückkehr“, „Osaka 1989“ (Super-X2, dann Biollante in zwei Stufen) und „Sapporo 1991“
-(King Ghidorah, dann Mecha-King Ghidorah) und „Yokohama 1992“ (Battra als Larve und Falter, dann Mothra) spielbar. Die Schritte stammen vom ersten PC:
+(King Ghidorah, dann Mecha-King Ghidorah), „Yokohama 1992“ (Battra als Larve und Falter, dann Mothra), „Makuhari 1993“
+(Rodan, dann Mechagodzilla), „Fukuoka 1994“ (Moguera, dann SpaceGodzilla) und das Finale „Tokio 1995“ (Destoroyah,
+Burning Godzilla, Kernschmelze) spielbar – alle sieben Heisei-Level sind angelegt. Die Schritte stammen vom ersten PC:
 1. **Erledigt** – Modelle: Godzilla geprüft (Maul, Zähne), `city` und `units` gebaut. Offen: Kinnspitze etwas kantig.
 2. **Spiel – in Arbeit.** Erledigt: Spielgerüst, Steuerung (Gang und Drehen per IK, Kombo, Atomstrahl, Kernpuls, Brüllen),
    feste Kamera, Teststadt, Zerstörung (sichtbarer Schaden, Brände, Einsturz, Teilruinen, Schutt, Bodenschäden).
@@ -323,4 +338,5 @@ Level „Tokio 1984 – Die Rückkehr“, „Osaka 1989“ (Super-X2, dann Bioll
    Dateien `ASSETS` und `VERSION` in sw.js anpassen).
 Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~370k Dreiecke mit Requisiten, ~70 Draw Calls; `?q=low`), Lautstärken
 anhören, Balance (Wellen, Schaden, Bossphase) im echten Spiel prüfen, Biollante-Kampf im echten Spiel abstimmen,
-Kämpfe im echten Spiel abstimmen, Mothra/Battra nach Bildvorlagen verfeinern, weitere Level (1993 Mechagodzilla usw.).
+Kämpfe im echten Spiel abstimmen, alle Monster nach den Bildvorlagen und Soundeffekten des Nutzers verfeinern
+(Rodan, Mechagodzilla, Moguera, SpaceGodzilla, Destoroyah sind erste Entwürfe).

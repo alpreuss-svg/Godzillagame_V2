@@ -518,15 +518,60 @@ export class Godzilla {
     }
   }
 
+  // 1995: Burning Godzilla – das Herz steht vor der Kernschmelze: glühende Flecken auf der Haut, rot-orange Platten
+  // und Strahl, 25 % mehr Kraft
+  setBurning() {
+    this.burning = true;
+    this.power = Math.max(this.power || 1, 1.25);
+    this.plateU.uColor.value.setRGB(1.0, 0.32, 0.08).multiplyScalar(2.4);
+    const b = this.beam;
+    b.layers[0].material.uniforms.uColor.value.setRGB(1.6, 0.35, 0.1);
+    b.layers[1].material.uniforms.uColor.value.setRGB(2.4, 1.3, 0.7);
+    b.impact.material.uniforms.uColor.value.setRGB(1.6, 0.6, 0.2);
+    b.light.color.setRGB(1, 0.45, 0.2); b.mouthLight.color.setRGB(1, 0.5, 0.25);
+    const u = this.burnU = { uBurn: { value: 0.45 }, uBTime: { value: 0 } };
+    const mat = this.bodyMat;
+    mat.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, u);
+      sh.vertexShader = 'varying vec3 vBPos;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+        '#include <begin_vertex>\n  vBPos = position;');
+      sh.fragmentShader = 'uniform float uBurn, uBTime;\nvarying vec3 vBPos;\n' +
+        sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+  vec3 q = vBPos * 0.24;
+  float n = sin(q.x * 2.1 + sin(q.y * 1.7)) * sin(q.y * 1.3 + sin(q.z * 2.3)) * sin(q.z * 1.9 + q.x * 0.7);
+  float spot = smoothstep(0.32, 0.6, n + 0.06 * sin(uBTime * 3.0 + q.y * 4.0));
+  totalEmissiveRadiance += vec3(1.0, 0.16, 0.03) * spot * uBurn * (0.85 + 0.15 * sin(uBTime * 5.0));`);
+    };
+    mat.customProgramCacheKey = () => 'gz-burning';
+    mat.needsUpdate = true;
+  }
+
+  // Kernschmelze nach dem Sieg über Destoroyah: das Glühen frisst sich durch den Körper, Dampf, Godzilla bricht zusammen
+  meltdown() {
+    if (this.state === 'dead') return;
+    this.firing = false;
+    this.melt = 0;
+    this.play('death');
+    this.enter('dead');
+  }
+
   updateGlow(dt) {
+    if (this.burnU) {
+      this.burnU.uBTime.value += dt;
+      if (this.melt !== undefined) {
+        this.melt += dt;
+        this.burnU.uBurn.value = 0.45 + this.melt * 0.9;
+        this.glow = Math.min(1, this.melt * 0.3); this.charge = 1;
+      }
+    }
     const active = this.state === 'breath' || this.state === 'pulse';
-    if (!active) {
+    if (!active && this.melt === undefined) {
       this.glow = approach(this.glow, 0, dt * 2.5);
       if (this.glow === 0) this.charge = 0;
     }
     const u = this.plateU;
     u.uFront.value = -4 + (PLATE_TOP + 8) * this.charge;
-    u.uGlow.value = this.glow * (this.firing ? 2.2 : 1.4);
+    u.uGlow.value = this.glow * (this.firing ? 2.2 : 1.4) + (this.burning && this.state !== 'breath' ? 0.35 : 0);
     u.uTime.value += dt;
     const pulse = this.state === 'pulse' && this.t > 0.35 ? Math.max(0, 1 - (this.t - 0.45) * 3) : 0;
     this.bodyMat.emissive.setRGB(0.05, 0.12, 0.3).multiplyScalar(pulse * 3 + (this.firing ? 0.35 : 0));

@@ -380,6 +380,18 @@ def _(bm, uv):   # Fukuoka Tower: 234 m, schlanker Dreiecksschaft aus Spiegelgla
     return (30, 26, 234)
 
 
+@building('bigsight')
+def _(bm, uv):   # Tokyo Big Sight: vier umgedrehte Pyramiden auf schlanken Stützen über einem breiten Sockel
+    box(bm, uv, 96, 70, 0, 12, 'shop', 'roof')
+    for cx, cy in ((-14, -12), (14, -12), (-14, 12), (14, 12)):
+        box(bm, uv, 5, 5, 12, 14, 'metal', 'metal', cx, cy, (8, 8))
+    for k in range(6):                                   # umgedrehte Pyramiden: Stufen, oben breiter
+        w = 22 + k * 6
+        for cx, cy in ((-14, -12), (14, -12), (-14, 12), (14, 12)):
+            box(bm, uv, w * 0.55, w * 0.55, 26 + k * 3.5, 3.6, 'glass', 'metal', cx * (1 + k * 0.02), cy * (1 + k * 0.02))
+    return (96, 70, 48)
+
+
 @building('office_a')
 def _(bm, uv):
     box(bm, uv, 24, 22, 0, 42, 'office'); rooftop(bm, uv, 24, 22, 42)

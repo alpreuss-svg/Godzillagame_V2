@@ -215,7 +215,7 @@ export class SpaceGodzilla {
       o.material = o.material.clone();
       if (/Plates/.test(o.material.name)) { o.material.onBeforeCompile = () => {}; o.material.customProgramCacheKey = () => 'sg-plates';
         o.material.color.setRGB(0.7, 0.55, 1.4); o.material.emissive.setRGB(0.35, 0.2, 0.7); o.material.needsUpdate = true; }
-      else { o.material.color.setRGB(0.55, 0.6, 1.25); o.material.emissive.setRGB(0.04, 0.03, 0.09); }
+      else { o.material.color.setRGB(1.7, 1.9, 3.9); o.material.emissive.setRGB(0.04, 0.03, 0.09); }   // Vertexfarben fast schwarz (wie bei Godzilla ×3)
       o.frustumCulled = false;
     });
     this.bones = {};
