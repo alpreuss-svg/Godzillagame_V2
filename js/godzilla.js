@@ -27,7 +27,7 @@ const LOOPS = ['idle', 'walk', 'turn'];
 const LEG_TRACK = /^(hips|thigh|shin|foot)[LR]?\./;   // Spuren der Beinknochen (GLTFLoader-Namen ohne Punkt)
 const WALK_ENTRY = 0.3;   // Phase der Laufanimation, in der der linke Fuß unter dem Körper steht (gz_anim: foot_path)
 const MOUTH = new THREE.Vector3(0, 72.8, 20.7);   // Maulspitze im Modell (Bind-Pose, glTF: +Z vorn; Kopf vergrößert)
-const PLATE_TOP = 77;                              // höchste Platte (Bind-Pose y)
+const PLATE_TOP = 73;                              // höchste Platte (Bind-Pose y)
 const GROUND_Y = 5.9;                              // Knöchelhöhe, bis zu der ein Fuß als aufgesetzt gilt
 const STOMP_Y = 7.0;                               // Knöchelhöhe, unter der ein Fuß als aufgesetzt gilt (steht bei 6,6)
 

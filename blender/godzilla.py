@@ -34,7 +34,8 @@ for s, sx in (('L', 1), ('R', -1)):
 
 RAD = {
     # breitere Brust und Schultern, schlankerer Hals (der Kopf setzt sich ab)
-    'pelvis': 10.7, 'belly': 11.7, 'chest': 11.4, 'shoulder': 10.0, 'neck0': 8.4, 'neck1': 6.6, 'head0': 5.3,
+    # Hals wird von den Schultern zum Kopf gleichmäßig schmaler (vorher wölbte er sich wie eine Kugel)
+    'pelvis': 10.7, 'belly': 11.7, 'chest': 11.4, 'shoulder': 10.0, 'neck0': 7.6, 'neck1': 6.2, 'head0': 5.3,
     'skull': 4.9, 'snout': 2.9, 'jaw0': 3.3, 'chin': 1.9,
     # erstes Viertel sehr dick (fast hüftbreit), im zweiten und dritten stark verjüngt, im letzten kaum noch (Seil)
     't1': 11.5, 't2': 10.0, 't3': 8.0, 't4': 5.8, 't5': 3.9, 't6': 2.9, 't7': 2.3,
@@ -208,7 +209,11 @@ def build_body(target_tris=30000):
             e.size_x, e.size_y, e.size_z = r * 0.8 * sx, r * 0.8, r * 0.8 * sz
             e.rotation = q
     # Kopf: flacher Schädel, lange Schnauze, schwere Brauen, Kaumuskeln, Unterkiefer
-    ell((0, -10.5, 72.6), (5.6, 4.6, 4.8))
+    ell((0, -10.5, 72.6), (5.0, 4.4, 4.4))
+    # Hals fließend: breiter, flacher Ansatz zwischen den Schultern (Nackenmuskel), Kehle füllt den Übergang zum Kiefer
+    ell((0, -4.6, 62.0), (8.2, 6.0, 4.6))
+    ell((0, -7.2, 66.4), (6.4, 5.0, 3.8))
+    ell((0, -9.8, 68.6), (4.6, 3.8, 3.0))
     ell((0, -13.8, 75.0), (4.5, 5.2, 3.3), rot=(-6, 0, 0))
     ell((0, -17.8, 74.6), (2.9, 3.5, 2.5), rot=(8, 0, 0))     # hohe Schnauze, nach vorn schmaler
     ell((0, -11.8, 76.4), (4.0, 4.6, 2.6))                    # gewölbter Schädel hinter den Brauen
@@ -442,7 +447,8 @@ def build():
     chain, pts, rads, lens = spine_path()
     total = lens[-1]
     peak = lens[3] * 0.4 + lens[4] * 0.6               # zwischen Brust und Bauch
-    s0, s1 = lens[2], lens[4] * 0.3 + lens[5] * 0.7      # Schultern bis kurz vor die Hüfte: volle Größe
+    # volle Größe von Brusthöhe bis kurz vor die Hüfte; zum Hals hin fallen sie schnell ab (sonst zu groß am Hals)
+    s0, s1 = lens[2] * 0.55 + lens[3] * 0.45, lens[4] * 0.3 + lens[5] * 0.7
 
     def bell(L, w_head, w_tail):
         if L < s0:
@@ -453,7 +459,7 @@ def build():
 
     L = 1.0
     while L < total - 1.5:
-        h = 3.0 + 14.0 * bell(L, 9, 50)       # Kamm am Schwanz bleibt bis zur Spitze sichtbar; groß wie bei der Figur
+        h = 2.4 + 14.6 * bell(L, 5.5, 50)     # Kamm am Schwanz bleibt bis zur Spitze sichtbar; groß wie bei der Figur
         c, r, T, N = sample_path(L / total)
         up = (N * 0.9 - T * 0.25).normalized()
         base = c + N * (r * 0.96 - 0.4)
@@ -464,7 +470,7 @@ def build():
     for sx in (1, -1):
         L = 4.0
         while L < tail_end:
-            h = 2.0 + 11.5 * bell(L, 8, 36)
+            h = 1.6 + 11.9 * bell(L, 5, 36)
             c, r, T, N = sample_path(L / total)
             side = V((sx, 0, 0))
             dirn = (N * 0.78 + side * 0.5).normalized()
@@ -489,7 +495,7 @@ def build():
     # Kopf größer: alles vor und über dem Kopfansatz wird um HEAD_PIVOT skaliert, weich zum Hals ausblendend
     for v in bm.verts:
         p = v.co
-        k = max(0.0, min(1.0, (p.z - 64.5) / 5.0)) * max(0.0, min(1.0, (-p.y - 7.0) / 3.5))
+        k = max(0.0, min(1.0, (p.z - 67.5) / 4.0)) * max(0.0, min(1.0, (-p.y - 9.0) / 3.0))   # nur der Kopf, nicht der Hals
         if k > 0:
             v.co = HEAD_PIVOT + (p - HEAD_PIVOT) * (V((1, 1, 1)) + (HEAD_SCALE - V((1, 1, 1))) * k)
     for n in ('skull', 'snout', 'jaw0', 'chin'):

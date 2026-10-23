@@ -44,7 +44,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   geformt (breit am Becken, Strecker vorn zum Knie schmaler, Beuger hinten); breite Füße mit vier Zehen (`toe_tips`)
   und großen, dicken hellen Krallen – die Beingelenke (`P`) sind unverändert, damit die Gang-IK passt.
   Platten: gelappter Ahornblatt-Umriss (`PLATE_OUTLINE`), dick, hell, zwischen Schultern und Hüfte in voller Größe
-  (reichen bis etwa Kopfhöhe, `PLATE_TOP` 77 in godzilla.js); Haut feiner (Borke statt grober Beulen).
+  (reichen bis etwa Kopfhöhe, `PLATE_TOP` 73 in godzilla.js), zum Hals hin schnell kleiner; Hals verjüngt sich
+  gleichmäßig von den Schultern zum Kopf (flacher, breiter Nackenansatz, Kehle füllt den Übergang zum Kiefer, die
+  Kopfvergrößerung greift nicht mehr auf den Hals über); Haut feiner (Borke statt grober Beulen).
   Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Rumpf etwas schlanker als zuerst. Vorbild für
   Schwanz und Platten ist die 1984er Figur (zwei Bilder vom Nutzer): Schwanz ~100 m, wächst tief und ohne Einbuchtung
   aus dem Becken, erstes Viertel fast hüftbreit und hochoval (Ellipsoid-Kette), im zweiten und dritten stark verjüngt,
