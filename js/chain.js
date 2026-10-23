@@ -28,7 +28,7 @@ export class Chain {
     const pos = geo.attributes.position, n = pos.count;
     const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
-      const y = pos.getY(i) / l, b = Math.min(SEG - 1, Math.floor(y)), f = y - b;
+      const y = Math.max(0, pos.getY(i) / l), b = Math.min(SEG - 1, Math.floor(y)), f = y - b;   // max: Rundungsfehler an der Wurzel
       si[i * 4] = b; si[i * 4 + 1] = b + 1; sw[i * 4] = 1 - f; sw[i * 4 + 1] = f;
     }
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));

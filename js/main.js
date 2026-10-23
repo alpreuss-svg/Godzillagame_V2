@@ -108,6 +108,7 @@ async function load() {
   game.military = new Military(units, scene, fx, events, game.city);
   game.boss = new BOSSES[LV.boss](units, scene, fx, events, game.military, models);
   game.final = LV.final ? new FINALS[LV.final](models[LV.finalModel], scene, fx, events, fx.glow, game.military) : null;
+  for (const m of [game.boss, game.final]) if (m) m.camera = camera;     // Blitzbänder richten sich zur Kamera aus
   game.minimap = new MiniMap($('minimap'), game.city);
   game.atmo = new Atmosphere(scene, { rain: QUALITY.rain, fireLights: QUALITY.fireLights });
   const g = game.godzilla = new Godzilla(gz, scene, events);
@@ -134,6 +135,7 @@ async function load() {
     if (e.kind !== 'beam') game.military.damage(e.pos, e.kind === 'claw' ? e.radius + 12 : e.radius, e.damage, e.from);
     if (e.kind === 'beam' && e.pos.y < 3 && Math.random() < 0.5) game.city.scars.burn(e.pos.x, e.pos.z, 9);
     if (e.kind === 'pulse') game.city.scars.scorch(e.pos.x, e.pos.z, e.radius * 0.9, 0.6);
+    if (game.boss.attack) game.boss.attack(e);          // King Ghidorah: Klaue, Schwanz, Kernpuls
     if (game.final) game.final.attack(e);
   });
   events.on('beamLine', e => { game.military.damageLine(e.from, e.to, 14, e.dps * e.dt); game.boss.beamLine(e.from, e.to, e.dt); if (game.final) game.final.beamLine(e.from, e.to, e.dps, e.dt); });
@@ -172,7 +174,7 @@ async function load() {
   events.on('biollanteBurn', () => toast('Die Rose verbrennt …', 3));
   events.on('biollanteSpores', () => toast('Goldene Sporen steigen auf – sie verwandelt sich!', 3.5));
   events.on('vineGrab', () => toast('Eine Ranke hält Godzilla fest – Klaue oder Kernpuls!', 2.5));
-  events.on('grabStart', () => toast('Fangklammern! Befreie dich mit Atomstrahl (K) oder Kernpuls (R)!', 3.5));
+  events.on('grabStart', e => toast(e.kind === 'heads' ? 'King Ghidorah hält Godzilla mit zwei Köpfen fest – nur der Kernpuls (R) befreit!' : 'Greifhaken! Nur der Kernpuls (R) befreit Godzilla!', 3.5));
   events.on('bindStart', () => toast('Ranken fesseln Godzilla – befreie dich mit Atomstrahl (K) oder Kernpuls (R)!', 3.5));
   events.on('biteStart', () => toast('Biollante hat Godzillas Kopf im Maul – Atomstrahl in den Schlund (K)!', 3.5));
   events.on('holdFree', e => { if (e.how === 'beam' && e.kind === 'bite') toast('Volltreffer in den Schlund!', 2); });

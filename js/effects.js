@@ -287,3 +287,89 @@ export class Debris {
 }
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 const _q = new THREE.Quaternion(), _mat = new THREE.Matrix4(), _s = new THREE.Vector3();
+
+// Blitz: zuckender Zickzack-Strahl mit Nebenarmen als Band, das zur Kamera zeigt (Glühen + heller Kern). Der Pfad wird
+// alle paar Hundertstelsekunden neu gewürfelt (Ghidorahs Gravitationsstrahlen).
+const LN = 26, BN = 9, BRANCHES = 2;
+export class Lightning {
+  constructor(scene, color) {
+    this.strips = [LN + 1, ...Array(BRANCHES).fill(BN + 1)];
+    const total = this.strips.reduce((a, b) => a + b, 0);
+    this.pts = Array.from({ length: total }, () => new THREE.Vector3());
+    const index = [];
+    let o = 0;
+    for (const n of this.strips) {
+      for (let i = 0; i < n - 1; i++) { const a = (o + i) * 2; index.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+      o += n;
+    }
+    const c = new THREE.Color(...color);
+    this.layers = [[7, c.clone().multiplyScalar(1.3), 0.55], [2.2, new THREE.Color(1, 0.97, 0.9).lerp(c, 0.25).multiplyScalar(1.6), 1]]
+      .map(([w, col, op]) => {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(total * 6), 3).setUsage(THREE.DynamicDrawUsage));
+        geo.setIndex(index);
+        const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false,
+          blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false }));
+        m.frustumCulled = false;
+        m.visible = false;
+        m.userData.w = w;
+        scene.add(m);
+        return m;
+      });
+    this.reroll = 0;
+    this.end = new THREE.Vector3();
+  }
+
+  // from/to: Weltpunkte; camera für die Ausrichtung des Bandes
+  update(dt, on, from, to, camera) {
+    for (const m of this.layers) m.visible = on && Math.random() > 0.08;   // flackert
+    if (!on) return;
+    this.end.copy(to);
+    if ((this.reroll -= dt) <= 0) { this.reroll = 0.045; this.path(from, to); }
+    const cam = camera.position, P = this.pts;
+    for (const m of this.layers) {
+      const arr = m.geometry.attributes.position.array, w = m.userData.w * 0.5;
+      let o = 0;
+      for (const n of this.strips) {
+        for (let i = 0; i < n; i++) {
+          const p = P[o + i], q = P[o + Math.min(n - 1, i + 1)], r = P[o + Math.max(0, i - 1)];
+          const t = _l1.subVectors(q, r).normalize();
+          const side = _l2.subVectors(cam, p).cross(t).normalize().multiplyScalar(w * (n === LN + 1 ? 1 : 0.6) * (1 - 0.5 * i / n));
+          const k = (o + i) * 6;
+          arr[k] = p.x + side.x; arr[k + 1] = p.y + side.y; arr[k + 2] = p.z + side.z;
+          arr[k + 3] = p.x - side.x; arr[k + 4] = p.y - side.y; arr[k + 5] = p.z - side.z;
+        }
+        o += n;
+      }
+      m.geometry.attributes.position.needsUpdate = true;
+    }
+  }
+
+  path(from, to) {
+    const dir = _l1.subVectors(to, from), len = dir.length();
+    dir.normalize();
+    const u = _l2.set(-dir.z, 0, dir.x).normalize(), v = _l3.crossVectors(dir, u);
+    const P = this.pts;
+    const big = [(Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)];
+    for (let i = 0; i <= LN; i++) {
+      const t = i / LN, env = Math.sin(Math.PI * t);
+      const zig = len * 0.1 * env;
+      const a = (big[0] * Math.sin(t * 7) + big[1] * Math.sin(t * 13 + 1) + (Math.random() - 0.5) * 0.5) * zig;
+      const b = (big[2] * Math.sin(t * 9 + 2) + big[3] * Math.sin(t * 17) + (Math.random() - 0.5) * 0.5) * zig;
+      P[i].copy(from).addScaledVector(dir, len * t).addScaledVector(u, a).addScaledVector(v, b);
+    }
+    let o = LN + 1;
+    for (let k = 0; k < BRANCHES; k++) {
+      const s = P[4 + Math.floor(Math.random() * (LN - 8))];
+      const bd = _l4.copy(dir).addScaledVector(u, (Math.random() - 0.5) * 2).addScaledVector(v, (Math.random() - 0.5) * 2).normalize();
+      const bl = len * (0.08 + Math.random() * 0.12);
+      for (let i = 0; i <= BN; i++) {
+        const t = i / BN;
+        P[o + i].copy(s).addScaledVector(bd, bl * t)
+          .addScaledVector(u, (Math.random() - 0.5) * bl * 0.25 * t).addScaledVector(v, (Math.random() - 0.5) * bl * 0.25 * t);
+      }
+      o += BN + 1;
+    }
+  }
+}
+const _l1 = new THREE.Vector3(), _l2 = new THREE.Vector3(), _l3 = new THREE.Vector3(), _l4 = new THREE.Vector3();

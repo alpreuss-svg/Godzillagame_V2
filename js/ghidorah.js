@@ -1,12 +1,14 @@
-// 1991: King Ghidorah (Boss) und Mecha-King Ghidorah (Endgegner).
-// Rumpf, Flügel und Köpfe kommen aus ghidorah.glb; Hälse und Schwänze sind Ketten (chain.js), die Flügel schlagen um
-// das Schultergelenk. King Ghidorah fliegt über der Stadt, landet ab und zu (dann erreichbar für Klaue und Schwanz) und
-// feuert Gravitationsstrahlen aus den drei Mäulern – Gebäude dazwischen fangen sie ab. Mecha-King Ghidorah ist
-// gepanzert, schießt zusätzlich mit dem Laser des Mechanik-Kopfes und packt Godzilla mit Fangklammern an Seilen
-// (nur Atomstrahl oder Kernpuls befreien).
+// 1991: King Ghidorah (Boss) und Mecha-King Ghidorah (Endgegner), nach Filmbildern des Nutzers.
+// Rumpf, Flügel, Köpfe und Schwanzenden kommen aus ghidorah.glb; Hälse und Schwänze sind Ketten (chain.js).
+// - Gravitationsstrahlen sind zuckende Blitze (gelb-orange, beim Mecha-Kopf bläulich), die umherirren und Godzilla nur
+//   ab und zu treffen; daneben schlagen sie in Boden und Gebäude ein.
+// - Je mehr Schaden, desto mehr Löcher in den Flügeln (Shader verwirft Kreise im Flügel, Rand verkohlt und glüht).
+// - King Ghidorah fliegt, landet ab und zu (dann erreichbar für Klaue und Schwanz). Am Boden packen die äußeren Köpfe
+//   Godzillas Schultern und der mittlere feuert aus nächster Nähe; nur der Kernpuls befreit.
+// - Mecha-King Ghidorah ist gepanzert, schießt Greifhaken an Seilen, die Godzilla festhalten; nur der Kernpuls befreit.
 import * as THREE from 'three';
 import { Chain, ease } from './chain.js';
-import { Beam } from './effects.js';
+import { Lightning } from './effects.js';
 
 // Gelenkpunkte aus blender/ghidorah.py, umgerechnet nach glTF (x, z, -y)
 const NECK_ROOTS = [[0, 67, 5], [8.5, 64, 2.5], [-8.5, 64, 2.5]];
@@ -14,22 +16,56 @@ const TAIL_ROOTS = [[3.2, 31, -11], [-3.2, 31, -11]];
 const WING_ROOT = [7.5, 63, -7];
 const SCALE = 1.1;
 const CHEST = 52 * SCALE, RADIUS = 24;
-const NECK_LEN = 36, TAIL_LEN = 72;
+const NECK_LEN = 44, TAIL_LEN = 76;
+const MAX_HOLES = 8;
 
 const KINDS = {
   king: {
-    hp: 100, alt: 78, range: [150, 210], beamEvery: 3.2, beamDur: 1.6, beamDps: 2.6, trioEvery: 13,
-    landEvery: 22, landDur: 10, biteDmg: 4,
-    dmg: { beam: 4, head: 6, claw: 4, tail: 6, pulse: 8 },
+    hp: 100, alt: 78, range: [150, 210], beamEvery: 3.0, beamDur: 1.8, beamDps: 3.2, trioEvery: 12, wander: 30,
+    landEvery: 20, landDur: 11, grabEvery: 14, grabDps: 3.0, grabMax: 6, grabRange: 120,
+    dmg: { beam: 4, head: 6, claw: 4, tail: 6, pulse: 8, free: 6 },
+    colors: [[1.0, 0.72, 0.18], [1.0, 0.72, 0.18], [1.0, 0.72, 0.18]],
   },
   mecha: {
-    hp: 100, alt: 70, range: [140, 200], beamEvery: 2.8, beamDur: 1.6, beamDps: 2.6, trioEvery: 11,
-    landEvery: 26, landDur: 9, biteDmg: 4, grabEvery: 19, grabDps: 2.2, grabMax: 7,
-    dmg: { beam: 2.5, head: 4, claw: 3, tail: 4.5, pulse: 6 },
+    hp: 100, alt: 70, range: [140, 200], beamEvery: 2.6, beamDur: 1.8, beamDps: 3.2, trioEvery: 10, wander: 24,
+    landEvery: 26, landDur: 9, grabEvery: 18, grabDps: 2.4, grabMax: 8, grabRange: 230,
+    dmg: { beam: 2.5, head: 4, claw: 3, tail: 4.5, pulse: 6, free: 8 },
+    colors: [[0.35, 0.6, 1.0], [1.0, 0.72, 0.18], [1.0, 0.72, 0.18]],
   },
 };
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+
+// Flügelmaterial mit Löchern: uHoles[i] = (Mitte im Flügel-Modell, Radius); Rand gezackt, verkohlt, glühend
+function holeMaterial(src) {
+  const m = src.clone();
+  const holes = Array.from({ length: MAX_HOLES }, () => new THREE.Vector4(0, 0, 0, 0));
+  m.userData.holes = holes;
+  m.side = THREE.DoubleSide;
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uHoles = { value: holes };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vLocalPos;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLocalPos = position;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>\nvarying vec3 vLocalPos;\nuniform vec4 uHoles[${MAX_HOLES}];`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float holeBurn = 0.0;
+        for (int i = 0; i < ${MAX_HOLES}; i++) {
+          if (uHoles[i].w <= 0.0) continue;
+          vec3 q = vLocalPos - uHoles[i].xyz;
+          float rag = 0.22 * sin(q.x * 0.9 + q.z * 1.3) + 0.14 * sin(q.y * 1.7 - q.x * 0.6) + 0.1 * sin(q.z * 2.9);
+          float d = length(q) / uHoles[i].w + rag;
+          if (d < 1.0) discard;
+          holeBurn = max(holeBurn, 1.0 - smoothstep(1.0, 1.4, d));
+        }
+        diffuseColor.rgb *= 1.0 - 0.85 * holeBurn;`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        totalEmissiveRadiance += vec3(1.0, 0.35, 0.05) * holeBurn * (0.6 + 0.4 * sin(vLocalPos.x * 0.5));`);
+  };
+  m.customProgramCacheKey = () => 'gh-holes';
+  return m;
+}
 
 class GhidorahBase {
   constructor(gltf, scene, fx, events, military, kind) {
@@ -39,8 +75,15 @@ class GhidorahBase {
     this.military = military;
     this.kind = kind;
     this.K = KINDS[kind];
-    const mecha = kind === 'mecha';
+    const mecha = this.mecha = kind === 'mecha';
     const get = n => gltf.scene.getObjectByName(n);
+    // leichter Eigenschimmer, damit Gold und Chrom nachts nicht zur Silhouette werden (Materialien sind geteilt)
+    gltf.scene.traverse(o => {
+      if (o.isMesh && /GH_Scale|GH_Membrane|MGH_Chrome|GH_Horn/.test(o.material.name) && !o.material.userData.glow) {
+        o.material.userData.glow = true;
+        o.material.emissive.setRGB(...(/MGH/.test(o.material.name) ? [0.05, 0.05, 0.06] : [0.09, 0.06, 0.01]));
+      }
+    });
     this.group = new THREE.Group();
     this.group.visible = false;
     this.group.scale.setScalar(SCALE);
@@ -50,34 +93,36 @@ class GhidorahBase {
     body.position.set(0, 0, 0);
     this.group.add(body);
     let skin = null;
-    body.traverse(o => { if (o.isMesh && !skin) skin = o.material; });
-    // leichter Eigenschimmer, damit Gold und Chrom nachts nicht zur Silhouette werden (Materialien sind geteilt)
-    gltf.scene.traverse(o => {
-      if (o.isMesh && /GH_Scale|GH_Membrane|MGH_Chrome|GH_Horn/.test(o.material.name) && !o.material.userData.glow) {
-        o.material.userData.glow = true;
-        o.material.emissive.setRGB(...(/MGH/.test(o.material.name) ? [0.05, 0.05, 0.06] : [0.09, 0.06, 0.01]));
-      }
-    });
-    // Flügel: Gelenk an der Schulter, der rechte gespiegelt
+    body.traverse(o => { if (o.isMesh && !skin && /GH_Scale/.test(o.material.name)) skin = o.material; });
+    // Flügel: Gelenk an der Schulter, der rechte gespiegelt; jede Membran bekommt ein eigenes Material für Löcher
+    this.wingSkins = [];
     this.wings = [1, -1].map(sx => {
       const pivot = new THREE.Group();
       pivot.position.set(sx * WING_ROOT[0], WING_ROOT[1], WING_ROOT[2]);
       const w = get(mecha ? 'MGH_wing' : 'GH_wing').clone();
       w.position.set(0, 0, 0);
       w.scale.set(sx, 1, 1);
+      w.traverse(o => {
+        if (o.isMesh && /Membrane|MGH_Mesh/.test(o.material.name)) {
+          o.material = holeMaterial(o.material);
+          this.wingSkins.push(o);
+        }
+      });
       pivot.add(w);
       this.group.add(pivot);
       pivot.userData.sx = sx;
       return pivot;
     });
-    // Hälse mit Köpfen (Mecha: Mittelkopf mechanisch), Schwänze
-    const neckCol = mecha ? [0.55, 0.42, 0.12] : [0.75, 0.5, 0.12];
+    // Hälse mit Köpfen (Mecha: silberner, gegliederter Mittelhals mit Mechanik-Kopf), Schwänze mit Stachelbüschel
+    // bzw. Greifzange
+    const gold = [0.75, 0.5, 0.12], silver = [0.55, 0.55, 0.58];
     this.necks = NECK_ROOTS.map((r, i) => {
-      const c = new Chain(scene, skin, NECK_LEN * SCALE, 4.8 * SCALE, 3.3 * SCALE, { color: neckCol, rings: 10 });
+      const mech = mecha && i === 0;
+      const c = new Chain(scene, skin, NECK_LEN * SCALE, 4.8 * SCALE, 3.3 * SCALE, { color: mech ? silver : gold, rings: mech ? 22 : 12 });
       c.visible = false;
       c.root = new THREE.Vector3(...r);
       c.side = i === 0 ? 0 : (r[0] > 0 ? 1 : -1);
-      c.head = get(mecha && i === 0 ? 'MGH_head' : 'GH_head').clone();
+      c.head = get(mech ? 'MGH_head' : 'GH_head').clone();
       c.head.scale.setScalar(SCALE);
       c.head.visible = false;
       scene.add(c.head);
@@ -86,30 +131,23 @@ class GhidorahBase {
       return c;
     });
     this.tails = TAIL_ROOTS.map(r => {
-      const c = new Chain(scene, skin, TAIL_LEN * SCALE, 4.6 * SCALE, 0.9 * SCALE, { color: neckCol, rings: 18 });
+      const tip = get(mecha ? 'MGH_clamp' : 'GH_tailtip').clone();
+      tip.position.set(0, 0, 0);
+      const c = new Chain(scene, skin, TAIL_LEN * SCALE, 4.6 * SCALE, 1.1 * SCALE, { color: gold, rings: 22, head: tip });
       c.visible = false;
       c.root = new THREE.Vector3(...r);
       return c;
     });
-    // Strahlen: Gravitationsstrahlen gold, beim Mecha-Mittelkopf ein orangeroter Laser; ohne eigene Lichter
-    this.beams = this.necks.map((n, i) => {
-      const b = new Beam(scene);
-      const laser = mecha && i === 0;
-      b.layers[0].material.uniforms.uColor.value.setRGB(...(laser ? [2.0, 0.35, 0.1] : [1.7, 1.2, 0.2]));
-      b.layers[1].material.uniforms.uColor.value.setRGB(...(laser ? [2.4, 1.4, 0.8] : [2.6, 2.3, 1.2]));
-      b.impact.material.uniforms.uColor.value.setRGB(1.8, 1.2, 0.3);
-      scene.remove(b.light, b.mouthLight);
-      b.t = 0;
-      return b;
-    });
+    this.bolts = this.necks.map((n, i) => { const b = new Lightning(scene, this.K.colors[i]); b.t = 0; b.wanderPh = i * 2.1; return b; });
     this.bodyTarget = { mesh: { position: new THREE.Vector3() }, hp: 1 };
     this.active = false;
     this.dead = false;
     this.hp = this.K.hp;
     this.t = 0;
+    this.holes = 0;
   }
 
-  get label() { return this.kind === 'mecha' ? 'MECHA-KING GHIDORAH' : 'KING GHIDORAH'; }
+  get label() { return this.mecha ? 'MECHA-KING GHIDORAH' : 'KING GHIDORAH'; }
 
   appear(gz, city) {
     this.city = city;
@@ -121,7 +159,7 @@ class GhidorahBase {
     this.beamT = 4;
     this.trioT = this.K.trioEvery;
     this.landT = this.K.landEvery;
-    this.grabT = this.K.grabEvery || 0;
+    this.grabT = this.K.grabEvery;
     this.group.position.set(gz.x + 200, 200, gz.z - 650);
     this.group.visible = true;
     for (const c of [...this.necks, ...this.tails]) c.visible = true;
@@ -146,23 +184,25 @@ class GhidorahBase {
 
   update(dt, g) {
     if (!this.active) return;
+    this.g = g;
     this.t += dt;
     this.st += dt;
     const G = this.group, p = G.position, gp = g.position, K = this.K;
     const dx = gp.x - p.x, dz = gp.z - p.z, dist = Math.hypot(dx, dz);
-    if (this.dead) { this.crash(dt); this.updateParts(dt, g, dist); return; }
+    if (this.dead) { this.crash(dt); this.updateParts(dt, g); return; }
     // Flug: kreist in Strahlweite, landet ab und zu vor Godzilla
     let alt = K.alt + 6 * Math.sin(this.t * 0.7), want = (K.range[0] + K.range[1]) / 2 + 20 * Math.sin(this.t * 0.25);
-    if (this.state === 'arrive') { alt = 120; want = K.range[1]; if (dist < K.range[1] + 60) { this.state = 'fly'; this.st = 0; this.events.emit('ghidorahArrive', {}); } }
-    else if (this.state === 'fly' && (this.landT -= dt) <= 0) { this.state = 'land'; this.st = 0; }
+    if (this.state === 'arrive') {
+      alt = 120; want = K.range[1];
+      if (dist < K.range[1] + 60) { this.state = 'fly'; this.st = 0; this.events.emit('ghidorahArrive', {}); }
+    } else if (this.state === 'fly' && (this.landT -= dt) <= 0) { this.state = 'land'; this.st = 0; }
     if (this.state === 'land') {
-      alt = 0; want = 95;
-      if (this.st > K.landDur) { this.state = 'fly'; this.st = 0; this.landT = K.landEvery * (0.8 + 0.4 * Math.random()); }
+      alt = 0; want = this.hold ? 60 : 68;                      // nah genug für Klaue und Schwanz
+      if (this.st > K.landDur && !this.hold) { this.state = 'fly'; this.st = 0; this.landT = K.landEvery * (0.8 + 0.4 * Math.random()); }
     }
-    if (this.hold) { alt = 40; want = 70; }
+    if (this.hold && this.mecha) { alt = 45; want = 85; }
     const speed = this.state === 'arrive' ? 70 : 32;
-    this.orbit = (this.orbit || 0.05) ;
-    const ang = Math.atan2(p.z - gp.z, p.x - gp.x) + (this.state === 'land' || this.hold ? 0 : this.orbit * dt);
+    const ang = Math.atan2(p.z - gp.z, p.x - gp.x) + (this.state === 'land' || this.hold ? 0 : 0.05 * dt);
     const r = dist + THREE.MathUtils.clamp(want - dist, -speed * dt, speed * dt);
     p.x = gp.x + Math.cos(ang) * r;
     p.z = gp.z + Math.sin(ang) * r;
@@ -177,14 +217,14 @@ class GhidorahBase {
     }
     if (p.y > 8) this.landed = false;
     // Körper zu Godzilla
-    const yaw = Math.atan2(dx, dz);
-    let dy = yaw - G.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    let dy = Math.atan2(dx, dz) - G.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     G.rotation.y += THREE.MathUtils.clamp(dy, -1.2 * dt, 1.2 * dt);
     G.rotation.x = this.state === 'land' ? 0 : 0.12;          // im Flug leicht nach vorn geneigt
     G.updateMatrixWorld(true);
     this.bodyTarget.mesh.position.set(p.x, p.y + CHEST, p.z);
     this.attacks(dt, g, dist);
-    this.updateParts(dt, g, dist);
+    this.updateHold(dt, g, dist);
+    this.updateParts(dt, g);
   }
 
   // Weicht Hochhäusern aus, die über die Flughöhe ragen
@@ -201,81 +241,138 @@ class GhidorahBase {
 
   attacks(dt, g, dist) {
     const K = this.K;
-    if (this.state === 'arrive' || g.state === 'dead') return;
-    // Gravitationsstrahlen: ein Kopf nach dem anderen, ab und zu alle drei
-    if (!this.hold && (this.beamT -= dt) <= 0 && dist < 420) {
+    if (this.state === 'arrive' || g.state === 'dead' || this.hold) return;
+    if ((this.beamT -= dt) <= 0 && dist < 420) {
       this.beamT = K.beamEvery * (0.8 + 0.4 * Math.random());
-      const free = this.beams.filter(b => b.t <= 0);
+      const free = this.bolts.filter(b => b.t <= 0);
       const b = free[Math.floor(Math.random() * free.length)];
       if (b) { b.t = K.beamDur; this.events.emit('gravityBeam', {}); }
     }
-    if (!this.hold && (this.trioT -= dt) <= 0 && dist < 380) {
+    if ((this.trioT -= dt) <= 0 && dist < 380) {
       this.trioT = K.trioEvery * (0.8 + 0.4 * Math.random());
-      for (const b of this.beams) b.t = K.beamDur * 1.3;
+      for (const b of this.bolts) b.t = K.beamDur * 1.3;
       this.events.emit('gravityBeam', { all: true });
     }
   }
 
-  // Hälse, Köpfe, Schwänze, Flügel und Strahlen
-  updateParts(dt, g, dist) {
-    const G = this.group, M = G.matrixWorld, grounded = this.group.position.y < 6 && !this.dead;
-    const chest = _c.copy(g.position).setY(48);
+  // Griff: King Ghidorah packt mit den äußeren Köpfen zu (nur gelandet), Mecha schießt Greifhaken
+  updateHold(dt, g, dist) {
+    const K = this.K;
+    if (!this.hold) {
+      const can = this.mecha ? this.state === 'fly' : this.state === 'land' && this.group.position.y < 4;
+      if (can && (this.grabT -= dt) <= 0 && dist < K.grabRange && g.state !== 'dead') {
+        this.hold = { t: 0 };
+        g.held = 'vines';
+        for (const b of this.bolts) b.t = 0;
+        if (!this.mecha) this.bolts[0].t = K.grabMax + 1;          // der Mittelkopf feuert aus nächster Nähe
+        this.events.emit('grabStart', { kind: this.mecha ? 'hooks' : 'heads' });
+      }
+      return;
+    }
+    const h = this.hold;
+    h.t += dt;
+    g.speedCap = 0;
+    g.takeDamage(K.grabDps * dt * (this.mecha ? 1 : 0.4), g.position);   // King: der Strahl des Mittelkopfs trifft zusätzlich
+    g.hurt = 0;
+    if (Math.random() < dt * 3) this.events.emit('shake', 0.25);
+    if (h.t > K.grabMax) this.release(g, 'timeout');
+  }
+
+  release(g, how) {
+    if (!this.hold) return;
+    this.hold = null;
+    if (g) { g.held = null; g.speedCap = Infinity; }
+    this.bolts[0].t = 0;
+    this.grabT = this.K.grabEvery * (0.8 + 0.4 * Math.random());
+    this.events.emit('holdFree', { kind: 'grab', how });
+    if (how === 'pulse') { this.damage(this.K.dmg.free, true); this.military.boom(this.bodyTarget.mesh.position, 1.0); }
+  }
+
+  // Hälse, Köpfe, Schwänze, Flügel und Blitze
+  updateParts(dt, g) {
+    const G = this.group, M = G.matrixWorld, grounded = G.position.y < 6 && !this.dead;
+    const chest = _c.copy(g.position).setY(50);
     const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(G.quaternion).setY(0).normalize();
     const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
-    // Flügel schlagen im Flug kräftig, am Boden halb angelegt
-    const flap = grounded ? 0.35 + 0.08 * Math.sin(this.t * 1.5) : 0.15 + 0.62 * Math.sin(this.t * (this.dead ? 9 : 3.4));
+    const gRight = new THREE.Vector3(Math.cos(g.heading), 0, -Math.sin(g.heading));
+    // Flügel: King schlägt im Flug kräftig, am Boden halb angelegt; die Mecha-Flügel stehen fast still
+    const flap = this.mecha ? 0.2 + 0.06 * Math.sin(this.t * 1.2)
+      : grounded ? 0.35 + 0.08 * Math.sin(this.t * 1.5) : 0.15 + 0.62 * Math.sin(this.t * (this.dead ? 9 : 3.4));
     for (const w of this.wings) w.rotation.set(0, w.userData.sx * -0.35, w.userData.sx * flap);
-    // Hälse: S-Bogen nach oben und außen, Köpfe pendeln und schauen zu Godzilla; beim Strahl genau auf ihn
+    const kingHold = this.hold && !this.mecha;
     this.necks.forEach((n, i) => {
       const root = n.root.clone().applyMatrix4(M);
       const L = n.len, ph = n.phase + this.t;
-      const sway = new THREE.Vector3(Math.sin(ph * 1.1) * 4, Math.sin(ph * 1.7) * 3, Math.cos(ph * 0.9) * 4);
-      let tip = root.clone().addScaledVector(fwd, L * 0.35).addScaledVector(right, n.side * L * 0.4).addScaledVector(UP, L * 0.7).add(sway);
-      const beam = this.beams[i];
-      if (beam.t > 0) tip.addScaledVector(fwd, L * 0.15);
-      if (this.biteHead === i) tip.lerp(chest, ease(Math.min(1, this.biteT2 / 0.3)));
+      const sway = new THREE.Vector3(Math.sin(ph * 1.1) * 5, Math.sin(ph * 1.7) * 3, Math.cos(ph * 0.9) * 5);
+      let tip = root.clone().addScaledVector(fwd, L * 0.3).addScaledVector(right, n.side * L * 0.42).addScaledVector(UP, L * 0.68).add(sway);
+      if (this.bolts[i].t > 0) tip.addScaledVector(fwd, L * 0.15);
+      let aim = chest.clone().sub(tip);
+      if (kingHold && n.side) {                     // äußere Köpfe beißen in Godzillas Schultern
+        const at = g.position.clone().addScaledVector(gRight, -n.side * 11).setY(60);
+        tip.lerp(at, ease(Math.min(1, this.hold.t / 0.4)));
+        aim = at.clone().sub(root);
+      }
       if (this.dead) tip.addScaledVector(UP, -L * 0.9);
-      const c1 = root.clone().addScaledVector(UP, L * 0.35).addScaledVector(right, n.side * L * 0.1);
-      const c2 = tip.clone().addScaledVector(fwd, -L * 0.3);
+      const c1 = root.clone().addScaledVector(UP, L * 0.35).addScaledVector(right, n.side * L * 0.12);
+      const c2 = tip.clone().addScaledVector(fwd, -L * 0.3).addScaledVector(UP, L * 0.1);
       n.smooth ??= tip.clone();
-      n.smooth.lerp(tip, 1 - Math.exp(-4 * dt));
-      const aim = chest.clone().sub(n.smooth).normalize();
+      n.smooth.lerp(tip, 1 - Math.exp(-(kingHold ? 8 : 4) * dt));
+      aim.normalize();
       n.pose(root, c1, c2, n.smooth, aim);
-      // Kopf auf die Halsspitze, schaut zum Ziel (Kopf-oben bleibt oben)
       n.head.position.copy(n.tip);
       n.head.up.set(0, 1, 0);
       n.head.lookAt(_a.copy(n.tip).addScaledVector(aim, 10));
       n.mouth.copy(n.tip).addScaledVector(aim, 16 * SCALE);
-      // Strahl
-      if (beam.t > 0) {
-        beam.t -= dt;
-        const dir = _b.copy(chest).add(new THREE.Vector3(Math.sin(this.t * 7 + i) * 3, Math.sin(this.t * 5 + i) * 3, 0)).sub(n.mouth);
-        const len = dir.length(); dir.normalize();
-        const max = this.city ? Math.min(len, this.city.raycast(n.mouth, dir, len)) : len;
-        const end = beam.update(dt, true, n.mouth, dir, max);
-        if (end) this.beamHit(g, end, max < len - 2, dt, i);
-      } else beam.update(dt, false);
+      this.updateBolt(dt, g, i, n.mouth, chest, kingHold && i === 0);
     });
     // Schwänze: im Flug hängen sie nach hinten unten und schwingen, am Boden liegen sie hinter dem Körper
     this.tails.forEach((c, i) => {
       const root = c.root.clone().applyMatrix4(M);
       const L = c.len, side = i ? -1 : 1, ph = c.phase + this.t;
-      let tip = root.clone().addScaledVector(fwd, -L * 0.75).addScaledVector(right, side * L * 0.25 + Math.sin(ph) * 10);
-      tip.y = grounded ? 2 : root.y - L * 0.55 + Math.sin(ph * 1.3) * 6;
+      const tip = root.clone().addScaledVector(fwd, -L * 0.72).addScaledVector(right, side * L * 0.28 + Math.sin(ph) * 10);
+      tip.y = grounded ? 3 : root.y - L * 0.55 + Math.sin(ph * 1.3) * 6;
       const c1 = root.clone().addScaledVector(fwd, -L * 0.3).addScaledVector(UP, -L * 0.1);
-      const c2 = tip.clone().addScaledVector(fwd, L * 0.2).setY(grounded ? 2 : tip.y + L * 0.15);
-      c.pose(root, c1, c2, tip, tip.clone().sub(root));
+      const c2 = tip.clone().addScaledVector(fwd, L * 0.2).setY(grounded ? 3 : tip.y + L * 0.15);
+      c.pose(root, c1, c2, tip, tip.clone().sub(c2));
     });
   }
 
-  beamHit(g, end, blocked, dt, i) {
-    if (Math.random() < dt * 14) this.fx.fire.emit(end.x, end.y, end.z, 1, { spread: 4, up: 3, out: 6, size: 12, life: 0.5 });
-    if (blocked) {                               // ein Gebäude fängt den Strahl ab
-      this.city.damage(end.clone(), 14, 160 * dt, this.group.position, false, end.y);
-      return;
+  // Blitz eines Kopfes: irrt um Godzilla herum (trifft nur ab und zu), Gebäude dazwischen fangen ihn ab; beim
+  // Festhalten trifft der Mittelkopf genau
+  updateBolt(dt, g, i, from, chest, sure) {
+    const b = this.bolts[i];
+    if (b.t <= 0 || this.dead || !this.camera) { b.update(dt, false); return; }
+    b.t -= dt;
+    const W = this.K.wander, ph = this.t + b.wanderPh;
+    const aim = _b.copy(chest);
+    if (!sure) aim.add(new THREE.Vector3(Math.sin(ph * 1.9) * W, Math.sin(ph * 2.7) * W * 0.7 - W * 0.35, Math.cos(ph * 1.5) * W));
+    const dir = aim.clone().sub(from);
+    let len = dir.length(); dir.normalize();
+    if (dir.y < -1e-3 && from.y + dir.y * len < 0) len = from.y / -dir.y;          // bis zum Boden
+    const hitB = this.city ? this.city.raycast(from, dir, len) : len;
+    const end = from.clone().addScaledVector(dir, Math.min(len, hitB));
+    b.update(dt, true, from, end, this.camera);
+    const onG = Math.hypot(end.x - g.position.x, end.z - g.position.z) < 15 && end.y > 4 && end.y < 85;
+    if (onG) { g.takeDamage(this.K.beamDps * dt, end); if (this.hold) g.hurt = 0; }   // festgehalten: kein Zucken, sonst ginge der Kernpuls nicht
+    else if (this.city) this.city.damage(end, 12, 90 * dt, from, false, end.y);
+    if (Math.random() < dt * (onG ? 16 : 10)) {
+      this.fx.fire.emit(end.x, end.y, end.z, 2, { spread: 4, up: 6, out: 10, size: 10, life: 0.5 });
+      if (!onG && end.y < 2) this.fx.dust.emit(end.x, 0, end.z, 2, { spread: 6, up: 4, out: 6, size: 16, life: 2 });
     }
-    const laser = this.kind === 'mecha' && i === 0;
-    g.takeDamage(this.K.beamDps * (laser ? 1.2 : 1) * dt, end);
+  }
+
+  // Ein neues Loch in einem der Flügel (abwechselnd), an einer zufälligen Stelle der Membran
+  addHole() {
+    const skins = this.wingSkins;
+    if (!skins.length || this.holes >= MAX_HOLES * skins.length) return;
+    const o = skins[this.holes % skins.length];
+    const pos = o.geometry.attributes.position, k = Math.floor(Math.random() * pos.count);
+    const slot = o.material.userData.holes.find(h => h.w <= 0);
+    if (!slot) return;
+    slot.set(pos.getX(k), pos.getY(k), pos.getZ(k), (this.mecha ? 6 : 7) + Math.random() * 6);
+    this.holes++;
+    const wp = new THREE.Vector3(pos.getX(k), pos.getY(k), pos.getZ(k)).applyMatrix4(o.matrixWorld);
+    this.fx.fire.emit(wp.x, wp.y, wp.z, 6, { spread: 6, up: 3, out: 8, size: 14, life: 0.8 });
   }
 
   // ---------- Schaden durch Godzilla ----------
@@ -294,7 +391,6 @@ class GhidorahBase {
 
   beamLine(from, to, dps, dt) {
     if (!this.fighting()) return;
-    if (this.hold && this.g && this.g.firing && (this.holdFire = (this.holdFire || 0) + dt) > 1.0) this.release(this.g, 'beam');
     const D = this.K.dmg;
     const head = this.necks.find(n => to.distanceTo(n.mouth) < 14 || to.distanceTo(n.tip) < 12);
     if (head) { this.damage(D.head * dt); return; }
@@ -303,7 +399,10 @@ class GhidorahBase {
 
   damage(n, big) {
     if (!this.fighting()) return;
+    const before = this.hp;
     this.hp = Math.max(0, this.hp - n);
+    // alle 11 Lebenspunkte ein Loch mehr in den Flügeln
+    for (let k = Math.floor((100 - before) / 11); k < Math.floor((100 - this.hp) / 11); k++) this.addHole();
     if (big) { this.military.boom(this.bodyTarget.mesh.position, 0.8); this.events.emit('bossHit', {}); }
     if (this.hp <= 0) this.down();
   }
@@ -312,7 +411,7 @@ class GhidorahBase {
     this.dead = true;
     this.vy = 0;
     if (this.hold) this.release(this.g, 'timeout');
-    for (const b of this.beams) b.t = 0;
+    for (const b of this.bolts) b.t = 0;
     this.onDown();
   }
 
@@ -337,12 +436,11 @@ class GhidorahBase {
       this.group.visible = false;
       for (const c of [...this.necks, ...this.tails]) c.visible = false;
       for (const n of this.necks) n.head.visible = false;
-      for (const b of this.beams) b.update(dt, false);
+      for (const b of this.bolts) b.update(dt, false);
       this.onGone();
     }
   }
 
-  release() {}
   onDown() {}
   onGone() {}
 }
@@ -360,19 +458,7 @@ export class KingGhidorah extends GhidorahBase {
 
   update(dt, g, city) {
     this.city = city;
-    this.g = g;
     super.update(dt, g);
-    // Biss am Boden: steht Godzilla nah davor, schnappt ein Kopf zu
-    if (this.fighting() && this.state === 'land' && this.group.position.y < 4) {
-      const d = Math.hypot(g.position.x - this.group.position.x, g.position.z - this.group.position.z);
-      if (this.biteHead === undefined || this.biteHead === null) {
-        if (d < 110 && (this.biteCD = (this.biteCD || 0) - dt) <= 0) { this.biteHead = 1 + Math.floor(Math.random() * 2); this.biteT2 = 0; }
-      } else {
-        this.biteT2 += dt;
-        if (this.biteT2 > 0.3 && !this.bitten) { this.bitten = true; if (d < 120) g.takeDamage(this.K.biteDmg, g.position); this.events.emit('vineBite', {}); }
-        if (this.biteT2 > 0.9) { this.biteHead = null; this.bitten = false; this.biteCD = 2.5; }
-      }
-    } else this.biteHead = null;
   }
 
   onDown() { this.events.emit('bossDown', {}); }
@@ -384,15 +470,18 @@ export class KingGhidorah extends GhidorahBase {
 export class MechaKingGhidorah extends GhidorahBase {
   constructor(gltf, scene, fx, events, glow, military) {
     super(gltf, scene, fx, events, military, 'mecha');
-    // Fangklammern: zwei Stahlseile vom Brustpanzer zu Godzillas Schultern
-    const mat = new THREE.MeshStandardMaterial({ color: 0x8a8d92, metalness: 0.9, roughness: 0.35 });
+    // Greifhaken: zwei Stahlseile vom Brustpanzer zu einer Klammer um Godzillas Brust
+    const mat = new THREE.MeshStandardMaterial({ color: 0x9a9da2, metalness: 0.9, roughness: 0.3 });
     this.cables = [0, 1].map(() => {
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1, 6).translate(0, 0.5, 0).rotateX(Math.PI / 2), mat);
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1, 6).translate(0, 0.5, 0).rotateX(Math.PI / 2), mat);
       m.visible = false;
       m.frustumCulled = false;
       scene.add(m);
       return m;
     });
+    this.ring = new THREE.Mesh(new THREE.TorusGeometry(15, 1.6, 6, 18).rotateX(Math.PI / 2), mat);
+    this.ring.visible = false;
+    scene.add(this.ring);
   }
 
   start(gz, city) {
@@ -401,44 +490,19 @@ export class MechaKingGhidorah extends GhidorahBase {
   }
 
   update(dt, g) {
-    this.g = g;
     super.update(dt, g);
-    if (!this.fighting()) { for (const c of this.cables) c.visible = false; return; }
-    const d = Math.hypot(g.position.x - this.group.position.x, g.position.z - this.group.position.z);
-    if (!this.hold && this.state === 'fly' && (this.grabT -= dt) <= 0 && d < 230 && g.state !== 'dead') {
-      this.hold = { t: 0 };
-      this.holdFire = 0;
-      g.held = 'vines';
-      this.events.emit('grabStart', {});
-    }
-    if (this.hold) {
-      const h = this.hold;
-      h.t += dt;
-      g.speedCap = 0;
-      g.takeDamage(this.K.grabDps * dt, g.position);
-      g.hurt = 0;
-      if (Math.random() < dt * 3) this.events.emit('shake', 0.25);
-      if (h.t > this.K.grabMax) this.release(g, 'timeout');
-    } else g.speedCap = Infinity;
-    // Seile
+    const on = !!this.hold && this.fighting();
+    this.ring.visible = on;
     this.cables.forEach((c, i) => {
-      c.visible = !!this.hold;
-      if (!this.hold) return;
-      const from = _a.set(i ? -6 : 6, 50, 12).applyMatrix4(this.group.matrixWorld);
-      const to = _b.copy(g.position).add(new THREE.Vector3(i ? -9 : 9, 58, 0).applyAxisAngle(UP, g.heading));
+      c.visible = on;
+      if (!on) return;
+      const to = _b.copy(g.position).setY(52).add(new THREE.Vector3(i ? -13 : 13, 0, 0).applyAxisAngle(UP, g.heading));
+      const from = _a.set(i ? -6 : 6, 50, 14).applyMatrix4(this.group.matrixWorld);
       c.position.copy(from); c.lookAt(to); c.scale.set(1, 1, from.distanceTo(to));
     });
-  }
-
-  release(g, how) {
-    if (!this.hold) return;
-    this.hold = null;
-    if (g) { g.held = null; g.speedCap = Infinity; }
-    this.grabT = this.K.grabEvery * (0.8 + 0.4 * Math.random());
-    this.events.emit('holdFree', { kind: 'grab', how });
-    if (how !== 'timeout') { this.damage(8, true); this.military.boom(this.bodyTarget.mesh.position, 1.0); }
+    if (on) { this.ring.position.copy(g.position).setY(52); this.ring.rotation.y = g.heading; }
   }
 
   onDown() { this.events.emit('finalDown', { title: 'MECHA-KING GHIDORAH STÜRZT AB' }); }
-  onGone() { this.events.emit('finalGone', {}); }
+  onGone() { this.events.emit('finalGone', {}); this.ring.visible = false; for (const c of this.cables) c.visible = false; }
 }

@@ -76,7 +76,7 @@ export const LEVELS = {
     music: { level: ['1991', 'sapporo'], boss: ['1991_boss', 'ghidorah'], final: ['1991_final', 'mecha'] },
     bossGoal: boss => boss.dead ? 'King Ghidorah ist besiegt'
       : 'Atomstrahl auf King Ghidorahs Köpfe – landet er, greif mit Klaue und Schwanz an! Hochhäuser fangen seine Strahlen ab.',
-    finalGoal: () => 'Mecha-King Ghidorah: Atomstrahl auf den Mechanik-Kopf, aus den Fangklammern mit Strahl oder Kernpuls befreien!',
+    finalGoal: () => 'Mecha-King Ghidorah: Atomstrahl auf den Mechanik-Kopf – aus den Greifhaken befreit nur der Kernpuls!',
     win: ['SAPPORO IST GERETTET', 'King Ghidorah und Mecha-King Ghidorah sind besiegt'],
   },
 };

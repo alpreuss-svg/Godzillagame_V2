@@ -88,10 +88,12 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   offenem Maul, Zähne per Spaltenscan, Hauer, Stacheln, ausladende Rankenbeine, glühender Kern), `BI_head`
   (Rankenkopf mit aufgerissenem Maul, zeigt nach +Z). Kern/Saftsack: Material `BI_Glow` mit Zellen-Netz-Textur
   (braucht eine UV-Ebene, sonst fehlen die UVs). Die Ranken selbst baut das Spiel.
-- `blender/ghidorah.py` – King Ghidorah und Mecha-King Ghidorah (1991), nur starre Teile: `GH_body`/`MGH_body`
-  (goldene Schuppen per Vertexfarbe bzw. Chrom mit Brustpanzer, Schulterplatten, Beinringen), `GH_wing`/`MGH_wing`
-  (linker Flügel, Gelenk im Ursprung: Arm, vier Finger, Membran mit gebogtem Hinterrand), `GH_head` (Drachenkopf mit
-  Hörnerkrone, 1,45-fach), `MGH_head` (mechanischer Mittelkopf mit rotem Visier). Gelenkpunkte `NECK_ROOTS`,
+- `blender/ghidorah.py` – King Ghidorah und Mecha-King Ghidorah (1991) nach Filmbildern des Nutzers, nur starre
+  Teile: `GH_body`/`MGH_body` (goldene Schuppen; Mecha zusätzlich Chrom-Brustpanzer, Gürtel, Stiefel), `GH_wing`
+  (riesiger Fledermausflügel: Arm, sechs Finger mit Krallen, Membran mit stark gebogtem Hinterrand), `MGH_wing`
+  (Nabe, fünf Holme mit roten Lichtern und Antennenspitzen, Gitterplatten `MGH_Mesh` mit Lochblech-Textur),
+  `GH_head` (zwei lange Hörner, Stachelkrone, Wangenstacheln), `MGH_head` (Silberplatten, grüne Augen),
+  `GH_tailtip` (Stachelbüschel) und `MGH_clamp` (Greifzange) für die Schwanzenden. Gelenkpunkte `NECK_ROOTS`,
   `TAIL_ROOTS`, `WING_ROOT` müssen zu ghidorah.js passen. Vorschau setzt beide mit Röhren als Hälsen zusammen.
 - `vendor/three/` – Three.js 0.170.0 (build + GLTFLoader, BufferGeometryUtils, SkeletonUtils), per Importmap.
 - `assets/models/godzilla.glb`, `city.glb`, `units.glb`, `biollante.glb`, `ghidorah.glb` – aktuelle Exporte (Monster
@@ -160,14 +162,18 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   schmilzt er, danach trifft der Strahl mit 8/s. Hochhaus-Falle wirkt weiter.
 - `js/chain.js` – biegsame Kette (Schlauch mit 10 Knochen, folgt einer Bezierkurve; optional Kopf an der Spitze und
   Vertexfarben mit Querringen) für Biollantes Ranken und Ghidorahs Hälse und Schwänze.
-- `js/ghidorah.js` – 1991: `KingGhidorah` (Boss-Rolle wie die Super-X) und `MechaKingGhidorah` (Endgegner-Rolle wie
-  Biollante). Rumpf + Flügel (schlagen um das Schultergelenk) + 3 Hälse und 2 Schwänze als Ketten, Köpfe sitzen auf
-  den Halsspitzen und schauen zu Godzilla. Fliegt in ~75 m Höhe im Kreis (weicht Hochhäusern aus), landet alle ~22 s
-  für ~10 s (nur dann treffen Klaue und Schwanz). Gravitationsstrahlen (goldene `Beam`s ohne Licht) aus einem Maul,
-  ab und zu aus allen dreien; Gebäude dazwischen fangen sie ab (`city.raycast`). Am Boden beißt ein Kopf zu.
-  Strahl auf Kopf 6/s, Körper 4/s. Mecha: gepanzert (2,5/s), Mittelkopf feuert einen orangeroten Laser, Fangklammern
-  an Stahlseilen halten Godzilla fest (`g.held`), nur Atomstrahl (1 s) oder Kernpuls befreien (kostet Mecha 8).
-  Absturz → `bossCrash` bzw. `finalGone`.
+- `js/ghidorah.js` – 1991: `KingGhidorah` (Boss-Rolle wie die Super-X; bekommt auch Godzillas `attack`-Ereignisse)
+  und `MechaKingGhidorah` (Endgegner-Rolle). Rumpf + Flügel (King schlägt, Mecha fast starr) + 3 Hälse und 2
+  Schwänze als Ketten (Mecha-Mittelhals silbern gegliedert, Schwanzenden aus dem glb), Köpfe auf den Halsspitzen.
+  Fliegt in ~75 m Höhe im Kreis (weicht Hochhäusern aus), landet alle ~20 s für ~11 s in 68 m Abstand (nur dann
+  treffen Klaue und Schwanz). Strahlen sind zuckende Blitze (`Lightning` in effects.js: Band zur Kamera, Nebenarme,
+  gelb-orange, Mecha-Mittelkopf bläulich), die um Godzilla herum irren (`wander`) und nur ab und zu treffen; daneben
+  schlagen sie in Boden und Gebäude ein, Gebäude dazwischen fangen sie ab. Flügellöcher: alle 11 verlorenen
+  Lebenspunkte ein Loch (`holeMaterial`: Shader verwirft gezackte Kreise, verkohlter, glühender Rand; max. 8 je
+  Flügel). Griffe (Godzilla `held`, nur der Kernpuls befreit, kostet den Gegner 6 bzw. 8; Sicherheits-Zeitgrenze):
+  King gelandet – die äußeren Köpfe beißen in Godzillas Schultern, der Mittelkopf feuert aus nächster Nähe; Mecha –
+  Greifhaken an zwei Stahlseilen mit Klammer um die Brust. Strahl auf Kopf 6/s, Körper 4/s (Mecha 4/2,5).
+  Absturz → `bossCrash` bzw. `finalGone`. Die Blitzbänder brauchen `camera` (setzt main.js).
 - `js/biollante.js` – Endgegner 1989, startet 7 s nach dem Absturz der Super-X2. **Rosenform** wächst aus dem Fluss
   (steht fest, 6 Ranken), **Bestienform** (8 längere Ranken, kriecht mit 5 m/s auf Godzilla zu und walzt Gebäude nieder).
   Ranken = Schlauch mit 10 Knochen (`SkinnedMesh`), die Kette folgt jedes Bild einer Bezierkurve (Ruhe: S-Bogen nach

@@ -84,7 +84,7 @@ if 'ghidorah' in WHAT:
     common.export_glb(os.path.join(OUT, 'ghidorah.glb'), objs)
     if PREVIEW:
         ghidorah.layout_preview(objs)
-        common.preview(os.path.join(PRE, 'ghidorah.png'), target=(0, 0, 60), dist=420, elev=12, azim=-80, color='VERTEX')
-        common.preview(os.path.join(PRE, 'ghidorah_king.png'), target=(-70, 10, 62), dist=230, elev=14, azim=-65, color='VERTEX')
-        common.preview(os.path.join(PRE, 'ghidorah_mecha.png'), target=(70, 10, 62), dist=230, elev=14, azim=-65, color='VERTEX')
-        common.preview(os.path.join(PRE, 'ghidorah_heads.png'), target=(-70, -14, 92), dist=120, elev=10, azim=-70, color='VERTEX')
+        common.preview(os.path.join(PRE, 'ghidorah.png'), target=(0, 10, 70), dist=520, elev=10, azim=-90, color='VERTEX')
+        common.preview(os.path.join(PRE, 'ghidorah_king.png'), target=(-80, 10, 70), dist=300, elev=10, azim=-75, color='VERTEX')
+        common.preview(os.path.join(PRE, 'ghidorah_mecha.png'), target=(80, 10, 70), dist=300, elev=10, azim=-90, color='VERTEX')
+        common.preview(os.path.join(PRE, 'ghidorah_mecha_side.png'), target=(80, 10, 70), dist=280, elev=14, azim=-35, color='TEXTURE')
