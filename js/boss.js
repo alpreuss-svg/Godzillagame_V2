@@ -18,7 +18,7 @@ const SALVO_DAMAGE = 2;          // Raketen der Super-X2 (betäuben nicht)
 const _v = new THREE.Vector3(), _w = new THREE.Vector3(), _d = new THREE.Vector3();
 
 export class SuperX {
-  constructor(units, scene, fx, events, military, model = 'U_superx', lamp = [5.5, -1, 13]) {
+  constructor(units, scene, fx, events, military, models = null, model = 'U_superx', lamp = [5.5, -1, 13]) {   // models: Monster-Modelle (hier unbenutzt)
     this.scene = scene;
     this.fx = fx;
     this.events = events;
@@ -255,7 +255,7 @@ const MIRROR = [0, 1, 16.6];       // Spiegelmitte im Modell
 
 export class SuperX2 extends SuperX {
   constructor(units, scene, fx, events, military) {
-    super(units, scene, fx, events, military, 'U_superx2', [3.2, -1.6, 12.5]);
+    super(units, scene, fx, events, military, null, 'U_superx2', [3.2, -1.6, 12.5]);
     this.stun = false;
     this.salvoText = 'RAKETENSALVE!';
     this.heat = 0;
