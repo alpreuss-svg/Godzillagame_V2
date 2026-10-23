@@ -205,7 +205,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   auf Godzilla zurück (4 Leben/s, ohne Zurückzucken), glüht mit der Hitze auf; nach 4 s Strahl (`MELT`, kühlt 0,25/s ab)
   schmilzt er, danach trifft der Strahl mit 8/s. Hochhaus-Falle wirkt weiter.
 - `js/chain.js` – biegsame Kette (Schlauch mit 10 Knochen, folgt einer Bezierkurve; optional Kopf an der Spitze und
-  Vertexfarben mit Querringen, `ringColor` für eigene Ringfarbe, `spots` für Flankenflecken je Glied) für Biollantes
+  Vertexfarben mit Querringen, `ringColor` für eigene Ringfarbe, `spots` für Flankenflecken je Glied, `bulge` für gewölbte Glieder, `cap` für eine Spitze am offenen Ende; bei Ringen
+  genug Querschnitte, damit jeder Ring sichtbar ist) für Biollantes
   Ranken, Ghidorahs Hälse und Schwänze, Battras und Mothras Larve, Destoroyahs Schwanz. In moths.js bewegt `Crawler`
   beide Larvenkörper (Kette folgt der Kopfspur wie eine Schlange).
 - `js/ghidorah.js` – 1991: `KingGhidorah` (Boss-Rolle wie die Super-X; bekommt auch Godzillas `attack`-Ereignisse)
@@ -347,6 +348,9 @@ Server starten (`tools\serve.ps1`, auch als `.claude/launch.json` für die Brows
 Renderer mit `preserveDrawingBuffer`; `game.step(dt)` rechnet einen Frame von Hand (auch wenn das Fenster verborgen ist
 und `requestAnimationFrame` pausiert), Tasten lassen sich per `dispatchEvent(new KeyboardEvent('keydown', {code}))` simulieren.
 `game.manual = true` hält die eigene Schleife an, damit Screenshots genau den von Hand gerechneten Stand zeigen.
+Bilderbogen der Monster: `tools/shoot.js` (`studio()` blendet Stadt, Regen und Nebel aus und setzt Studiolicht,
+`shoot(name, titel, objekt, größe)` rendert drei Ansichten nebeneinander und schickt sie als JPEG per POST an einen
+lokalen Empfänger auf Port 8124, der sie nach `tools/previews/monster/` schreibt).
 
 ## Stand und Fahrplan
 Level „Tokio 1984 – Die Rückkehr“, „Osaka 1989“ (Super-X2, dann Biollante in zwei Stufen) und „Sapporo 1991“

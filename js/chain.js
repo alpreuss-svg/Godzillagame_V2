@@ -1,6 +1,7 @@
 // Biegsame Kette: Schlauch mit Knochenkette (SkinnedMesh), der jedes Bild einer Bezierkurve von der Wurzel zur Spitze
 // folgt. Benutzt für Biollantes Ranken und Ghidorahs Hälse und Schwänze.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const SEG = 10;
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _d = new THREE.Vector3();
@@ -21,15 +22,27 @@ export function segDist(p, a, b) {
 export class Chain {
   // head: optionales Objekt an der Spitze (dreht mit dem letzten Knochen); color: [r, g, b] (linear) für Materialien
   // mit Vertexfarben, rings: dunkle Querringe (Schuppen) entlang der Kette
-  // ringColor: eigene Farbe der Querringe (sonst abgedunkelt), spots: Farbe von Flecken an den Flanken je Glied
-  constructor(scene, mat, len, r0, r1, { head = null, color = null, rings = 0, ringColor = null, spots = null } = {}) {
+  // ringColor: eigene Farbe der Querringe (sonst abgedunkelt), spots: Farbe von Flecken an den Flanken je Glied,
+  // bulge: Glieder wölben sich zwischen den Ringen (Larven), cap: Spitze am Ende (sonst offenes Rohr)
+  constructor(scene, mat, len, r0, r1, { head = null, color = null, rings = 0, ringColor = null, spots = null, bulge = 0, cap = false } = {}) {
     this.len = len;
     const l = len / SEG;
-    const geo = new THREE.CylinderGeometry(r1, r0, len, 10, SEG * 3, true).translate(0, len / 2, 0);
+    const rows = rings ? Math.max(SEG * 3, rings * 6) : SEG * 3;          // genug Querschnitte, damit jeder Ring sichtbar ist
+    let geo = new THREE.CylinderGeometry(r1, r0, len, 12, rows, true).translate(0, len / 2, 0);
+    if (cap) {                                                            // stumpfe Spitze am Ende (Larvenschwanz)
+      const tipGeo = new THREE.ConeGeometry(r1, r1 * 2.2, 12, 3, true).translate(0, len + r1 * 1.1, 0);
+      geo = mergeGeometries([geo.toNonIndexed(), tipGeo.toNonIndexed()]);
+    }
     const pos = geo.attributes.position, n = pos.count;
+    if (bulge && rings) for (let i = 0; i < n; i++) {
+      const y = pos.getY(i);
+      if (y > len) continue;
+      const k = 1 + bulge * Math.sqrt(Math.abs(Math.sin(y * Math.PI * rings / len)));
+      pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * k);
+    }
     const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
-      const y = Math.max(0, pos.getY(i) / l), b = Math.min(SEG - 1, Math.floor(y)), f = y - b;   // max: Rundungsfehler an der Wurzel
+      const y = Math.min(SEG, Math.max(0, pos.getY(i) / l)), b = Math.min(SEG - 1, Math.floor(y)), f = y - b;   // max: Rundungsfehler an der Wurzel
       si[i * 4] = b; si[i * 4 + 1] = b + 1; sw[i * 4] = 1 - f; sw[i * 4 + 1] = f;
     }
     geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4));
@@ -40,7 +53,7 @@ export class Chain {
         const s = Math.sin(pos.getY(i) * Math.PI * rings / len), ring = rings && Math.abs(s) < 0.2;
         let c = color;
         if (ring) c = ringColor || color.map(x => x * 0.6);
-        else if (spots && Math.abs(s) > 0.8 && Math.abs(pos.getX(i)) > 0.75 * Math.hypot(pos.getX(i), pos.getZ(i))) c = spots;
+        else if (spots && Math.abs(s) > 0.93 && Math.abs(pos.getX(i)) > 0.9 * Math.hypot(pos.getX(i), pos.getZ(i))) c = spots;
         col.set(c, i * 3);
       }
       geo.setAttribute('color', new THREE.BufferAttribute(col, 3));

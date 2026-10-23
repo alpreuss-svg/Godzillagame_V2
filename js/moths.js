@@ -65,7 +65,7 @@ export class Battra {
     let skin = null;
     gltf.scene.getObjectByName('BT_head').traverse(o => { if (o.isMesh && !skin) skin = o.material; });
     this.crawl = new Crawler(scene, skin, gltf.scene.getObjectByName('BT_head'), LARVA_LEN, LARVA_R,
-      { color: [0.022, 0.03, 0.045], rings: 24, ringColor: [0.4, 0.25, 0.04], spots: [0.6, 0.02, 0.01] });
+      { color: [0.022, 0.03, 0.045], rings: 22, ringColor: [0.4, 0.25, 0.04], spots: [0.6, 0.02, 0.01], bulge: 0.1, cap: true });
     this.head = this.crawl.head;
     this.imago = new Moth(gltf, scene, 'BT', 1.15);
     this.beam = makeBeam(scene, [1.8, 0.2, 0.08], [2.4, 1.0, 0.7]);
@@ -248,7 +248,7 @@ export class Mothra {
     let skin = null;
     gltf.scene.getObjectByName('MO_larva').traverse(o => { if (o.isMesh && !skin) skin = o.material; });
     this.crawl = new Crawler(scene, skin, gltf.scene.getObjectByName('MO_larva'), MO_LARVA.len, MO_LARVA.r,
-      { color: [0.2, 0.055, 0.035], rings: 16, ringColor: [0.07, 0.02, 0.012] });
+      { color: [0.2, 0.055, 0.035], rings: 18, ringColor: [0.07, 0.02, 0.012], bulge: 0.12, cap: true });
     this.cocoonMesh = gltf.scene.getObjectByName('MO_cocoon').clone();
     this.cocoonMesh.visible = false;
     scene.add(this.cocoonMesh);
