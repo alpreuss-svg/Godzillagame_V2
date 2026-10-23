@@ -36,11 +36,15 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   **Überarbeitung nach Figurenbildern des Nutzers:** Arme als eigener Metaball-Körper (`build_arms`, verschmilzt
   nicht mit dem Rumpf; Oberarm ~12 m, Unterarm ~10 m, Ellbogen außen/hinten, Hand mit vier Fingern und gebogenen
   Krallen); Armknochen bewegen nur die Arm-Inseln (`arm_range` in `weight`), nie die Rumpfhaut – vorher zog der
-  Arm einen Hautlappen von der Brust mit. Kopf nach dem Bau um `HEAD_PIVOT` 1,18-fach vergrößert (samt Zähnen und
-  Augen, `P` der Kopfpunkte mitskaliert), kantiger mit Brauenwülsten und hoher, stumpfer Schnauze; kräftiger Hals,
-  breitere Brust mit Brustmuskeln, Schultern schräg zum Nacken; Oberschenkel schlanker (Knie sichtbar), dicke
-  Schienbeine, große Füße mit großen hellen Krallen – die Beingelenke (`P`) sind unverändert, damit die Gang-IK passt.
-  Platten 1,3-fach größer, breiter (Ahornblatt), heller; Haut feiner (Borke statt grober Beulen).
+  Arm einen Hautlappen von der Brust mit; Armwurzel steckt im Rumpf (keine sichtbare Gelenkkugel), Schultermuskel,
+  Oberarm und Unterarm verjüngen sich. Kopf nach dem Bau um `HEAD_PIVOT` vergrößert, aber nur in Länge und Höhe
+  (`HEAD_SCALE` = 1,0/1,15/1,18 – gleichmäßig wirkte er von vorn wie ein Froschkopf), gewölbter Schädel, Brauenwülste,
+  Nasenkuppe, Auge weiter vorn; `P` der Kopfpunkte mitskaliert. Kräftiger Hals, gewölbte Brustmuskeln über rundem
+  Bauch (Bauchrillen nur noch flach in der Mitte), keine Schulterpolster. Oberschenkel nicht schlanker, sondern
+  geformt (breit am Becken, Strecker vorn zum Knie schmaler, Beuger hinten); breite Füße mit vier Zehen (`toe_tips`)
+  und großen, dicken hellen Krallen – die Beingelenke (`P`) sind unverändert, damit die Gang-IK passt.
+  Platten: gelappter Ahornblatt-Umriss (`PLATE_OUTLINE`), dick, hell, zwischen Schultern und Hüfte in voller Größe
+  (reichen bis etwa Kopfhöhe, `PLATE_TOP` 77 in godzilla.js); Haut feiner (Borke statt grober Beulen).
   Blender: Z oben, Godzilla schaut nach −Y (im glTF +Z). Größe ~80 m, Rumpf etwas schlanker als zuerst. Vorbild für
   Schwanz und Platten ist die 1984er Figur (zwei Bilder vom Nutzer): Schwanz ~100 m, wächst tief und ohne Einbuchtung
   aus dem Becken, erstes Viertel fast hüftbreit und hochoval (Ellipsoid-Kette), im zweiten und dritten stark verjüngt,

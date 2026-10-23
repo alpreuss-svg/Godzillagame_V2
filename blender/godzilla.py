@@ -27,7 +27,7 @@ for s, sx in (('L', 1), ('R', -1)):
     P['toe' + s] = (10.8 * sx, -7.6, 1.9)
     # Arme frei vom Körper: Schulter breit, Ellbogen außen und etwas hinten, Unterarm nach vorn (Oberarm ~12 m,
     # Unterarm ~10 m, große Hand) – vorher steckte der Ellbogen im Rumpf und verschmolz mit ihm
-    P['sh' + s] = (10.2 * sx, -5.0, 58.5)
+    P['sh' + s] = (8.8 * sx, -5.0, 58.0)      # Armwurzel steckt im Rumpf: keine sichtbare Gelenkkugel
     P['el' + s] = (16.6 * sx, -2.2, 48.6)
     P['wr' + s] = (17.0 * sx, -11.6, 45.6)
     P['fi' + s] = (16.4 * sx, -16.2, 44.6)
@@ -42,7 +42,7 @@ RAD = {
 for s in 'LR':
     # Beine: Oberschenkel weniger ballonartig, sichtbares Knie, säulenartiges Schienbein, großer Fuß
     RAD.update({'hip' + s: 7.6, 'knee' + s: 5.6, 'ankle' + s: 5.6, 'foot' + s: 5.4, 'toe' + s: 3.9,
-                'sh' + s: 4.6, 'el' + s: 3.7, 'wr' + s: 3.1, 'fi' + s: 2.5})
+                'sh' + s: 4.1, 'el' + s: 3.3, 'wr' + s: 2.7, 'fi' + s: 2.5})
 
 EDGES = [('pelvis', 'belly'), ('belly', 'chest'), ('chest', 'shoulder'), ('shoulder', 'neck0'), ('neck0', 'neck1'),
          ('neck1', 'head0'), ('head0', 'skull'), ('skull', 'snout'), ('neck1', 'jaw0'), ('jaw0', 'chin'),
@@ -101,8 +101,14 @@ def tail_ring(p):
 MB_K = 1.0 / 0.575   # sichtbarer Radius einer einzelnen Metaball-Kugel ~ 0.575 * Radius
 HEAD_EDGES = {('neck1', 'head0'), ('head0', 'skull'), ('skull', 'snout'), ('neck1', 'jaw0'), ('jaw0', 'chin')}
 ARM_PTS = ('sh', 'el', 'wr', 'fi')
+def toe_tips(sx):
+    """Zehenspitzen eines Fußes (sx = +1 links, -1 rechts), breit gefächert."""
+    toe = V(P['toe' + ('L' if sx > 0 else 'R')])
+    return [V((toe.x - sx * (k - 1.5) * 2.5, toe.y - 2.2 + abs(k - 1.5) * 0.9, 1.9)) for k in range(4)]
+
+
 HEAD_PIVOT = V((0, -10.8, 73.6))   # Kopfansatz: der Kopf wird nach dem Bau um diesen Punkt vergrößert
-HEAD_SCALE = 1.18
+HEAD_SCALE = V((1.0, 1.15, 1.18))   # schmal lassen (x), länger und höher – gleichmäßig 1,18 wirkte wie ein Froschkopf
 
 
 def is_arm_edge(a, b):
@@ -144,8 +150,10 @@ def build_arms(target_tris=5200):
                 k = i / n
                 ball(pa.lerp(pb, k), ra + (rb - ra) * k)
         # Oberarmmuskel und Unterarm etwas kräftiger, Hand breit mit vier Fingern
-        ball(V(P['sh' + s]).lerp(V(P['el' + s]), 0.4) + V((0, -1.2, 0)), 4.4)
-        ball(V(P['el' + s]).lerp(V(P['wr' + s]), 0.3), 3.6)
+        # Schultermuskel geht in die Brust über, Oberarm wird zum Ellbogen schmaler, Unterarm zum Handgelenk
+        ball(V(P['sh' + s]).lerp(V(P['el' + s]), 0.2) + V((sx * 1.3, -0.6, 0.6)), 4.3)
+        ball(V(P['sh' + s]).lerp(V(P['el' + s]), 0.5) + V((0, -1.3, 0)), 3.6)
+        ball(V(P['el' + s]).lerp(V(P['wr' + s]), 0.25), 3.2)
         wr, fi = V(P['wr' + s]), V(P['fi' + s])
         fwd = (fi - wr).normalized()
         side = V((1, 0, 0))
@@ -202,7 +210,9 @@ def build_body(target_tris=30000):
     # Kopf: flacher Schädel, lange Schnauze, schwere Brauen, Kaumuskeln, Unterkiefer
     ell((0, -10.5, 72.6), (5.6, 4.6, 4.8))
     ell((0, -13.8, 75.0), (4.5, 5.2, 3.3), rot=(-6, 0, 0))
-    ell((0, -17.8, 74.6), (3.3, 3.4, 2.5), rot=(8, 0, 0))     # stumpfe, hohe Schnauze
+    ell((0, -17.8, 74.6), (2.9, 3.5, 2.5), rot=(8, 0, 0))     # hohe Schnauze, nach vorn schmaler
+    ell((0, -11.8, 76.4), (4.0, 4.6, 2.6))                    # gewölbter Schädel hinter den Brauen
+    ell((0, -19.0, 75.8), (1.7, 1.6, 1.0))                    # Nasenkuppe
     for sx in (1, -1):
         ell((sx * 2.9, -15.2, 76.6), (1.7, 2.6, 1.25))          # schwere Brauenwülste
         ell((sx * 3.9, -12.2, 72.6), (2.3, 3.2, 2.6))           # Kaumuskeln, kantiger Kiefer
@@ -213,9 +223,18 @@ def build_body(target_tris=30000):
     ell((0, -13.6, 72.5), (2.9, 3.0, 0.7), rot=(-4, 0, 0), neg=True)
     # Brust und Oberschenkel kräftiger
     for sx in (1, -1):
-        ell((sx * 5.2, -8.0, 51.5), (5.4, 3.4, 5.6))            # Brustmuskeln
-        ell((sx * 6.6, -2.6, 59.5), (4.4, 4.4, 3.6), rot=(0, sx * 25, 0))   # Schultern, schräg zum Hals (Nackenmuskel)
-        ell((sx * 9.2, 0.5, 25.5), (6.3, 6.3, 8.0), rot=(-15, 0, 0))   # Oberschenkel, schlanker; Knie bleibt sichtbar
+        ell((sx * 5.0, -8.8, 52.5), (5.2, 3.6, 4.4))            # gewölbte Brustmuskeln
+        # Oberschenkel geformt statt als Ballon: breit am Becken, vorn der Strecker zum Knie hin schmaler, hinten der Beuger
+        ell((sx * 9.4, 1.2, 28.5), (7.0, 6.8, 6.2), rot=(-10, 0, 0))
+        ell((sx * 9.8, -2.2, 21.5), (5.6, 5.4, 5.8), rot=(-22, 0, 0))
+        ell((sx * 9.6, 3.6, 23.0), (5.2, 4.6, 5.4))
+        # breiter, flacher Fuß mit vier Zehen
+        foot = V(P['foot' + ('L' if sx > 0 else 'R')])
+        for tip in toe_tips(sx):
+            for j in range(4):
+                e = mb.elements.new(type='BALL'); e.co = foot.lerp(tip, 0.35 + 0.65 * j / 3); e.stiffness = 2.0
+                e.radius = (2.7 - 0.25 * j) * MB_K * 0.8
+    ell((0, -8.2, 40.5), (8.5, 4.0, 8.0))                      # runder Bauch unter der Brust
     # Schwanzwurzel geht ohne Einbuchtung aus dem Becken hervor, ihre Unterseite reicht hinter den Fersen fast zum Boden
     ell((0, 9.5, 17.5), (8.6, 9.5, 8.2), rot=(25, 0, 0))
     return mesh_from_mb(ob, target_tris, 'Godzilla-Körper')
@@ -234,8 +253,8 @@ def skin_detail(bm):
             amp *= 0.45  # Bauch glatter, gerippt
         bump = noise.noise(p * 0.5, noise_basis='VORONOI_F2F1') * 1.2 + noise.noise(p * 1.3) * 0.4   # feinere Borke
         ridge = 0.0
-        if n.y < -0.35 and abs(p.x) < 8 and 28 < p.z < 62:
-            ridge = 0.18 * math.sin(p.z * 1.6)  # Bauchquerfalten
+        if n.y < -0.35 and abs(p.x) < 5.5 and 30 < p.z < 50:
+            ridge = 0.08 * math.sin(p.z * 1.6)  # Bauchquerfalten, nur mittig und flach
         groove = tail_ring(p)                   # Querringe am Schwanz: Wülste mit tiefen Rillen dazwischen
         if groove is not None:
             g, rs = groove
@@ -281,8 +300,11 @@ def add_cone(bm, base, direction, r, h, segs=5):
     return ring + [tip]
 
 
-PLATE_OUTLINE = [(-0.55, 0), (-0.5, 0.16), (-0.66, 0.3), (-0.46, 0.36), (-0.5, 0.54), (-0.3, 0.58), (-0.26, 0.78), (-0.08, 0.8), (0.04, 1.0),
-                 (0.14, 0.8), (0.34, 0.74), (0.28, 0.56), (0.5, 0.48), (0.4, 0.32), (0.56, 0.22), (0.5, 0)]
+# Gelappter Ahornblatt-Umriss wie bei der Figur: drei runde Hauptlappen oben, kleinere seitlich, breite Basis
+PLATE_OUTLINE = [(-0.5, 0.0)] + [
+    (0.52 * k * math.cos(t), 0.4 + 0.6 * k * math.sin(t))
+    for t, k in ((t, 0.7 + 0.3 * math.cos(4 * (t - math.pi / 2)) ** 2)
+                 for t in [math.pi * (0.97 - 0.94 * i / 28) for i in range(29)])] + [(0.5, 0.0)]
 
 
 def add_plate(bm, base, up, fwd, h, thick):
@@ -389,7 +411,7 @@ def build():
     # --- Augen (klein, bernsteinfarben, unter schwerem Brauenwulst)
     eye = V((0.55, 0.32, 0.06))
     for sx in (1, -1):
-        hit = bvh.ray_cast(V((sx * 12, -15.6, 75.6)), V((-sx, 0, 0)), 15)
+        hit = bvh.ray_cast(V((sx * 12, -16.0, 75.4)), V((-sx, 0, 0)), 15)       # Auge weiter vorn unter der Braue
         if hit[0] is not None:
             c = hit[0] - V((sx * 0.25, 0, 0))
             vs = []
@@ -409,11 +431,8 @@ def build():
             tip = fi + off + fwd * 2.6 + V((0, 0, -0.9))
             vs = add_cone(bm, tip + fwd * 0.6, (fwd + V((0, 0, -0.9))).normalized(), 0.55, 2.4, 5)   # gebogene Kralle
             tag(vs, 'hand.' + s, ivory)
-        toe = V(P['toe' + s])
-        for k in range(4):
-            dx = (k - 1.5) * 2.3
-            o = V((toe.x + dx * sx * -1, toe.y - 3.0 + abs(k - 1.5) * 0.8, 1.2))
-            vs = add_cone(bm, o, V((0, -1, -0.3)), 0.85, 2.8, 5)
+        for tip in toe_tips(sx):
+            vs = add_cone(bm, tip + V((0, -1.4, -0.3)), V((0, -1, -0.35)), 1.35, 4.2, 6)   # große, dicke Fußkralle
             tag(vs, 'foot.' + s, ivory)
 
     # --- Rückenplatten (eigenes Material, leuchten im Spiel). Größe nach Metern entlang der Wirbelsäule: am größten
@@ -423,31 +442,35 @@ def build():
     chain, pts, rads, lens = spine_path()
     total = lens[-1]
     peak = lens[3] * 0.4 + lens[4] * 0.6               # zwischen Brust und Bauch
+    s0, s1 = lens[2], lens[4] * 0.3 + lens[5] * 0.7      # Schultern bis kurz vor die Hüfte: volle Größe
 
     def bell(L, w_head, w_tail):
-        w = w_head if L < peak else w_tail
-        return math.exp(-((L - peak) / w) ** 2)
+        if L < s0:
+            return math.exp(-((L - s0) / w_head) ** 2)
+        if L > s1:
+            return math.exp(-((L - s1) / w_tail) ** 2)
+        return 1.0 - 0.08 * math.sin(math.pi * (L - s0) / (s1 - s0))
 
     L = 1.0
     while L < total - 1.5:
-        h = 3.0 + 14.5 * bell(L, 13, 62)      # Kamm am Schwanz bleibt bis zur Spitze sichtbar; groß wie bei der Figur
+        h = 3.0 + 14.0 * bell(L, 9, 50)       # Kamm am Schwanz bleibt bis zur Spitze sichtbar; groß wie bei der Figur
         c, r, T, N = sample_path(L / total)
         up = (N * 0.9 - T * 0.25).normalized()
         base = c + N * (r * 0.96 - 0.4)
-        vs = add_plate(bm, base, up, -T, h, 0.16 + 0.05 * h)
+        vs = add_plate(bm, base, up, -T, h, 0.24 + 0.07 * h)
         plate_verts.append((vs, L / total))
         L += max(2.6, h * 0.5)
     tail_end = lens[chain.index('t5')]                  # Seitenreihen enden nach gut der Hälfte des Schwanzes
     for sx in (1, -1):
         L = 4.0
         while L < tail_end:
-            h = 2.0 + 9.5 * bell(L, 12, 48)
+            h = 2.0 + 11.5 * bell(L, 8, 36)
             c, r, T, N = sample_path(L / total)
             side = V((sx, 0, 0))
             dirn = (N * 0.78 + side * 0.5).normalized()
             base = c + dirn * (r * 0.92 - 0.3) + (-T) * (1.2)
             up = (dirn * 0.9 - T * 0.25).normalized()
-            vs = add_plate(bm, base, up, -T, h, 0.14 + 0.04 * h)
+            vs = add_plate(bm, base, up, -T, h, 0.2 + 0.06 * h)
             plate_verts.append((vs, L / total))
             L += max(3.0, h * 0.6)
     for vs, s in plate_verts:
@@ -468,7 +491,7 @@ def build():
         p = v.co
         k = max(0.0, min(1.0, (p.z - 64.5) / 5.0)) * max(0.0, min(1.0, (-p.y - 7.0) / 3.5))
         if k > 0:
-            v.co = HEAD_PIVOT + (p - HEAD_PIVOT) * (1 + (HEAD_SCALE - 1) * k)
+            v.co = HEAD_PIVOT + (p - HEAD_PIVOT) * (V((1, 1, 1)) + (HEAD_SCALE - V((1, 1, 1))) * k)
     for n in ('skull', 'snout', 'jaw0', 'chin'):
         P[n] = tuple(HEAD_PIVOT + (V(P[n]) - HEAD_PIVOT) * HEAD_SCALE)
     mt = HEAD_PIVOT + (V((0, -19.4, 72.9)) - HEAD_PIVOT) * HEAD_SCALE
