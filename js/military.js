@@ -10,6 +10,8 @@ const TYPES = {
   tank: { model: 'U_tank', hp: 30, speed: 12, range: [170, 300], reload: 3.4, weapon: 'shell' },
   truck: { model: 'U_truck', hp: 25, speed: 16, range: [220, 340], reload: 7.5, weapon: 'missiles' },
   heli: { model: 'U_heli', hp: 18, speed: 34, range: [140, 220], reload: 4.0, weapon: 'rockets', air: true },
+  // Atomtransporter: radioaktive Fracht, schießt nicht, fährt nah heran – zerstört heilt er Godzilla (main.js)
+  nuke: { model: 'U_truck', hp: 30, speed: 13, range: [110, 190], reload: 99, weapon: null },
 };
 const WEAPONS = {
   shell: { speed: 320, damage: 0.45, size: 1.2, color: 0xffc070, homing: 0, trail: false },
@@ -60,6 +62,7 @@ export class Military {
     x = THREE.MathUtils.clamp(x, -this.edge, this.edge);
     z = THREE.MathUtils.clamp(z, -this.edge, this.landZ);
     mesh.add(this.lights(T.air));
+    if (type === 'nuke') mesh.add(this.cargo());
     if (T.air) {
       mesh.position.set(x, 45 + Math.random() * 15, z);
       u.rotor = this.rotor.clone();
@@ -99,6 +102,21 @@ export class Military {
     return g;
   }
 
+  // Leuchtende radioaktive Ladung auf der Pritsche (additiv, kein echtes Licht); pulsiert in update()
+  cargo() {
+    this.cargoMat ||= new THREE.MeshBasicMaterial({ color: 0x5cffb0, transparent: true, opacity: 0.85, depthWrite: false,
+      blending: THREE.AdditiveBlending, toneMapped: false });
+    this.cargoGeo ||= new THREE.CylinderGeometry(1.1, 1.1, 2.6, 10);
+    const g = new THREE.Group();
+    for (const z of [-1.2, -3.4]) {
+      const m = new THREE.Mesh(this.cargoGeo, this.cargoMat);
+      m.position.set(0, 2.9, z);
+      g.add(m);
+    }
+    g.userData.cargo = true;
+    return g;
+  }
+
   // ---------- Wellen: alle paar Sekunden Verstärkung, je länger Godzilla wütet, desto mehr und gemischter ----------
   updateWaves(dt, gz, rage) {
     this.waveT = (this.waveT ?? 6) - dt;
@@ -106,7 +124,7 @@ export class Military {
     this.wave = (this.wave || 0) + 1;
     const w = this.wave + Math.floor(rage / 40);              // Zerstörung treibt die Eskalation (langsam)
     this.waveT = Math.max(20, 34 - w);
-    const plan = ['tank', 'tank'];
+    const plan = ['tank', 'tank', 'nuke'];             // jede Welle bringt einen Atomtransporter mit
     if (w >= 3) plan.push('truck');
     if (w >= 5) plan.push('heli');
     if (w >= 7) plan.push('tank');
@@ -139,7 +157,11 @@ export class Military {
       else this.drive(u, dt, gz, dist);
       // Feuern, wenn in Reichweite
       u.reload -= dt;
-      if (u.reload <= 0 && dist < u.T.range[1] + 60 && (u.T.air || !u.path.length)) {
+      if (u.type === 'nuke' && Math.random() < dt * 6) {                // radioaktives Glimmen
+        const q = u.mesh.position;
+        this.fx.glow.emit(q.x, q.y + 5, q.z, 1, { spread: 2, up: 4, out: 1, size: 5, life: 0.8, color: [0.4, 1, 0.7] });
+      }
+      if (u.T.weapon && u.reload <= 0 && dist < u.T.range[1] + 60 && (u.T.air || !u.path.length)) {
         u.reload = u.T.reload * (0.8 + Math.random() * 0.4);
         u.burst = u.T.weapon === 'missiles' ? 2 : u.T.weapon === 'rockets' ? 2 : 1;
       }

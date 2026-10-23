@@ -41,7 +41,11 @@ export class MiniMap {
     const ctx = this.g, S = this.c.width;
     ctx.drawImage(this.base, 0, 0);
     ctx.fillStyle = '#ff4a3a';
-    for (const u of military.units) ctx.fillRect(this.px(u.mesh.position.x) - 1.5, this.px(u.mesh.position.z) - 1.5, 3, 3);
+    for (const u of military.units) {
+      ctx.fillStyle = u.type === 'nuke' ? '#5cffb0' : '#ff4a3a';         // Atomtransporter grün
+      const s = u.type === 'nuke' ? 5 : 3;
+      ctx.fillRect(this.px(u.mesh.position.x) - s / 2, this.px(u.mesh.position.z) - s / 2, s, s);
+    }
     if (boss.active) {
       ctx.fillStyle = '#ffd24a';
       ctx.beginPath(); ctx.arc(this.px(boss.mesh.position.x), this.px(boss.mesh.position.z), 4, 0, Math.PI * 2); ctx.fill();

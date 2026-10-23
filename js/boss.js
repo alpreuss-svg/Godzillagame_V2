@@ -266,10 +266,8 @@ export class SuperX2 extends SuperX {
     });
     this.mirrorBase = this.mirrorMat ? this.mirrorMat.emissive.clone() : null;
     // Zurückgeworfener Strahl: gleiche Optik, goldener; ohne eigene Lichter (feste Lichtanzahl)
-    this.reflect = new Beam(scene);
-    this.reflect.layers[0].material.uniforms.uColor.value.setRGB(1.6, 0.7, 0.15);
-    this.reflect.layers[1].material.uniforms.uColor.value.setRGB(2.4, 1.9, 1.0);
-    this.reflect.impact.material.uniforms.uColor.value.setRGB(1.6, 0.9, 0.3);
+    this.reflect = new Beam(scene, { spiral: false, sparks: false });
+    this.reflect.setColors([1.6, 0.7, 0.15], [2.4, 1.9, 1.0], [1.6, 0.9, 0.3]);
     scene.remove(this.reflect.light, this.reflect.mouthLight);
   }
 

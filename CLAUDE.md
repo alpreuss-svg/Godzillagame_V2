@@ -133,7 +133,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Animationsmischung (Einzel-
   animationen werden über idle/walk geblendet, Gewichte summieren sich zu 1), Kombo clawL → clawR → tail (volle
   Körperdrehung; Schaden über die echten Positionen der Schwanzglieder `TAIL_SEG`: dicke Wurzel hart, Spitze schwach,
-  voll nur im 90°-Sektor vorn, seitlich schwächer ohne Schwanzende, hinten kaum, jedes Gebäude einmal), Atomstrahl (Laden 1,1 s, Platten-Shader nach Bind-Pose-Höhe y, Strahl 20 Energie/s), Kernpuls
+  voll nur im 90°-Sektor vorn, seitlich schwächer ohne Schwanzende, hinten kaum, jedes Gebäude einmal), Atomstrahl (Laden 1,3 s: dabei legt er Kopf und Hals in den Nacken und holt Luft (`INHALE_PITCH`, prozedural),
+  mit vollen Platten senkt er den Kopf in 0,3 s (`LOWER_T`) und feuert; Platten-Shader nach Bind-Pose-Höhe y,
+  Strahl 20 Energie/s), Kernpuls
   (30 Energie, Radius 130 m), Stampfer über die Knöchelhöhe. Knochennamen ohne Punkt (`footL`, GLTFLoader).
 - `js/ground.js` – Bodenschäden: `GroundScars` = Schadenskarte über die Stadt (Canvas 1024², ~3 m/px, additiv bemalt,
   max. 4 Uploads/s; R Ruß/Glut, G Staub/Splitt, B Krater/Risse), Boden-Shader `patchGround` liest sie in
@@ -148,7 +150,10 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Godzillas Rumpf (`takeDamage`, Zucken bei Trefferserien, nach 3 s ohne Treffer Erholung 1,5/s). Nachts sichtbar
   durch Scheinwerfer mit Lichtkegel bzw. Suchscheinwerfer und Blinklicht. Godzilla zerstört Einheiten mit allen
   Angriffen; der Atomstrahl erfasst beim Laden die nächste Einheit im vorderen Kegel und folgt ihr (`AIM_*`).
-  Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab.
+  Wracks rauchen 25 s, Hubschrauber stürzen trudelnd ab. **Atomtransporter** (`nuke`, LKW mit leuchtender grüner
+  Fracht, schießt nicht, fährt nah heran, auf der Mini-Map grün): kommt mit jeder Welle und in Bosskämpfen alle 22 s
+  (main.js `supplyT`); zerstört gibt er +18 Leben und +40 Energie – Heilung ohne Rückzug zu heilen Gebäuden
+  (Wunsch des Nutzers). Andere Einheiten heilen 2, ohne Treffer erholt sich Godzilla mit 2,2/s.
 - `js/boss.js` – Super-X: erscheint ab 120 zerstörten Gebäuden (`BOSS_AT` in main.js) mit Kinobalken, neue Wellen
   stoppen. Fliegt über den Hochhäusern an (`ALT_TRAVEL`, sonst blieb sie an Umeda hängen), schwebt dann in 130–190 m
   Abstand auf ~68 m Höhe, weicht Hochhäusern aus (`avoid`; beim Anstoßen kreist sie schneller weiter), feuert nur mit freier Sicht
@@ -165,6 +170,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `js/ghidorah.js` – 1991: `KingGhidorah` (Boss-Rolle wie die Super-X; bekommt auch Godzillas `attack`-Ereignisse)
   und `MechaKingGhidorah` (Endgegner-Rolle). Rumpf + Flügel (King schlägt, Mecha fast starr) + 3 Hälse und 2
   Schwänze als Ketten (Mecha-Mittelhals silbern gegliedert, Schwanzenden aus dem glb), Köpfe auf den Halsspitzen.
+  Hälse schlängeln sich einzeln, schnell und nervös (eigene Frequenzen, ruckartige Blickwechsel `dart`).
   Fliegt in ~75 m Höhe im Kreis (weicht Hochhäusern aus), landet alle ~20 s für ~11 s in 68 m Abstand (nur dann
   treffen Klaue und Schwanz). Strahlen sind zuckende Blitze (`Lightning` in effects.js: Band zur Kamera, Nebenarme,
   gelb-orange, Mecha-Mittelkopf bläulich), die um Godzilla herum irren (`wander`) und nur ab und zu treffen; daneben
@@ -205,7 +211,11 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   (Hochhäuser am Bahnhof im Norden, Ōdōri-Park als Blockreihe quer durch die Stadt, Susukino als `neon`, Hafen;
   King Ghidorah, danach Mecha-King Ghidorah). Endgegner-Ereignisse allgemein: `finalRise`/`finalDown` (mit `title`),
   `finalGone`.
-- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes; `Particles` (ein
+- `js/effects.js` – Strahl und Schockwelle als additive Shader, keine Postprocessing-Passes. Atomstrahl (`Beam`):
+  Kern + Hülle mit nach vorn rasenden Energiepulsen und ausfransendem Rand, zwei rotierende Spiralbänder (Band-Geometrie,
+  im Vertex-Shader um die Achse gewickelt), Funken-Pool `beam.sparks` (main.js aktualisiert ihn), Lichtblitz am Maul,
+  flackernder Einschlag mit wachsendem Druckring; `setColors()` für den goldenen Rückstrahl der Super-X2 (ohne
+  Spiralen/Funken). `Lightning`: Ghidorahs Blitze (dickes Band, vier Nebenarme); `Particles` (ein
   `Points`-Pool, Farbe pro Partikel, Punktgröße auf 18 % der Bildhöhe gedeckelt – große Punkte kosten auf schwachen
   GPUs viel Füllrate): `fx.dust` für Staub und Rauch, `fx.fire` additiv mit Farbverlauf gelb→rot,
   Trümmer (InstancedMesh aus `U_debris0..2`, Schwerkraft, ein Abpraller).

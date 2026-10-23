@@ -8,7 +8,9 @@ const TURN_RATE = 1.1;          // rad/s höchste Drehgeschwindigkeit (~63°/s)
 const TURN_ACCEL = 2.6;         // rad/s² – ein schwerer Körper kommt nur langsam in Drehung und wieder heraus
 const TURN_SPEED = 0.85 / 1.3;  // rad/s, bei dem die Trittanimation (gz_anim: turn, 1,3 s) in Originaltempo läuft
 const BREATH_TURN = 0.45;       // rad/s – Strahl langsam schwenken
-const CHARGE_TIME = 1.1;        // s, Platten laden vom Schwanz zum Hals
+const CHARGE_TIME = 1.3;        // s, Platten laden vom Schwanz zum Hals; dabei schaut er nach oben und holt Luft
+const LOWER_T = 0.3;            // s, danach senkt er den Kopf wieder und feuert
+const INHALE_PITCH = { spine2: 0.1, neck1: 0.24, neck2: 0.28, head: 0.34 };   // rad nach oben bei vollem Luftholen
 const BREATH_PITCH = 0.36;      // rad nach unten, trifft den Boden ~200 m voraus
 const BREATH_COST = 20;         // Energie pro Sekunde
 const AIM_CONE = 0.35, AIM_HOLD = 0.6, AIM_RANGE = 420;   // Zielerfassung: Fangkegel, Haltekegel (rad), Reichweite (m)
@@ -188,6 +190,8 @@ export class Godzilla {
         if (input.pressed('claw') && !held) this.attack(0);
         else if (input.pressed('breath') && this.energy > 10) {
           this.firing = false; this.play('breathUpper'); this.enter('breath');
+          this.inhaleOn = this.charge < 0.5;          // nur bei frischem Aufladen (nicht beim schnellen Nachfeuern)
+          this.lowerT = 0;
           this.events.emit('charge', { dur: CHARGE_TIME * (1 - this.charge) });
         }
         else if (input.pressed('roar') && !held) {
@@ -258,7 +262,7 @@ export class Godzilla {
     else if (this.state !== 'breath') this.energy = Math.min(100, this.energy + ENERGY_REGEN * dt);
     this.hurt = Math.max(0, (this.hurt || 0) - dt * 4);      // Treffer klingen ab
     this.calm = (this.calm || 0) + dt;                      // nach 3 s ohne Treffer erholt er sich
-    if (this.calm > 3 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 1.5 * dt);
+    if (this.calm > 3 && this.state !== 'dead') this.hp = Math.min(100, this.hp + 2.2 * dt);
   }
 
   // ---------- Treffer vom Militär ----------
@@ -358,6 +362,7 @@ export class Godzilla {
     if (!this.firing) {
       this.charge = Math.min(1, this.charge + dt / CHARGE_TIME);
       if (!held) this.finish();
+      else if (this.charge >= 1 && this.inhaleOn && this.lowerT < LOWER_T) this.lowerT += dt;   // Kopf wieder nach vorn
       else if (this.charge >= 1) { this.firing = true; this.events.emit('breath', { on: true }); }
     } else {
       this.energy = Math.max(0, this.energy - BREATH_COST * dt);
@@ -452,9 +457,14 @@ export class Godzilla {
     }
     this.tailLag += (-this.turnVel * 0.35 - this.tailLag) * (1 - Math.exp(-3 * dt));
     // um die echte Senkrechte drehen (der Kopfknochen liegt schräg, seine eigene Achse würde ihn kippen)
+    // Luftholen beim Aufladen: Kopf, Hals und Brust gehen nach oben, bis die Platten voll sind, dann wieder nach vorn
+    const want = this.state === 'breath' && !this.firing && this.inhaleOn
+      ? smooth(this.charge / 0.5) * (1 - smooth(this.lowerT / LOWER_T)) : 0;
+    this.inhale = (this.inhale || 0) + (want - (this.inhale || 0)) * (1 - Math.exp(-10 * dt));
     for (const [name, k, g] of LEAD) {
       const b = this.bones[name];
       this.offset(b, _ax.copy(_Y).applyQuaternion(b.getWorldQuaternion(_wq).invert()), this.lead[g] * k);
+      if (INHALE_PITCH[name] && this.inhale > 0.001) b.quaternion.multiply(_tq.setFromAxisAngle(_X, -this.inhale * INHALE_PITCH[name]));
     }
     // Schwanz: windet sich kräftig von links nach rechts (Welle läuft zur Spitze, wird dort größer), schleift beim
     // Drehen nach und hebt sich in langen Atemzügen vom S-Bogen der Ruhepose (Bild 1) zum steilen J-Bogen (Bild 2)

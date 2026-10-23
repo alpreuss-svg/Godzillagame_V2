@@ -21,13 +21,13 @@ const MAX_HOLES = 8;
 
 const KINDS = {
   king: {
-    hp: 100, alt: 78, range: [150, 210], beamEvery: 3.0, beamDur: 1.8, beamDps: 3.2, trioEvery: 12, wander: 30,
+    hp: 100, alt: 78, range: [150, 210], beamEvery: 2.6, beamDur: 2.0, beamDps: 4.2, trioEvery: 12, wander: 30,
     landEvery: 20, landDur: 11, grabEvery: 14, grabDps: 3.0, grabMax: 6, grabRange: 120,
     dmg: { beam: 4, head: 6, claw: 4, tail: 6, pulse: 8, free: 6 },
     colors: [[1.0, 0.72, 0.18], [1.0, 0.72, 0.18], [1.0, 0.72, 0.18]],
   },
   mecha: {
-    hp: 100, alt: 70, range: [140, 200], beamEvery: 2.6, beamDur: 1.8, beamDps: 3.2, trioEvery: 10, wander: 24,
+    hp: 100, alt: 70, range: [140, 200], beamEvery: 2.3, beamDur: 2.0, beamDps: 4.2, trioEvery: 10, wander: 24,
     landEvery: 26, landDur: 9, grabEvery: 18, grabDps: 2.4, grabMax: 8, grabRange: 230,
     dmg: { beam: 2.5, head: 4, claw: 3, tail: 4.5, pulse: 6, free: 8 },
     colors: [[0.35, 0.6, 1.0], [1.0, 0.72, 0.18], [1.0, 0.72, 0.18]],
@@ -303,7 +303,13 @@ class GhidorahBase {
     this.necks.forEach((n, i) => {
       const root = n.root.clone().applyMatrix4(M);
       const L = n.len, ph = n.phase + this.t;
-      const sway = new THREE.Vector3(Math.sin(ph * 1.1) * 5, Math.sin(ph * 1.7) * 3, Math.cos(ph * 0.9) * 5);
+      // jeder Hals für sich: eigene Frequenzen, schnelles Schlängeln und ruckartige Blickwechsel (wie ein nervöses Tier)
+      n.f ??= [1.6 + Math.random(), 2.1 + Math.random() * 1.4, 1.3 + Math.random()];
+      if ((n.dartT = (n.dartT ?? 0) - dt) <= 0) {
+        n.dartT = 0.35 + Math.random() * 0.9;
+        n.dart = new THREE.Vector3((Math.random() - 0.5) * 22, (Math.random() - 0.4) * 14, (Math.random() - 0.5) * 22);
+      }
+      const sway = new THREE.Vector3(Math.sin(ph * n.f[0]) * 7, Math.sin(ph * n.f[1]) * 4, Math.cos(ph * n.f[2]) * 7).add(n.dart);
       let tip = root.clone().addScaledVector(fwd, L * 0.3).addScaledVector(right, n.side * L * 0.42).addScaledVector(UP, L * 0.68).add(sway);
       if (this.bolts[i].t > 0) tip.addScaledVector(fwd, L * 0.15);
       let aim = chest.clone().sub(tip);
@@ -316,7 +322,7 @@ class GhidorahBase {
       const c1 = root.clone().addScaledVector(UP, L * 0.35).addScaledVector(right, n.side * L * 0.12);
       const c2 = tip.clone().addScaledVector(fwd, -L * 0.3).addScaledVector(UP, L * 0.1);
       n.smooth ??= tip.clone();
-      n.smooth.lerp(tip, 1 - Math.exp(-(kingHold ? 8 : 4) * dt));
+      n.smooth.lerp(tip, 1 - Math.exp(-(kingHold ? 8 : 7) * dt));
       aim.normalize();
       n.pose(root, c1, c2, n.smooth, aim);
       n.head.position.copy(n.tip);
