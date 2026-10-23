@@ -316,13 +316,20 @@ function hookSounds() {
   events.on('cadmium', () => Sound.sfx('hit'));
   events.on('bossHit', () => Sound.sfx('boom', true));
   events.on('mirrorMelt', () => { Sound.sfx('boom', true); Sound.sfx('zap'); });
-  events.on('biollanteRoar', e => Sound.sfx('roar', e.form === 'rose' ? { kind: 'ghidorah', pitch: 0.6 } : { kind: 'deep', pitch: 0.8 }));
+  // Biollante schreit mit den eigenen Aufnahmen (music/bio1…; Rose etwas heller, Bestie tiefer), sonst Synth
+  const bioRoar = () => once('bioRoar', 2, () => {
+    const rose = game.final && game.final.form === 'rose';
+    if (Sound.hasVoice('bio')) Sound.sfx('roar', { kind: 'deep', voice: 'bio', pitch: rose ? 1.08 : 0.92 });
+    else Sound.sfx('roar', rose ? { kind: 'ghidorah', pitch: 0.6 } : { kind: 'deep', pitch: 0.8 });
+  });
+  events.on('biollanteRoar', bioRoar);
+  events.on('biollanteAcid', bioRoar);
   events.on('finalRise', () => Sound.sfx('heavy'));
-  events.on('biollanteBurn', () => Sound.sfx('boom', true));
+  events.on('biollanteBurn', () => { Sound.sfx('boom', true); bioRoar(); });
   events.on('biollanteAcid', () => Sound.sfx('zap'));
   events.on('vineBite', () => once('bite', 0.2, () => Sound.sfx('hit')));
   events.on('vineCut', () => once('cut', 0.2, () => Sound.sfx('whip')));
-  events.on('bindStart', () => Sound.sfx('whip'));
+  events.on('bindStart', () => { Sound.sfx('whip'); bioRoar(); });
   events.on('grabStart', () => { Sound.sfx('heavy'); Sound.sfx('hit'); });
   // King Ghidorah schreit mit den eigenen Aufnahmen (music/kg1…), Mecha-King Ghidorah mit music/mkg1… (fehlen die,
   // mit King Ghidorahs Schreien etwas tiefer)
@@ -335,9 +342,9 @@ function hookSounds() {
   events.on('ghidorahArrive', kgRoar);
   events.on('ghidorahLand', kgRoar);
   events.on('ghidorahHurt', kgRoar);
-  events.on('biteStart', () => { Sound.sfx('hit'); Sound.sfx('roar', { kind: 'deep', pitch: 0.9 }); });
+  events.on('biteStart', () => { Sound.sfx('hit'); bioRoar(); });
   events.on('holdFree', e => { if (e.how !== 'timeout') Sound.sfx('boom', true); });
-  events.on('finalDown', () => Sound.sfx('roar', { kind: 'deep', pitch: 0.6 }));
+  events.on('finalDown', () => { if (LV.final === 'biollante') bioRoar(); });   // Mecha schreit über ghidorahHurt
 }
 
 // Titelbild: Levelliste, Zifferntasten wählen

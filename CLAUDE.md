@@ -210,6 +210,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   auf Spitze 0,95 angehoben, 40 ms ein- und am Ende ausgeblendet.
   King Ghidorah: `music/kg1` … `kg6` (Stimme `voice: 'kg'`), der Reihe nach; Mecha-King Ghidorah: `mkg1` … `mkg4`
   (aus MKG.m4a, drei Schreie; fehlen sie, King Ghidorahs Schreie mit Tonhöhe 0,85, `Sound.hasVoice`);
+  Biollante: `bio1` … `bio6` (aus Bio.m4a: drei kräftige Schreie bio1–3, zwei leise bio4–5; Rose Tonhöhe 1,08,
+  Bestie 0,92) beim Erscheinen, Fesseln, Biss, Saftspucken, Verbrennen und Ende. Feste Reihenfolge nach Dateinummer;
   kg1–kg5 aus KG.m4a (fünf Schreie in einer Tonspur, Schnitte in music/README.md). Er schreit beim Auftauchen, beim
   Landen, bei der Dreifach-Salve, bei schweren Treffern und beim Absturz (`ghidorahArrive/Land/Hurt`, gedrosselt 2,5 s).
 - `js/minimap.js` – Mini-Map oben rechts (Gebäude, Flüsse, Parks, Zerstörung, Godzilla als Pfeil, Militär, Boss).

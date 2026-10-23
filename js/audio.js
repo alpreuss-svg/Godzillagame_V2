@@ -493,19 +493,20 @@ export const Sound = (function () {
     return buf;
   }
   // Eigene Schrei-Aufnahmen aus music/ (bleiben lokal wie die Musik): roar1… für Godzilla, kg1… für King Ghidorah,
-  // mkg1… für Mecha-King Ghidorah.
+  // mkg1… für Mecha-King Ghidorah, bio1… für Biollante. Feste Reihenfolge nach Dateinummer.
   // Fehlen sie, schreit der Synthesizer. Die 404-Meldungen beim Suchen sind gewollt.
-  var VOICES = { godzilla: ['roar1', 'roar2', 'roar3'], kg: ['kg1', 'kg2', 'kg3', 'kg4', 'kg5', 'kg6'], mkg: ['mkg1', 'mkg2', 'mkg3', 'mkg4'] };
-  var roarFiles = { godzilla: [], kg: [], mkg: [] }, roarNext = { godzilla: 0, kg: 0, mkg: 0 };
+  var VOICES = { godzilla: ['roar1', 'roar2', 'roar3'], kg: ['kg1', 'kg2', 'kg3', 'kg4', 'kg5', 'kg6'], mkg: ['mkg1', 'mkg2', 'mkg3', 'mkg4'],
+    bio: ['bio1', 'bio2', 'bio3', 'bio4', 'bio5', 'bio6'] };
+  var roarFiles = { godzilla: [], kg: [], mkg: [], bio: [] }, roarNext = { godzilla: 0, kg: 0, mkg: 0, bio: 0 };
   function loadRoarFiles() {
-    Object.keys(VOICES).forEach(function (v) { VOICES[v].forEach(function (n) { loadVoice(v, n); }); });
+    Object.keys(VOICES).forEach(function (v) { VOICES[v].forEach(function (n, i) { loadVoice(v, n, i); }); });
   }
-  function loadVoice(v, n) {                               // erste passende Endung gewinnt
+  function loadVoice(v, n, i) {                               // erste passende Endung gewinnt
     ['ogg', 'mp3', 'm4a', 'wav'].reduce(function (p, ext) {
       return p.then(function (done) {
         if (done) return true;
         return fetch('music/' + n + '.' + ext).then(function (r) { return r.ok ? r.arrayBuffer() : null; })
-          .then(function (ab) { return ab ? ctx.decodeAudioData(ab).then(function (b) { roarFiles[v].push(b); return true; }) : false; })
+          .then(function (ab) { return ab ? ctx.decodeAudioData(ab).then(function (b) { roarFiles[v][i] = b; return true; }) : false; })
           .catch(function () { return false; });
       });
     }, Promise.resolve(false));
@@ -515,7 +516,7 @@ export const Sound = (function () {
   function roar(kind, pitch, voice) {
     kind = ROARS[kind] ? kind : 'godzilla';
     voice = voice || (kind === 'godzilla' ? 'godzilla' : null);
-    var list = voice && roarFiles[voice];
+    var list = voice && roarFiles[voice] && roarFiles[voice].filter(Boolean);
     if (list && list.length) {                              // eigene Aufnahme, der Reihe nach
       var t0 = ctx.currentTime, s0 = ctx.createBufferSource(), g0 = ctx.createGain();
       s0.buffer = list[roarNext[voice]++ % list.length];
@@ -632,7 +633,7 @@ export const Sound = (function () {
   }
 
   return { songs: SONGS, roarBuf: function (k) { init(); return makeRoar(k); }, setVol: setVol, init: init, play: play, stop: stopMusic, sfx: sfxPlay, breath: breath, toggleMute: toggleMute, isMuted: function () { return muted; },
-    hasVoice: function (v) { return !!(roarFiles[v] && roarFiles[v].length); } };
+    hasVoice: function (v) { return !!(roarFiles[v] && roarFiles[v].some(Boolean)); } };
 })();
 
 /* ---------- Musikmanager: eigene Dateien aus music/ haben Vorrang ----------
