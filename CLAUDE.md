@@ -58,6 +58,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `blender/units.py` – Panzer Typ 74, Raketen-LKW, AH-1 (+ Rotor separat), **Super-X**, **Super-X2** (dunkler
   Pfeilrumpf, Triebwerksgondeln, goldener Fire Mirror am Bug, Material `mirror`), Auto, Yamanote-Zug, Frachter,
   Baum, Laterne, Strommast, Trümmer (`U_debris0..2`). Läuft unter Blender 5.2, Vorschau geprüft.
+- `blender/pose_sheet.py` – Bilderbogen von Godzilla aus der fertigen glb (hell, einfarbig wie Modellierton, echte
+  Animationen): `blender -b --factory-startup -P blender/pose_sheet.py` → `tools/previews/sheet_*.png`.
 - `blender/biollante.py` – Biollante nach Bildern vom Nutzer, Metaballs + Rauschrelief + Vertexfarben: `BI_rose`
   (Stamm aus sieben verdrillten Strängen, Wurzeln, hängender Blattkragen, glühender Saftsack, Rose aus sechs Ringen
   runder, gewölbter Blütenblätter mit Zahnkranz-Schlund, ~100 m), `BI_beast` (zottiger Körper, Krokodilkopf mit
@@ -82,7 +84,7 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Ruß-/Rissflecken und ausfallende Fenster überall (damit man den Schaden von jeder Seite sieht), `aFx` (−1 = Schutt,
   Bruchhöhe, Knickwinkel, Knickachse) für das Knicken kippender Türme und verglimmende Glut im Schutt.
 - `js/godzilla.js` – Bewegung nach Himmelsrichtung (dreht träge, geht nur in Blickrichtung), 20 m/s, **Sprint** mit Shift
-  ×1,65 (33 m/s, `SPRINT`), kostet 14 Energie/s, solange lädt nichts nach (sonst 6/s, `ENERGY_REGEN`) – Wunsch des
+  ×1,65 (33 m/s, `SPRINT`), kostet 7 Energie/s, solange lädt nichts nach (sonst 6/s, `ENERGY_REGEN`) – Wunsch des
   Nutzers, Godzilla war ihm zu langsam; Laufanimation läuft dann schneller, Füße bleiben synchron. `heal()`: Leben
   durch Zerstörung (`HEAL` in main.js: Hochhaus 6, mittleres Gebäude 1,5, Haus 0,4, Einheit 1; Leiste blinkt grün). Gebäude bremsen
   erst ab 14 m Höhe (bis 12 / 8 / 4 m/s); die Laufanimation

@@ -14,7 +14,7 @@ const BREATH_COST = 20;         // Energie pro Sekunde
 const AIM_CONE = 0.35, AIM_HOLD = 0.6, AIM_RANGE = 420;   // Zielerfassung: Fangkegel, Haltekegel (rad), Reichweite (m)
 const PULSE_COST = 30;
 const SPRINT = 1.65;            // Sprint (Shift): Tempo-Faktor, kostet Energie und lädt solange nichts nach
-const SPRINT_COST = 14;         // Energie pro Sekunde
+const SPRINT_COST = 7;          // Energie pro Sekunde (14 war dem Nutzer zu viel)
 const ENERGY_REGEN = 6;         // Energie pro Sekunde, wenn weder Strahl noch Sprint
 const CADMIUM_DOWN = 3.5;       // s wehrlos nach einem Kadmium-Treffer
 const CLAW_DAMAGE = 60, TAIL_DAMAGE = 140, PULSE_DAMAGE = 140, BEAM_DPS = 220;   // TAIL_DAMAGE: dickste Stelle, vorn
