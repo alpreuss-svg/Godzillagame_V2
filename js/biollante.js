@@ -43,9 +43,10 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3
 const Y = new THREE.Vector3(0, 1, 0);
 
 // Fangranke: Kette mit Rankenkopf an der Spitze, abreißbar (hp) und vom Strahl erfassbar (target)
+const VINE_MAT = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 });   // grünbraun, geringelt
 class Vine extends Chain {
   constructor(scene, head, mat, len, r0, r1) {
-    super(scene, mat, len, r0, r1, { head });
+    super(scene, VINE_MAT, len, r0, r1, { head, color: [0.075, 0.1, 0.035], rings: 34, ringColor: [0.025, 0.035, 0.012] });
     this.target = { mesh: { position: this.tip }, hp: VINE_HP };
     this.state = 'idle';
     this.t = 0;
@@ -76,6 +77,7 @@ export class Biollante {
     const head = get('BI_head');
     let vineMat = null;
     head.traverse(o => { if (o.isMesh && /Vine/.test(o.material.name)) vineMat = o.material; });
+    vineMat.color.multiplyScalar(2.6);                              // Rankenköpfe nachts nicht schwarz
     this.vines = { rose: [], beast: [] };
     for (const form of ['rose', 'beast']) {
       const F = FORMS[form];
@@ -83,6 +85,7 @@ export class Biollante {
         const h = head.clone();
         h.position.set(0, 0, 0);
         h.rotation.set(0, 0, 0);
+        h.scale.setScalar(1.6);                                     // größere Rankenköpfe mit gut sichtbarem Maul
         const vine = new Vine(scene, h, vineMat, F.vineLen, F.vineR[0], F.vineR[1]);
         vine.rootLocal = new THREE.Vector3(...v.root);
         vine.dirLocal = new THREE.Vector3(...v.dir).normalize();

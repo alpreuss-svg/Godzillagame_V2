@@ -343,6 +343,37 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   Schaden: Klaue 60, Schwanz bis 140 (dickste Stelle, vorn),
   Kernpuls 140 (130 m, Abfall), Strahl 220/s, Stampfer 60 (14 m).
 
+## Zweite Überarbeitungsrunde der Monster (Nutzer-Liste, je fünf Punkte)
+- Biollante: Ranken grünbraun geringelt (eigenes Vertexfarben-Material in biollante.js, nicht dicker), Rankenköpfe
+  1,6-fach und aufgehellt, Rose 1,5-fach (`RS`), sieben sichtbar verdrillte Stammstränge; Bestie massiger, Kopf 1,35-fach
+  (`HC`/`HS`, Zähne und Maulflächen rechnen mit), schwere kurze Beinwülste, nass glänzende Haut (`BI_SkinWet`), Moos
+  und hängende Blätter.
+- King Ghidorah: Halsschuppen als Rauten (`scales` in chain.js), schattierte Flughaut mit stark gebogtem Rand, etwas
+  kräftigerer Rumpf, große Stachelbüschel in zwei Kränzen; Mecha-King: größerer, hellerer Brustpanzer mit Paneelen,
+  breiter Gürtel mit Schnalle, wuchtige Stiefel; Chrom mit weniger Metallanteil.
+- Battra-Larve: leuchtend goldenes langes Horn, Kopf 1,4-fach mit Kragen, goldgesäumte Rautenplatten, Stummelbeine
+  (`Crawler`-Option `legs`, ein InstancedMesh), Dornenkrone am Schwanz (`head` der Kette); Battra-Falter: schmalere
+  Blitze, Körper 1,3-fach, fein gezahnter Rand (`serrate`), größere Augen, Klauen und Zangen.
+- Mothra: Larve mit Halskragen und dunklen dicken Maulhörnern; Kokon länglich mit echten Seidenfaden-Spiralen,
+  leicht durchscheinend, steht aufrecht über dem nächsten Gebäude ab 22 m (wie im Film); Falter mit Facettenaugen
+  (`facet_image`), kräftigen hellen Beinen mit großen gelben Krallen, Flügel mit 0,9 m Stärke.
+- Rodan: feine gewundene Adern, langer S-Hals, große geschwungene Hörner (rote Basis, helle Spitze), Körper 1,3-fach,
+  Zähne im Schnabel (Strahlursprung in kaiju93.js angepasst). Mechagodzilla: aufgesetzte kantige Panzerplatten mit
+  Fugen, schlankere Beine mit Platten, höherer Kopf mit langer Schnauze (Laserursprung angepasst), längere Arme, große
+  Rückendüsen, gegliederter Schwanz (`bulge`, `cap`).
+- Moguera: Panzerschalen mit blauem Kettenbogen über den Kugeln, kräftiger Hals, Kopf mit Kinnschutz, Kamm und
+  Seitenflossen, kleinere Sägescheibe mit Speichen, größere metallisch blaue Bohrer mit Spiralrippe.
+- SpaceGodzilla: Godzillas Platten ausgeblendet, stattdessen Kristallgruppen entlang Rücken und Schwanz, riesige
+  Schulterkristalle (1,6-fach) plus Rückenkristall, großes Stirnhorn, dunkles Karmin mit Querwülsten, Nachtblau, Körper
+  breiter (`root.scale` 1,2/1,1/1,2).
+- Destoroyah: Schuppenpanzer statt Tarnflecken (dunkle Panzer nur an Schultern, Oberschenkeln, Armen), plastische
+  Brustblüte aus acht Blättern, dunkelrote gerippte Flughaut mit dunklem Rand, wuchtigerer Rumpf, große
+  Schulterhornplatten, kräftige Arme mit großen Krallen; Jungtier flach gepanzert, dunkelrot-schwarz, dicke
+  Sichelscheren, große Krone und Zangen, deutlicher beiger Fleck; Flugform kräftiger, Kopf 0,72, Beine mit Krallen,
+  kleine Brustblüte.
+- `horn_tube` (biollante.py): durchgehende, gebogene Hörner als Kegelstümpfe – alle `bent`-Helfer nutzen sie (vorher
+  wirkten aneinandergereihte Spitzkegel zackig).
+
 ## Testen
 Server starten (`tools\serve.ps1`, auch als `.claude/launch.json` für die Browser-Vorschau). Mit `?debug` läuft der
 Renderer mit `preserveDrawingBuffer`; `game.step(dt)` rechnet einen Frame von Hand (auch wenn das Fenster verborgen ist

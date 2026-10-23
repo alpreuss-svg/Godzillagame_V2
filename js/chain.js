@@ -24,11 +24,12 @@ export class Chain {
   // mit Vertexfarben, rings: dunkle Querringe (Schuppen) entlang der Kette
   // ringColor: eigene Farbe der Querringe (sonst abgedunkelt), spots: Farbe von Flecken an den Flanken je Glied,
   // bulge: Glieder wölben sich zwischen den Ringen (Larven), cap: Spitze am Ende (sonst offenes Rohr)
-  constructor(scene, mat, len, r0, r1, { head = null, color = null, rings = 0, ringColor = null, spots = null, bulge = 0, cap = false } = {}) {
+  // scales: Rautenschuppen (Anzahl um den Umfang)
+  constructor(scene, mat, len, r0, r1, { head = null, color = null, rings = 0, ringColor = null, spots = null, bulge = 0, cap = false, scales = 0 } = {}) {
     this.len = len;
     const l = len / SEG;
     const rows = rings ? Math.max(SEG * 3, rings * 6) : SEG * 3;          // genug Querschnitte, damit jeder Ring sichtbar ist
-    let geo = new THREE.CylinderGeometry(r1, r0, len, 12, rows, true).translate(0, len / 2, 0);
+    let geo = new THREE.CylinderGeometry(r1, r0, len, scales ? 20 : 12, rows, true).translate(0, len / 2, 0);
     if (cap) {                                                            // stumpfe Spitze am Ende (Larvenschwanz)
       const tipGeo = new THREE.ConeGeometry(r1, r1 * 2.2, 12, 3, true).translate(0, len + r1 * 1.1, 0);
       geo = mergeGeometries([geo.toNonIndexed(), tipGeo.toNonIndexed()]);
@@ -52,7 +53,12 @@ export class Chain {
       for (let i = 0; i < n; i++) {
         const s = Math.sin(pos.getY(i) * Math.PI * rings / len), ring = rings && Math.abs(s) < 0.2;
         let c = color;
-        if (ring) c = ringColor || color.map(x => x * 0.6);
+        if (scales) {                                                  // Rautenschuppen mit dunklen Fugen
+          const a = Math.atan2(pos.getZ(i), pos.getX(i)), t = pos.getY(i) * Math.PI * rings / len;
+          const q = Math.abs(Math.sin(a * scales + t)) < 0.18 || Math.abs(Math.sin(a * scales - t)) < 0.18;
+          c = q ? (ringColor || color.map(x => x * 0.55)) : color.map(x => x * (1 + 0.1 * Math.sin(a * 3 + t)));
+          if (!q && spots && Math.abs(Math.sin(a * scales + t) * Math.sin(a * scales - t)) > 0.75 && Math.abs(pos.getX(i)) > 0.85 * Math.hypot(pos.getX(i), pos.getZ(i))) c = spots;
+        } else if (ring) c = ringColor || color.map(x => x * 0.6);
         else if (spots && Math.abs(s) > 0.93 && Math.abs(pos.getX(i)) > 0.9 * Math.hypot(pos.getX(i), pos.getZ(i))) c = spots;
         col.set(c, i * 3);
       }

@@ -22,7 +22,7 @@ def mats():
         'yellow': material('MOG_Light', color=(1, 0.85, 0.2), emit=(1, 0.8, 0.2), emit_strength=5),
         'red': material('MOG_Red', color=(0.8, 0.1, 0.06), emit=(1, 0.15, 0.06), emit_strength=2.5),
         'dark': material('MOG_Dark', color=(0.12, 0.13, 0.15), rough=0.6, metal=0.5),
-        'drill': material('MOG_Drill', color=(0.22, 0.27, 0.5), rough=0.2, metal=0.9),
+        'drill': material('MOG_Drill', color=(0.35, 0.45, 0.85), rough=0.15, metal=0.6),
         'crystal': material('SG_Crystal', color=(0.55, 0.45, 1.0), rough=0.1, metal=0.2, emit=(0.5, 0.35, 1.0), emit_strength=1.6),
         'shoulder': material('SG_Shoulder', rough=0.15, metal=0.1, vcol=True),
     }
@@ -90,6 +90,29 @@ def moguera(M):
         for f in {f for v in r['verts'] for f in v.link_faces}:
             f.material_index = kaiju93.ORDER.index('metal'); f.smooth = True
 
+    def shell(center, size, sx):
+        """Silberne Panzerschale über der Kugel: obere Außenhälfte, vorn und hinten offen."""
+        r = bmesh.ops.create_uvsphere(bm, u_segments=48, v_segments=28, radius=1.0)
+        drop = []
+        for v in r['verts']:
+            n = v.co.copy()
+            v.co = V((n.x * size[0], n.y * size[1], n.z * size[2])) + V(center)
+            band = n.z > 0.15 and abs(n.y) < 0.5                        # blauer, gerippter Kettenbogen oben
+            cols[v] = (V(DK) if abs(math.sin(math.atan2(n.y, n.z) * 7)) < 0.22 else V(BL)) if band else V(S2)
+            if n.x * sx < -0.1 or n.z < -0.25 or abs(n.y) > 0.8:
+                drop.append(v)
+        for f in {f for v in r['verts'] for f in v.link_faces}:
+            f.material_index = kaiju93.ORDER.index('metal'); f.smooth = True
+        bmesh.ops.delete(bm, geom=drop, context='VERTS')
+
+    def arch(center, R, sx, n):
+        """Blauer Kettenbogen über die Oberseite der Kugel (gerippte Glieder)."""
+        c = V(center)
+        for k in range(n):
+            a = math.radians(-70 + k * 140 / (n - 1))
+            p = c + V((sx * math.sin(abs(a)) * 0.35 * R, math.sin(a) * R * 0.9, math.cos(a) * R))
+            box(bm, cols, (R * 0.55, R * 0.28, 1.6), p, 'metal', BL if k % 2 == 0 else DK, rot=(math.degrees(-a), 0, 0))
+
     for sx in (1, -1):
         box(bm, cols, (10, 18, 4), (sx * 9, -1, 2), 'metal', S2)                     # Fuß
         tread((8, 15, 1.6), (sx * 9, -1, 4.6), axis='y', n=6)                        # Kette auf dem Fuß
@@ -98,8 +121,10 @@ def moguera(M):
         box(bm, cols, (9.5, 8, 5), (sx * 9, 1, 7.5), 'metal', BR, taper=(0.85, 0.85))  # bronzener Knöchelblock
         box(bm, cols, (8, 9, 12), (sx * 9, 1, 15.5), 'metal', S2, taper=(1.1, 1.05))  # Schienbein
         tread((6, 1.6, 10), (sx * 9, -3.8, 15.5), n=5)
-        pod((sx * 13, 0, 27), (9, 12, 10.5), sx)                                      # große Hüftkugel
-        pod((sx * 15.5, 0, 52), (7, 7.5, 7), sx)                                      # Schulterkugel
+        pod((sx * 13, 0, 27), (9, 12, 10.5), 0)                                       # große Hüftkugel
+        shell((sx * 13, 0, 27), (9.8, 12.8, 11.3), sx)                                # Panzerschale darüber
+        pod((sx * 15.5, 0, 52), (7, 7.5, 7), 0)                                       # Schulterkugel
+        shell((sx * 15.5, 0, 52), (7.7, 8.2, 7.7), sx)
         rod(bm, cols, (sx * 15, -2, 48), (sx * 14.5, -6, 40), 3.0, 3.0, 'metal', S2)  # Arm
         rod(bm, cols, (sx * 14.5, -6, 40), (sx * 14, -11, 34.5), 3.6, 3.4, 'metal', DK)   # Handgelenk für den Bohrer
     box(bm, cols, (15, 14, 14), (0, 0, 27), 'metal', S2, taper=(1.15, 1.0))           # Becken
@@ -115,40 +140,59 @@ def moguera(M):
     for f in {f for v in r['verts'] for f in v.link_faces}:
         f.material_index = kaiju93.ORDER.index('metal'); f.smooth = True
     tread((5, 1.2, 3), (0, -10.4, 41.5), n=3)                                          # Gitter in der Scheibe
-    box(bm, cols, (7, 7, 10), (0, -1, 58), 'metal', S2)                               # Hals
-    tread((4, 1.2, 8), (0, -4.6, 58), n=5)
-    box(bm, cols, (9, 10, 6), (0, -3, 66), 'metal', S2, taper=(0.8, 0.9))             # Kopf
+    box(bm, cols, (9.5, 8.5, 11), (0, -1, 58), 'metal', S2, taper=(0.85, 0.9))        # kräftiger Hals
+    tread((5, 1.4, 9), (0, -5.4, 58), n=6)
+    box(bm, cols, (10, 11, 6.5), (0, -3, 66), 'metal', S2, taper=(0.75, 0.85))        # Kopf
+    box(bm, cols, (7, 3, 2.4), (0, -8, 64.5), 'metal', DK, taper=(0.8, 0.8))         # Kinnschutz
+    box(bm, cols, (1.6, 8, 4), (0, -1, 70), 'metal', S2, taper=(0.4, 0.7))           # Kopfkamm
+    for sx in (1, -1):
+        box(bm, cols, (1.2, 6, 5), (sx * 6, -2, 66.5), 'metal', S2, rot=(0, sx * -20, 0), taper=(0.5, 0.6))   # Seitenflossen
     for sx in (1, -1):
         box(bm, cols, (3.4, 3.6, 1.2), (sx * 3.8, -5, 68.6), 'yellow', Y, rot=(0, sx * 18, sx * -15))   # Visiere
     for f in add_cone(bm, V((0, -1, 69)), V((0, 0.4, 1)), 1.0, 4, 5):                # kleines Horn
         f.material_index = kaiju93.ORDER.index('red')
     # große Sägescheibe auf dem Rücken (Star-Falcon-Teil)
-    rod(bm, cols, (-0.9, 10, 53), (0.9, 10, 53), 13, 13, 'metal', S2, 24)
-    rod(bm, cols, (-1.2, 10, 53), (1.2, 10, 53), 5, 5, 'metal', DK, 16)
-    for k in range(16):
-        a = k * 2 * math.pi / 16
+    rod(bm, cols, (-0.8, 10, 54), (0.8, 10, 54), 9.5, 9.5, 'metal', S2, 24)
+    rod(bm, cols, (-1.2, 10, 54), (1.2, 10, 54), 3.4, 3.4, 'metal', DK, 16)
+    for k in range(6):                                                                 # Speichen und dunkle Löcher
+        a = k * math.pi / 3
+        box(bm, cols, (1.9, 1.4, 1.4), V((0, 10, 54)) + V((0, math.cos(a), math.sin(a))) * 6.2, 'metal', DK)
+    for k in range(20):
+        a = k * 2 * math.pi / 20
         d = V((0, math.cos(a), math.sin(a)))
         t = d.cross(V((1, 0, 0)))
-        for f in add_cone(bm, V((0, 10, 53)) + d * 12.5, (d + t * 0.6).normalized(), 1.4, 3.2, 3):
+        for f in add_cone(bm, V((0, 10, 54)) + d * 9.2, (d + t * 0.7).normalized(), 1.0, 2.6, 3):
             f.material_index = kaiju93.ORDER.index('metal')
+
     fix(bm, {'metal': 'metal', 'dark': 'dark', 'yellow': 'yellow', 'red': 'red'})
     return to_object('MOG_body', bm, cols, M)
 
 
 def drill(M):
+    """Bohrer: metallisch blau glänzender Kegel mit erhabener Spiralrippe (Nase und Hände)."""
     bm = bmesh.new(); cols = {}
-    r = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=4, radius2=0.2, depth=14,
-                              matrix=Matrix.Translation(V((0, -7, 0))) @ Euler((math.radians(90), 0, 0)).to_matrix().to_4x4())
+    L, R = 18, 5.2
+    r = bmesh.ops.create_cone(bm, cap_ends=True, segments=16, radius1=R, radius2=0.25, depth=L,
+                              matrix=Matrix.Translation(V((0, -L / 2, 0))) @ Euler((math.radians(90), 0, 0)).to_matrix().to_4x4())
     for v in r['verts']:
-        cols[v] = V((0.22, 0.27, 0.5))
+        cols[v] = V((0.35, 0.45, 0.85))
     for f in {f for v in r['verts'] for f in v.link_faces}:
-        f.material_index = ORDER.index('drill')
-    for k in range(10):                                                  # Spiralrippen
-        a = k * 1.1
-        t = k / 10
-        p = V((math.cos(a) * 3.6 * (1 - t), -1 - t * 12, math.sin(a) * 3.6 * (1 - t)))
-        for f in add_cone(bm, p, V((math.cos(a), -0.3, math.sin(a))), 0.6, 1.6, 4):
-            f.material_index = ORDER.index('dark')
+        f.material_index = ORDER.index('drill'); f.smooth = True
+    prev = None
+    for k in range(49):                                                  # Spiralrippe
+        t = k / 48
+        a = t * 4 * 2 * math.pi
+        rr = R * (1 - t) + 0.35
+        p = V((math.cos(a) * rr, -t * L * 0.97, math.sin(a) * rr))
+        if prev is not None:
+            d = p - prev
+            q = bmesh.ops.create_cone(bm, cap_ends=False, segments=4, radius1=0.55 * (1 - t) + 0.15, radius2=0.55 * (1 - t) + 0.15,
+                                      depth=d.length, matrix=Matrix.Translation(prev + d / 2) @ d.to_track_quat('Z', 'Y').to_matrix().to_4x4())
+            for v in q['verts']:
+                cols[v] = V((0.55, 0.65, 0.95))
+            for f in {f for v in q['verts'] for f in v.link_faces}:
+                f.material_index = ORDER.index('drill')
+        prev = p
     return to_object('MOG_drill', bm, cols, M)
 
 

@@ -84,6 +84,35 @@ def add_cone(bm, base, direction, r, h, segs=5):
     return faces
 
 
+def horn_tube(bm, pts, r0, r1, segs=6):
+    """Durchgehendes, gebogenes Horn: Ringe an jedem Punkt (r0 -> r1), am Ende spitz. Gibt die Flächen je Abschnitt zurück."""
+    pts = [V(p) for p in pts]
+    n = len(pts) - 1
+    rings, ref = [], None
+    for i, p in enumerate(pts):
+        t = (pts[min(i + 1, n)] - pts[max(i - 1, 0)]).normalized()
+        if ref is None:
+            ref = t.orthogonal().normalized()
+        side = (ref - t * ref.dot(t)).normalized()
+        up = t.cross(side)
+        r = r0 + (r1 - r0) * i / n if i < n else 0.0
+        if i == n:
+            rings.append([bm.verts.new(p)])
+        else:
+            rings.append([bm.verts.new(p + (side * math.cos(2 * math.pi * k / segs) + up * math.sin(2 * math.pi * k / segs)) * r)
+                          for k in range(segs)])
+        ref = side
+    out = [[] for _ in range(n)]
+    cap = bm.faces.new(list(reversed(rings[0])))
+    out[0].append(cap)
+    for i in range(n):
+        a, b = rings[i], rings[i + 1]
+        for k in range(segs):
+            j = (k + 1) % segs
+            out[i].append(bm.faces.new((a[k], a[j], b[0])) if len(b) == 1 else bm.faces.new((a[k], a[j], b[j], b[k])))
+    return out
+
+
 def add_grid(bm, fn, nu, nv):
     """Fläche aus fn(u, v) mit u in -1..1, v in 0..1 (Blätter, Blütenblätter)."""
     rows = [[bm.verts.new(fn(-1 + 2 * i / (nu - 1), j / (nv - 1))) for i in range(nu)] for j in range(nv)]
@@ -131,14 +160,15 @@ def mats():
         'leaf': material('BI_Leaf', color=(0.15, 0.24, 0.12), rough=0.85),
         'mouth': material('BI_Mouth', color=(0.42, 0.07, 0.08), rough=0.6, emit=(0.5, 0.05, 0.05), emit_strength=0.4),
         'teeth': material('BI_Teeth', color=(0.86, 0.8, 0.66), rough=0.5),
-        'vine': material('BI_Vine', color=(0.13, 0.17, 0.11), rough=0.85),
+        'vine': material('BI_Vine', color=(0.3, 0.36, 0.18), rough=0.6),
+        'skinB': material('BI_SkinWet', rough=0.38, metal=0.05, vcol=True),   # Bestie: nass glänzend
     }
 
 
-ORDER = ['skin', 'glow', 'petal', 'leaf', 'mouth', 'teeth', 'vine']
+ORDER = ['skin', 'glow', 'petal', 'leaf', 'mouth', 'teeth', 'vine', 'skinB']
 
 
-def finish(name, me_body, extra_fn, M, skin_fn):
+def finish(name, me_body, extra_fn, M, skin_fn, base=0):
     """Körpermesh mit Rauschrelief und Vertexfarben, dann Zusatzgeometrie (Zähne, Blätter ...) per extra_fn(bm)."""
     bm = bmesh.new(); bm.from_mesh(me_body)
     bpy.data.meshes.remove(me_body)
@@ -150,7 +180,7 @@ def finish(name, me_body, extra_fn, M, skin_fn):
         cols[v] = c
     for f in bm.faces:
         f.smooth = True
-        f.material_index = 0
+        f.material_index = base
     bm.normal_update()
     bvh = BVHTree.FromBMesh(bm)
     extra_fn(bm, bvh)
@@ -188,11 +218,11 @@ def rose(M):
     for s in range(7):
         pts = []
         for z in np.arange(-4, 82, 3.0):
-            a = s * 2 * math.pi / 7 + z * 0.035
+            a = s * 2 * math.pi / 7 + z * 0.06
             r = R(z) * 0.62
             pts.append((math.cos(a) * r, math.sin(a) * r + 1.5, z))
         chain(E, pts, 7.5, 3.4, step=0.45)
-    chain(E, [(0, 1.5, -2), (0, 1.5, 40), (0, 0, 84)], 11, 4.5, step=0.5)
+    chain(E, [(0, 1.5, -2), (0, 1.5, 40), (0, 0, 84), (0, -4, 90)], 11, 4.5, step=0.5)
     # gebeugter Oberteil (Rücken), die Rose schaut nach vorn
     E.append(ell((0, 4, 66), (10, 9, 9)))
     # Wurzeln, die ins Wasser laufen
@@ -203,9 +233,13 @@ def rose(M):
     me = metaball_mesh('BI_rose', E, 14000, res=1.3)
 
     def skin(p, n):
-        bump = noise.noise(p * V((0.25, 0.25, 0.06))) * 1.6 + noise.noise(p * 0.6) * 0.4   # Längsfasern
+        bump = noise.noise(p * V((0.25, 0.25, 0.06))) * 1.0 + noise.noise(p * 0.6) * 0.3   # Längsfasern
+        strand = math.sin(7 * (math.atan2(p.y - 1.5, p.x) - p.z * 0.06))             # sieben verdrillte Stränge
+        bump += strand * 1.3
         k = 0.8 + 0.35 * noise.noise(p * 0.08 + V((3, 3, 3)))
         c = V((0.2, 0.24, 0.14)) * k
+        if strand < -0.55 and p.z > 4:
+            c = c * 0.45                                      # dunkle Fugen zwischen den Strängen
         if p.z < 3:
             c = c.lerp(V((0.1, 0.1, 0.08)), 0.6)          # nass
         return bump * 0.9, c
@@ -228,18 +262,20 @@ def rose(M):
             mat_faces(add_grid(bm, leaf, 5, 6), 'leaf')
         # Stiel und Kelchblätter
         up = V((0, -math.sin(math.radians(38)), math.cos(math.radians(38))))
-        ctr = V((0, -7, 90))
+        ctr = V((0, -9, 94))
+        RS = 1.5                                          # Blüte deutlich größer (thront oben auf dem Stamm)
         right = V((1, 0, 0))
         fwd = up.cross(right).normalized()
         for k in range(7):
             a = k * 2 * math.pi / 7
             rd = right * math.cos(a) + fwd * math.sin(a)
             def sepal(u, v, rd=rd):
-                return ctr - up * 5 + rd * (4 + v * 15) + up * (-v * v * 7) + rd.cross(up) * (u * 4 * math.sin(math.pi * min(1, v + 0.1)))
+                return ctr - up * 5 * RS + rd * (4 + v * 15) * RS + up * (-v * v * 7 * RS) + rd.cross(up) * (u * 4 * RS * math.sin(math.pi * min(1, v + 0.1)))
             mat_faces(add_grid(bm, sepal, 3, 4), 'leaf')
         # Rose: sechs Ringe runder, stark gewölbter Blütenblätter, innen fast senkrecht, außen offen
         rings = [(5, 4.0, 7, 10, 82), (6, 5.5, 9, 12, 72), (7, 7.5, 10, 13, 60), (8, 9.5, 11, 14, 47), (9, 11.5, 11, 15, 33), (10, 13, 10, 14, 18)]
         for ring, (n, r0, L, W, tilt) in enumerate(rings):
+            r0, L, W = r0 * RS, L * RS, W * RS
             for k in range(n):
                 a = k * 2 * math.pi / n + ring * 0.7
                 rd = right * math.cos(a) + fwd * math.sin(a)
@@ -254,49 +290,56 @@ def rose(M):
                         + up * (v * L * math.sin(t) - curl * 0.3 + cup * math.cos(t) * 0.4) + td * w
                 mat_faces(add_grid(bm, petal, 6, 6), 'petal')
         # Schlund mit Zahnkranz in der Blütenmitte
-        rim = [bm.verts.new(ctr + up * 4 + (right * math.cos(a) + fwd * math.sin(a)) * 4.2)
+        rim = [bm.verts.new(ctr + up * 4 * RS + (right * math.cos(a) + fwd * math.sin(a)) * 4.2 * RS)
                for a in np.linspace(0, 2 * math.pi, 14, endpoint=False)]
-        deep = bm.verts.new(ctr - up * 2)
+        deep = bm.verts.new(ctr - up * 2 * RS)
         mat_faces([bm.faces.new((rim[i], rim[(i + 1) % 14], deep)) for i in range(14)], 'mouth')
         for i in range(14):
             a = i * 2 * math.pi / 14
             rd = right * math.cos(a) + fwd * math.sin(a)
-            mat_faces(add_cone(bm, ctr + up * 4.3 + rd * 4.4, -rd * 0.8 + up * 0.5, 0.7, 2.6, 4), 'teeth')
+            mat_faces(add_cone(bm, ctr + (up * 4.3 + rd * 4.4) * RS, -rd * 0.8 + up * 0.5, 0.7 * RS, 2.6 * RS, 4), 'teeth')
 
     return finish('BI_rose', me, extra, M, skin)
 
 
 # ---------------- Bestienform ----------------
 def beast(M):
+    HC, HS = V((0, -30, 77)), 1.35                         # Kopfmitte und Vergrößerung des Kopfes
+    def hp(co):                                            # Punkt im vergrößerten Kopf
+        return HC + (V(co) - HC) * HS
+    def hell(co, size, rot=None, neg=False):
+        return ell(hp(co), tuple(x * HS for x in size), rot, neg)
     E = [
-        ell((0, 6, 36), (30, 27, 30)),            # Hauptkörper, gedrungen
-        ell((0, 10, 14), (38, 34, 16)),           # breite Basis
-        ell((0, 14, 56), (22, 20, 18), (15, 0, 0)),   # Buckel
-        ell((0, -8, 58), (17, 15, 15)),           # Hals/Schultern
-        ell((0, -16, 68), (12, 12, 11)),
+        ell((0, 6, 38), (35, 31, 34)),            # Hauptkörper, massig
+        ell((0, 10, 15), (42, 37, 17)),           # breite Basis
+        ell((0, 14, 60), (26, 23, 21), (15, 0, 0)),   # Buckel
+        ell((0, -8, 60), (20, 17, 17)),           # Hals/Schultern
+        ell((0, -16, 70), (14, 13, 12)),
         # Kopf: flacher Schädel, lange Krokodilschnauze, offenes Maul
-        ell((0, -24, 79), (10.5, 11, 8.5)),
-        ell((0, -40, 80.5), (7, 13.5, 4.2), (-6, 0, 0)),
-        ell((0, -38, 69), (6.2, 13, 3.0), (24, 0, 0)),
-        ell((0, -28, 72), (8, 6, 5)),             # Kiefergelenk
-        ell((0, -39, 75.2), (5.6, 14, 3.4), (8, 0, 0), True),   # Maulhöhle
-        ell((0, -30, 74.5), (6, 5, 3.0), None, True),
+        hell((0, -24, 79), (10.5, 11, 8.5)),
+        hell((0, -40, 80.5), (7, 13.5, 4.2), (-6, 0, 0)),
+        hell((0, -38, 69), (6.2, 13, 3.0), (24, 0, 0)),
+        hell((0, -28, 72), (8, 6, 5)),             # Kiefergelenk
+        hell((0, -39, 75.2), (5.6, 14, 3.4), (8, 0, 0), True),   # Maulhöhle
+        hell((0, -30, 74.5), (6, 5, 3.0), None, True),
     ]
     for sx in (1, -1):
-        E += [ell((sx * 5.5, -27, 85), (3.2, 6, 2.4)),             # Brauenwülste
-              ell((sx * 22, -6, 40), (12, 12, 14))]                # Schultermasse
-        # Beine als ausladende, zum Boden hin dünner werdende Rankenwülste (wie die Figur)
-        chain(E, [(sx * 20, -6, 24), (sx * 36, -18, 12), (sx * 50, -27, 3)], 11, 5.5, step=0.4)
-        chain(E, [(sx * 22, 20, 22), (sx * 40, 28, 9), (sx * 54, 36, 2)], 11, 5.5, step=0.4)
+        E += [hell((sx * 5.5, -27, 85), (3.2, 6, 2.4)),            # Brauenwülste
+              ell((sx * 25, -6, 42), (14, 14, 16))]                # Schultermasse
+        # Beine als schwere, kurze Wülste, die breit auf dem Boden aufliegen
+        chain(E, [(sx * 22, -8, 24), (sx * 34, -16, 11), (sx * 39, -20, 5)], 14, 10, step=0.4)
+        chain(E, [(sx * 24, 20, 22), (sx * 36, 27, 10), (sx * 41, 31, 5)], 14, 10, step=0.4)
     me = metaball_mesh('BI_beast', E, 18000, res=1.25)
 
     def skin(p, n):
         shag = noise.noise(p * 0.35, noise_basis='VORONOI_F2F1') * 2.2 + noise.noise(p * 0.12) * 1.6
-        head = p.y < -20 and p.z > 64
+        head = p.y < -20 and p.z > 62
         k = 0.75 + 0.4 * noise.noise(p * 0.07 + V((7, 1, 2)))
-        c = V((0.15, 0.19, 0.14)) * k
+        c = V((0.15, 0.21, 0.12)) * k
         if n.z > 0.4:
-            c = c.lerp(V((0.22, 0.28, 0.16)), 0.4)            # Moos oben
+            c = c.lerp(V((0.28, 0.36, 0.14)), 0.5)            # Moos oben
+        if noise.noise(p * 0.18 + V((2, 9, 4))) > 0.35:
+            c = c.lerp(V((0.32, 0.4, 0.12)), 0.6)             # hellgrüne Moosflecken
         if head:
             shag *= 0.35
         return shag, c
@@ -315,23 +358,23 @@ def beast(M):
                     return prev[0], h[0]
                 prev, z = h, h[0].z - 0.01
         for i in range(12):
-            y = -30 - i * 1.9
+            y = HC.y + (-30 - i * 1.9 - HC.y) * HS
             for sx in (1, -1):
-                cav = cavity(sx * (4.6 - i * 0.22), y)
+                cav = cavity(sx * (4.6 - i * 0.22) * HS, y)
                 if cav is None:
                     continue
                 top, bot = cav
                 gap = top.z - bot.z
-                mat_faces(add_cone(bm, top + V((0, 0, 0.3)), V((0, -0.2, -1)), 0.7, min(3.2, gap * 0.4) * (1.3 if i % 3 == 0 else 1), 4), 'teeth')
+                mat_faces(add_cone(bm, top + V((0, 0, 0.3)), V((0, -0.2, -1)), 0.8, min(4.2, gap * 0.4) * (1.3 if i % 3 == 0 else 1), 4), 'teeth')
                 mat_faces(add_cone(bm, bot - V((0, 0, 0.3)), V((0, -0.2, 1)), 0.65, min(2.8, gap * 0.35), 4), 'teeth')
         # Hauer vorn am Unterkiefer, nach oben gebogen
         for sx in (1, -1):
-            mat_faces(add_cone(bm, V((sx * 3.4, -47, 68.5)), V((sx * 0.25, -0.35, 1)), 1.3, 9, 6), 'teeth')
+            mat_faces(add_cone(bm, hp((sx * 3.4, -47, 68.5)), V((sx * 0.25, -0.35, 1)), 1.6, 11, 6), 'teeth')
         # Gaumen und Zunge dunkelrot: Flächen in der Maulhöhle
         for f in bm.faces:
-            if f.material_index != 0:
+            if f.material_index != ORDER.index('skinB'):
                 continue
-            c = f.calc_center_median()
+            c = (f.calc_center_median() - HC) / HS + HC          # zurück in Kopfkoordinaten vor der Vergrößerung
             if c.y < -27 and 66 < c.z < 80 and abs(c.x) < 5.8:
                 nz = f.normal.z
                 if (c.z > 75 and nz < -0.2) or (c.z < 75 and nz > 0.2):
@@ -343,11 +386,27 @@ def beast(M):
             d = V((math.cos(a) * math.cos(el), math.sin(a) * math.cos(el) * 0.9 + 0.2, math.sin(el)))
             o = V((0, 8, 40)) + d * 60
             h = bvh.ray_cast(o, (V((0, 8, 40)) - o).normalized(), 70)
-            if h[0] is None or h[0].z < 25 or h[0].y < -22:
+            if h[0] is None or h[0].z < 25 or h[0].y < -24:
                 continue
             mat_faces(add_cone(bm, h[0] - h[1] * 0.4, h[1] + V((0, 0.5, 0.6)), 1.1, 4 + 3 * RNG.random(), 4), 'vine')
+        # hängende Blätter an Schultern, Flanken und Buckel
+        for _ in range(22):
+            a = RNG.uniform(-0.2, math.pi + 0.2)
+            el = RNG.uniform(0.15, 0.8)
+            d = V((math.cos(a) * math.cos(el), math.sin(a) * math.cos(el) * 0.6 + 0.3, math.sin(el)))
+            o = V((0, 8, 40)) + d * 70
+            h = bvh.ray_cast(o, (V((0, 8, 40)) - o).normalized(), 80)
+            if h[0] is None or h[0].z < 20 or h[0].y < -24:
+                continue
+            nrm = V((h[1].x, h[1].y, 0)).normalized() if abs(h[1].x) + abs(h[1].y) > 0.1 else V((1, 0, 0))
+            tan = V((-nrm.y, nrm.x, 0))
+            base, L, W = h[0] - h[1] * 0.5, 14 + 6 * RNG.random(), 7 + 3 * RNG.random()
+            def leaf(u, v, nrm=nrm, tan=tan, base=base, L=L, W=W):
+                w = W * 0.5 * math.sin(math.pi * min(1, 0.12 + v)) * u
+                return base + nrm * (v * L * 0.5) + V((0, 0, -1)) * (v * v * L * 0.8) + tan * w
+            mat_faces(add_grid(bm, leaf, 4, 5), 'leaf')
 
-    return finish('BI_beast', me, extra, M, skin)
+    return finish('BI_beast', me, extra, M, skin, base=ORDER.index('skinB'))
 
 
 # ---------------- Rankenkopf ----------------

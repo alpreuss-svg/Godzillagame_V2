@@ -73,8 +73,8 @@ if 'biollante' in WHAT:
     if PREVIEW:
         biollante.layout_preview(objs)
         common.preview(os.path.join(PRE, 'biollante.png'), color='VERTEX', target=(0, 0, 45), dist=300, elev=12, azim=-80)
-        common.preview(os.path.join(PRE, 'biollante_rose.png'), target=(-70, 0, 55), dist=170, elev=10, azim=-75)
-        common.preview(os.path.join(PRE, 'biollante_beast.png'), target=(60, -10, 50), dist=170, elev=12, azim=-60)
+        common.color_preview(os.path.join(PRE, 'biollante_rose.png'), target=(-70, 0, 60), dist=190, elev=10, azim=-75)
+        common.color_preview(os.path.join(PRE, 'biollante_beast.png'), target=(60, -10, 50), dist=190, elev=12, azim=-60)
         common.preview(os.path.join(PRE, 'biollante_head.png'), target=(0, 0, 30), dist=40, elev=10, azim=-50)
         common.night_preview(os.path.join(PRE, 'biollante_night.png'), target=(0, 0, 45), dist=300, elev=12, azim=-80)
 
@@ -111,7 +111,7 @@ if 'kaiju93' in WHAT:
     if PREVIEW:
         kaiju93.layout_preview(objs)
         common.color_preview(os.path.join(PRE, 'kaiju93_rodan.png'), target=(-90, 0, 40), dist=220, elev=30, azim=-70)
-        common.color_preview(os.path.join(PRE, 'kaiju93_rodan_head.png'), target=(-90, -24, 50), dist=55, elev=10, azim=-40)
+        common.color_preview(os.path.join(PRE, 'kaiju93_rodan_head.png'), target=(-90, -40, 58), dist=60, elev=10, azim=-40)
         common.color_preview(os.path.join(PRE, 'kaiju93_mecha.png'), target=(60, 0, 40), dist=170, elev=8, azim=-70)
         common.color_preview(os.path.join(PRE, 'kaiju93_mecha_front.png'), target=(60, 0, 40), dist=150, elev=5, azim=-90)
 

@@ -209,23 +209,22 @@ export class SpaceGodzilla {
     this.scene = scene; this.fx = fx; this.events = events; this.glow = glow; this.military = military;
     const src = models.godzilla;
     this.root = SkeletonUtils.clone(src.scene);
-    this.root.scale.setScalar(1.08);
+    this.root.scale.set(1.2, 1.1, 1.2);                               // massiger als Godzilla (breiter, dickere Beine)
     this.root.visible = false;
     scene.add(this.root);
     // umfärben nach Filmbildern: dunkles Blau-Violett, rote Brust und roter Bauch, Rückenplatten weiß-rosa wie Kristall
     this.root.traverse(o => {
       if (!o.isMesh) return;
       o.material = o.material.clone();
-      if (/Plates/.test(o.material.name)) { o.material.onBeforeCompile = () => {}; o.material.customProgramCacheKey = () => 'sg-plates';
-        o.material.vertexColors = false;
-        o.material.color.setRGB(1.0, 0.82, 0.88); o.material.emissive.setRGB(0.35, 0.16, 0.22); o.material.roughness = 0.2; o.material.needsUpdate = true; }
+      if (/Plates/.test(o.material.name)) o.visible = false;          // statt Platten wachsen Kristallgruppen aus dem Rücken
       else if (/Body/.test(o.material.name)) {
         o.geometry = o.geometry.clone();                              // eigene Vertexfarben (die Geometrie teilt sonst Godzilla)
         const pos = o.geometry.attributes.position, nor = o.geometry.attributes.normal, col = o.geometry.attributes.color;
         for (let i = 0; i < col.count; i++) {
           const l = Math.sqrt((col.getX(i) + col.getY(i) + col.getZ(i)) / 3 / 0.02);   // Helligkeit der Haut (Relief)
           const y = pos.getY(i), front = nor.getZ(i), chest = front > 0.35 && y > 28 && y < 63 && Math.abs(pos.getX(i)) < 11 - Math.abs(y - 46) * 0.2;
-          const c = chest ? [0.42, 0.045, 0.07] : [0.022, 0.025, 0.06];
+          const ridge = Math.sin(y * 0.9) > 0.55 ? 0.5 : 1;               // Quer-Wülste auf Brust und Bauch
+          const c = chest ? [0.19 * ridge, 0.012 * ridge, 0.026 * ridge] : [0.012, 0.016, 0.042];   // dunkles Karmin / Nachtblau
           col.setXYZ(i, c[0] * l, c[1] * l, c[2] * l);
         }
         o.material.color.setRGB(1.6, 1.6, 1.6); o.material.emissive.setRGB(0.02, 0.01, 0.04);
@@ -252,9 +251,22 @@ export class SpaceGodzilla {
     };
     const big = gltf.scene.getObjectByName('SG_shoulder');            // riesige Schulterkristalle (weiß-rosa, rote Basis)
     big.traverse(o => { if (o.isMesh) o.material.emissive.setRGB(0.3, 0.16, 0.2); });   // leuchten nachts leicht
-    attach('spine2', [12, 60, -4], 1.0, [-0.3, -0.35], big);
-    attach('spine2', [-12, 60, -4], 1.0, [-0.3, 0.35], big);
-    const horn = attach('head', [0, 79, 12], 0.22, [0.7, 0]);          // gelb-oranges Stirnhorn
+    attach('spine2', [12, 62, -6], 1.6, [-0.25, -0.3], big);          // wie im Film völlig überdimensioniert
+    attach('spine2', [-12, 62, -6], 1.6, [-0.25, 0.3], big);
+    attach('spine2', [0, 60, -14], 1.05, [-0.6, 0], big);
+    // Kristallgruppen entlang Rücken und Schwanz (weiß-rosa), werden zum Schwanzende kleiner
+    const pink = crystal.clone();
+    pink.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.setRGB(1.0, 0.85, 0.9); o.material.emissive.setRGB(0.35, 0.16, 0.22); } });
+    attach('spine2', [7, 54, -15], 0.6, [-0.6, -0.4], pink); attach('spine2', [-7, 54, -15], 0.6, [-0.6, 0.4], pink);
+    attach('spine1', [0, 47, -18], 0.75, [-0.7, 0], pink);
+    attach('spine1', [6, 42, -18], 0.5, [-0.8, -0.4], pink); attach('spine1', [-6, 42, -18], 0.5, [-0.8, 0.4], pink);
+    const _w = new THREE.Vector3();
+    ['tail1', 'tail2', 'tail3', 'tail4', 'tail5', 'tail6'].forEach((n, i) => {
+      if (!this.bones[n]) return;
+      this.bones[n].getWorldPosition(_w); this.root.worldToLocal(_w);
+      attach(n, [_w.x, _w.y + 9 - i * 1.3, _w.z], 0.55 - i * 0.07, [-1.0, 0], pink);
+    });
+    const horn = attach('head', [0, 79, 12], 0.45, [0.7, 0]);          // großes gelb-oranges Stirnhorn
     horn.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.setRGB(1, 0.6, 0.15); o.material.emissive.setRGB(0.8, 0.4, 0.05); } });
     this.crystalSrc = crystal;
     this.corona = makeBeam(scene, [1.9, 1.3, 0.4], [2.4, 2.1, 1.2]);

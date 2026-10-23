@@ -13,16 +13,24 @@ const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3
 
 // Larvenkörper: Kette folgt der Spur des Kopfes wie eine Schlange (Battra- und Mothra-Larve)
 class Crawler {
-  constructor(scene, skin, headSrc, len, r, opts) {
+  // headScale: Kopfgröße; legs: {n, mat} Stummelbeinpaare unter dem Körper
+  constructor(scene, skin, headSrc, len, r, opts, { headScale = 1, legs = null } = {}) {
     this.len = len; this.r = r;
     this.body = new Chain(scene, skin, len, r[0], r[1], opts);
     this.head = headSrc.clone();
+    this.head.scale.setScalar(headScale);
     scene.add(this.head);
+    if (legs) {
+      const geo = new THREE.ConeGeometry(1.8, 9, 6).translate(0, 4.5, 0);      // Basis im Ursprung, Spitze nach +Y
+      this.legs = new THREE.InstancedMesh(geo, legs.mat, legs.n * 2);
+      this.legs.frustumCulled = false;
+      scene.add(this.legs);
+    }
     this.trail = [];
     this.visible = false;
   }
 
-  set visible(v) { this.body.visible = this.head.visible = v; }
+  set visible(v) { this.body.visible = this.head.visible = v; if (this.legs) this.legs.visible = v; }
 
   // p/heading: Kopf; sink: wie tief im Boden/Wasser; wig: Schlängeln; pitch: Kopfneigung. Gibt den Kopfpunkt zurück.
   pose(p, heading, sink, wig, pitch) {
@@ -40,6 +48,23 @@ class Crawler {
     const c2 = back(L * 0.66).setY(R[0] * 0.7 - sink);
     const tip = back(L).setY(R[1] - sink);
     this.body.pose(root, c1, c2, tip, tip.clone().sub(c2));
+    if (this.legs) {                                           // Stummelbeine: an den Gliedern seitlich unten, krabbeln mit
+      const P = this.body.pts, m = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+      const n = this.legs.count / 2;
+      for (let i = 0; i < n; i++) {
+        const k = 1 + i * (P.length - 3) / Math.max(1, n - 1), j = Math.floor(k);
+        const at = P[j].clone().lerp(P[j + 1], k - j), fw = P[j + 1].clone().sub(P[j]).setY(0).normalize();
+        const side = new THREE.Vector3(-fw.z, 0, fw.x), rr = R[0] + (R[1] - R[0]) * k / (P.length - 1);
+        for (const sx of [1, -1]) {
+          const wob = Math.sin(this.trail.length * 0.8 + i * 1.3 + sx) * 0.3;
+          const dir = side.clone().multiplyScalar(sx * 0.7).add(fw.clone().multiplyScalar(wob)).add(new THREE.Vector3(0, -1, 0)).normalize();
+          q.setFromUnitVectors(up, dir);
+          m.compose(at.clone().addScaledVector(side, sx * rr * 0.75).setY(Math.max(at.y - rr * 0.45, 1)), q, new THREE.Vector3(1, 1, 1));
+          this.legs.setMatrixAt(i * 2 + (sx > 0 ? 0 : 1), m);
+        }
+      }
+      this.legs.instanceMatrix.needsUpdate = true;
+    }
     this.head.position.copy(root).add(new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading)).multiplyScalar(4));
     this.head.lookAt(_a.copy(this.head.position).add(new THREE.Vector3(Math.sin(heading), pitch, Math.cos(heading))));
     return root;
@@ -64,8 +89,19 @@ export class Battra {
     // Larve: Kette als Körper (dunkel, geringelt), Kopf aus dem glb
     let skin = null;
     gltf.scene.getObjectByName('BT_head').traverse(o => { if (o.isMesh && !skin) skin = o.material; });
+    let gold = null;
+    gltf.scene.getObjectByName('BT_head').traverse(o => { if (o.isMesh && /BT_Gold/.test(o.material.name)) gold = o.material; });
+    const crown = new THREE.Group();                            // Dornenkrone am Schwanzende
+    for (let k = 0; k < 6; k++) {
+      const c = new THREE.Mesh(new THREE.ConeGeometry(1.4, 9, 5).translate(0, 4.5, 0), gold);
+      const a = k * Math.PI / 3;
+      c.position.set(Math.cos(a) * 4, 3, Math.sin(a) * 4);
+      c.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+      crown.add(c);
+    }
     this.crawl = new Crawler(scene, skin, gltf.scene.getObjectByName('BT_head'), LARVA_LEN, LARVA_R,
-      { color: [0.022, 0.03, 0.045], rings: 22, ringColor: [0.4, 0.25, 0.04], spots: [0.6, 0.02, 0.01], bulge: 0.1, cap: true });
+      { color: [0.022, 0.03, 0.045], rings: 22, scales: 4, ringColor: [0.42, 0.27, 0.04], spots: [0.6, 0.02, 0.01], bulge: 0.1, cap: true, head: crown },
+      { headScale: 1.4, legs: { n: 8, mat: new THREE.MeshStandardMaterial({ color: 0x1c2026, roughness: 0.5 }) } });
     this.head = this.crawl.head;
     this.imago = new Moth(gltf, scene, 'BT', 1.15);
     this.beam = makeBeam(scene, [1.8, 0.2, 0.08], [2.4, 1.0, 0.7]);
@@ -250,6 +286,8 @@ export class Mothra {
     this.crawl = new Crawler(scene, skin, gltf.scene.getObjectByName('MO_larva'), MO_LARVA.len, MO_LARVA.r,
       { color: [0.2, 0.055, 0.035], rings: 18, ringColor: [0.07, 0.02, 0.012], bulge: 0.12, cap: true });
     this.cocoonMesh = gltf.scene.getObjectByName('MO_cocoon').clone();
+    this.cocoonMesh.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.9; } });   // seidig, leicht durchscheinend
+    this.cocoonScale = 1.6;
     this.cocoonMesh.visible = false;
     scene.add(this.cocoonMesh);
     this.silk = makeBeam(scene, [1.5, 1.5, 1.45], [2.2, 2.2, 2.1]);
@@ -355,11 +393,11 @@ export class Mothra {
       if (dist < 58 && (this.biteT = (this.biteT || 0) - dt) <= 0) { this.biteT = 4; g.takeDamage(K.biteDmg, gp); this.events.emit('shake', 0.8); }
     } else if (this.state === 'cocoon') {                           // spinnt sich ein: der Kokon wächst über sie
       const k = Math.min(1, this.st / K.cocoon);
-      this.cocoonMesh.scale.setScalar(0.2 + 0.8 * k);
+      this.cocoonMesh.scale.setScalar((0.2 + 0.8 * k) * this.cocoonScale);
       if (Math.random() < 0.6) this.glow.emit(p.x, 12, p.z, 1, { spread: 22, up: 3, out: 2, size: 6, life: 1.5, color: [0.95, 0.95, 0.9] });
       if (k >= 1) { this.state = 'pupa'; this.st = 0; this.crawl.visible = false; }
     } else if (this.state === 'pupa') {                             // Puppenruhe, der Kokon pulsiert
-      this.cocoonMesh.scale.setScalar(1 + 0.04 * Math.sin(this.st * 4));
+      this.cocoonMesh.scale.setScalar((1 + 0.04 * Math.sin(this.st * 4)) * this.cocoonScale);
       if (Math.random() < dt * 4) this.glow.emit(p.x, 20, p.z, 2, { spread: 14, up: 2, out: 3, size: 8, life: 1.5, color: [1, 0.85, 0.4] });
       if (this.st > K.pupa) this.hatch();
     }
@@ -453,8 +491,18 @@ export class Mothra {
     if (this.form === 'larva') {                                    // spinnt sich ein, statt zu sterben
       this.state = 'cocoon'; this.st = 0; this.silk.t = 0;
       if (this.slowT > 0) { this.slowT = 0; if (this.g) this.g.speedCap = Infinity; }
-      this.cocoonMesh.position.copy(this.pos).setY(0);
-      this.cocoonMesh.rotation.y = this.heading;
+      // wie im Film um ein Gebäude gesponnen: das nächste höhere Gebäude, sonst am Boden
+      let best = null, bd = 700;
+      for (const b of (this.city ? this.city.buildings : [])) {
+        if (!b.alive || b.h < 22) continue;
+        const d = Math.hypot(b.x - this.pos.x, b.z - this.pos.z);
+        if (d < bd) { bd = d; best = b; }
+      }
+      this.cocoonScale = best ? Math.max(1.6, best.h / 70) : 1.6;
+      if (best) {                                                    // steht aufrecht über dem Gebäude
+        this.pos.set(best.x, 0, best.z);
+        this.cocoonMesh.position.set(best.x, 42 * this.cocoonScale, best.z); this.cocoonMesh.rotation.set(-Math.PI / 2, 0, 0);
+      } else { this.cocoonMesh.position.copy(this.pos).setY(0); this.cocoonMesh.rotation.set(0, this.heading, 0); }
       this.cocoonMesh.scale.setScalar(0.2); this.cocoonMesh.visible = true;
       this.events.emit('mothraCocoon', {}); this.events.emit('mothraRoar', {});
       return;

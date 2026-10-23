@@ -43,7 +43,7 @@ def mats():
         'mouth': material('GH_Mouth', color=(0.45, 0.08, 0.06), rough=0.6),
         'teeth': material('GH_Teeth', color=(0.9, 0.86, 0.72), rough=0.5),
         'eye': material('GH_Eye', color=(0.9, 0.2, 0.05), emit=(1.0, 0.25, 0.05), emit_strength=3.0),
-        'chrome': material('MGH_Chrome', rough=0.28, metal=0.9, vcol=True),
+        'chrome': material('MGH_Chrome', rough=0.3, metal=0.55, vcol=True),     # weniger Metall: nachts sonst schwarz
         'red': material('MGH_Light', color=(0.9, 0.1, 0.05), emit=(1.0, 0.15, 0.05), emit_strength=4.0),
         'green': material('MGH_Eye', color=(0.1, 0.9, 0.3), emit=(0.2, 1.0, 0.4), emit_strength=5.0),
         'mesh': material('MGH_Mesh', rough=0.5, metal=0.6, img=mesh_image()),
@@ -114,8 +114,9 @@ def rod(bm, cols, a, b, r0, r1, k, col, seg=8):
 
 # ---------------- Rumpf ----------------
 def body(M, mecha=False):
-    E = [ell((0, -1, 51), (10.5, 9, 16), (10, 0, 0)),       # Rumpf, aufrecht, leicht vorgebeugt
-         ell((0, -4, 61), (12, 9, 8.5)),                     # Brust und Schultern
+    E = [ell((0, -1, 51), (11.5, 9.8, 16.5), (10, 0, 0)),   # Rumpf, aufrecht, leicht vorgebeugt
+         ell((0, -4, 61), (13.2, 9.8, 9.2)),                 # Brust und Schultern
+         ell((0, -8, 57), (9.5, 4.5, 7)),                    # gewölbte Brust
          ell((0, -5.5, 44), (8.5, 7, 9)),                    # Bauch
          ell((0, 3, 35), (11, 9.5, 8))]                      # Becken
     for x, y, z in NECK_ROOTS:
@@ -147,25 +148,32 @@ def body(M, mecha=False):
             set_mat(add_cone(bm, V((sx * 10.5 + k * 2.3, -5.5, 1.6)), V((k * 0.25, -1, -0.3)), 1.0, 3.6, 5), 'horn')
         set_mat(add_cone(bm, V((sx * 10.5, 3.5, 1.5)), V((0, 1, -0.3)), 0.9, 2.8, 5), 'horn')
     if mecha:
-        steel, dark = (0.74, 0.74, 0.76), (0.42, 0.42, 0.45)
+        steel, dark = (0.9, 0.9, 0.92), (0.38, 0.38, 0.42)
         # Brustpanzer: gewölbte Schale über Brust und Bauch, Plattenfugen, Gürtel, Mittelgrat, Halskragen
         r = bmesh.ops.create_uvsphere(bm, u_segments=20, v_segments=12, radius=1.0)
         for v in r['verts']:
             d = v.co.copy()
-            v.co = V((d.x * 15.5, d.y * 12.5 - 3.5, d.z * 16.5 + 53))
-            if v.co.y < -13.5:
-                v.co.y = -13.5 + (v.co.y + 13.5) * 0.35                # vorn abgeflacht
-            groove = abs(math.sin(v.co.z * 0.55)) < 0.12 or abs(v.co.x) < 0.8
+            v.co = V((d.x * 17, d.y * 13.5 - 3.5, d.z * 18 + 54))
+            if v.co.y < -14.5:
+                v.co.y = -14.5 + (v.co.y + 14.5) * 0.35                # vorn abgeflacht
+            groove = abs(math.sin(v.co.z * 0.5)) < 0.1 or abs(v.co.x) < 0.7 or abs(abs(v.co.x) - 8) < 0.5
             cols[v] = V(dark) if groove else V(steel)
         set_mat(list({f for v in r['verts'] for f in v.link_faces}), 'chrome')
-        box(bm, cols, (31, 26, 3), (0, -3, 47), 'chrome', dark)                     # Gürtel
+        box(bm, cols, (34, 28, 4.2), (0, -3, 46), 'chrome', dark)                   # breiter Gürtel
+        box(bm, cols, (6, 2, 3.4), (0, -17.4, 46), 'chrome', steel)                 # Gürtelschnalle
+        box(bm, cols, (2, 0.8, 1.2), (0, -18.5, 46), 'red', (1, 0.2, 0.1))
+        for k in range(3):                                                           # erhabene Paneele auf der Brust
+            for sx in (1, -1):
+                box(bm, cols, (6.5, 1.2, 4.2), (sx * 4.2, -16.0 + k * 0.4, 61 - k * 5.2), 'chrome', steel, (0, 0, sx * 8))
         box(bm, cols, (12, 10, 3.5), (0, -4, 70), 'chrome', steel)                  # Halskragen
         for sx in (1, -1):
             box(bm, cols, (5, 6, 2.4), (sx * 6, -15.2, 58), 'chrome', dark, (0, 0, sx * 12))   # Panzerplatten
             box(bm, cols, (0.8, 1.4, 0.8), (sx * 9, -15.6, 52), 'red', (1, 0.2, 0.1))
             # Stiefel: kantige Panzer um die Unterschenkel
-            box(bm, cols, (10, 11, 14), (sx * 10.8, 1.5, 11), 'chrome', steel)
-            box(bm, cols, (10.6, 3, 2.2), (sx * 10.8, -4.5, 17.5), 'chrome', dark)
+            box(bm, cols, (12, 13, 16), (sx * 10.8, 1.5, 11), 'chrome', steel)       # wuchtige Stiefel
+            box(bm, cols, (12.6, 3.4, 2.6), (sx * 10.8, -5.4, 18.5), 'chrome', dark)
+            box(bm, cols, (12.6, 14, 2.4), (sx * 10.8, 1.5, 3.4), 'chrome', dark)    # Sohle
+            box(bm, cols, (1.2, 1.2, 1.2), (sx * 10.8, -5.8, 13), 'red', (1, 0.2, 0.1))
     return to_object(name, bm, cols, M)
 
 
@@ -199,8 +207,9 @@ def wing(M):
                 inward = ((A0 + B0) / 2 - (A1 + B1) / 2)
                 p = p + inward * sag * math.sin(math.pi * v) * u ** 2
                 vert = bm.verts.new(p)
-                k = 0.78 + 0.22 * noise.noise(p * 0.06) - 0.15 * u
-                cols[vert] = V((0.86, 0.6, 0.18)) * k
+                k = 0.7 + 0.18 * noise.noise(p * 0.06) + 0.22 * math.sin(math.pi * v) - 0.2 * u * u
+                c = V((0.86, 0.6, 0.18)).lerp(V((0.62, 0.32, 0.08)), 0.5 * (1 - math.sin(math.pi * v)))
+                cols[vert] = c * k
                 row.append(vert)
             grid.append(row)
         for i in range(nu):
@@ -209,7 +218,7 @@ def wing(M):
                 set_mat([f], 'membrane')
 
     for a, b in zip(tips, tips[1:]):
-        patch(wrist, a, wrist, b, 0.3)
+        patch(wrist, a, wrist, b, 0.45, 8, 6)                  # stark gebogter Hinterrand
     patch(wrist, tips[-1], elbow, body_pt, 0.22)
     patch(elbow, body_pt, root, body_pt * 0.4, 0.0, 3, 3)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
@@ -332,11 +341,12 @@ def tail_tip(M):
     """Stachelbüschel am Schwanzende (zeigt nach +Z)."""
     bm = bmesh.new()
     cols = {}
-    for k in range(9):
-        a = k * 2 * math.pi / 9
-        d = V((math.cos(a) * 0.7, math.sin(a) * 0.7, 1)).normalized()
-        set_mat(add_cone(bm, V((math.cos(a) * 1.2, math.sin(a) * 1.2, 0)), d, 0.6, 4.5, 4), 'horn')
-    set_mat(add_cone(bm, V((0, 0, 0)), V((0, 0, 1)), 1.2, 6, 5), 'horn')
+    for ring, (n, r, out, L, w) in enumerate(((11, 1.4, 0.9, 8.5, 0.9), (8, 0.8, 0.45, 10, 0.8))):   # zwei Kränze
+        for k in range(n):
+            a = k * 2 * math.pi / n + ring * 0.3
+            d = V((math.cos(a) * out, math.sin(a) * out, 1)).normalized()
+            set_mat(add_cone(bm, V((math.cos(a) * r, math.sin(a) * r, ring * 1.5)), d, w, L, 4), 'horn')
+    set_mat(add_cone(bm, V((0, 0, 0)), V((0, 0, 1)), 1.4, 11, 5), 'horn')
     return to_object('GH_tailtip', bm, cols, M)
 
 

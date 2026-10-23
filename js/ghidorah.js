@@ -118,7 +118,7 @@ class GhidorahBase {
     const gold = [0.75, 0.5, 0.12], silver = [0.55, 0.55, 0.58];
     this.necks = NECK_ROOTS.map((r, i) => {
       const mech = mecha && i === 0;
-      const c = new Chain(scene, skin, NECK_LEN * SCALE, 4.8 * SCALE, 3.3 * SCALE, { color: mech ? silver : gold, rings: mech ? 22 : 12 });
+      const c = new Chain(scene, skin, NECK_LEN * SCALE, 4.8 * SCALE, 3.3 * SCALE, mech ? { color: silver, rings: 22 } : { color: gold, rings: 26, scales: 5 });
       c.visible = false;
       c.root = new THREE.Vector3(...r);
       c.side = i === 0 ? 0 : (r[0] > 0 ? 1 : -1);

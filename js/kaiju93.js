@@ -91,7 +91,7 @@ export class Rodan {
     faceTo(o, gp, dt, 1.6, this.state === 'dive' ? 0.3 : 0.08);
     this.moth.flap(dt, this.state === 'dive' ? 1.5 : 3.6, this.state === 'dive' ? 0.1 : 0.5);
     this.bodyTarget.mesh.position.copy(p);
-    if (this.beam.t > 0 && !this.stunT) { this.beam.t -= dt; fireBeam(this.beam, dt, o.localToWorld(_c.set(0, 9, 44)), g, city, RO.beamDps, this.fx); }
+    if (this.beam.t > 0 && !this.stunT) { this.beam.t -= dt; fireBeam(this.beam, dt, o.localToWorld(_c.set(0, 17, 60)), g, city, RO.beamDps, this.fx); }
     else this.beam.update(dt, false);
   }
 
@@ -166,7 +166,7 @@ export class Mechagodzilla {
     let metal = null;
     this.group.traverse(o => { if (o.isMesh && !metal && /MG_Metal/.test(o.material.name)) metal = o.material; });
     metal.color.multiplyScalar(1.7);                                // Chrom nachts aufhellen
-    this.tail = new Chain(scene, metal, 60, 5, 1.5, { color: [0.45, 0.48, 0.54], rings: 16 });
+    this.tail = new Chain(scene, metal, 60, 5, 1.5, { color: [0.45, 0.48, 0.54], rings: 14, ringColor: [0.08, 0.09, 0.1], bulge: 0.12, cap: true });   // gegliederter Schwanz
     this.tail.visible = false;
     this.laser = makeBeam(scene, [1.8, 1.5, 0.3], [2.4, 2.2, 1.2]);
     this.buster = makeBeam(scene, [0.4, 0.8, 1.9], [1.6, 2.0, 2.4]);
@@ -262,7 +262,7 @@ export class Mechagodzilla {
       if (this.super && this.laser.t > 0) for (const c of this.cannons) c.t = Math.max(c.t, 0.05);
     }
     const fire = (b, local, dps) => { if (b.t > 0 && !this.stunT) { b.t -= dt; fireBeam(b, dt, G.localToWorld(_c.set(...local)), g, city, dps, this.fx); } else b.update(dt, false); };
-    fire(this.laser, [0, 72, 11], MG.laserDps);
+    fire(this.laser, [0, 77, 14], MG.laserDps);
     fire(this.buster, [0, 70, 17], MG.busterDps);
     fire(this.plasma, [0, 50, 12], MG.plasmaDps);
     this.cannons.forEach((c, i) => fire(c, [i ? -5 : 5, 60, 10], MG.laserDps * 0.6));

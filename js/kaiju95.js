@@ -15,8 +15,8 @@ const OXY = [[1.9, 0.25, 0.9], [2.4, 1.3, 2.0]];   // Mikro-Sauerstoff: purpur
 const brighten = gltf => gltf.scene.traverse(o => {
   if (!o.isMesh) return;
   const m = o.material;
-  if (/DE_Skin/.test(m.name)) { m.color.setScalar(2.1); m.emissive.setRGB(0.04, 0.004, 0.003); }       // leicht rot glimmend
-  if (/DE_Membrane/.test(m.name)) { m.color.setScalar(1.9); m.emissive.setRGB(0.22, 0.02, 0.015); }  // Flughaut wie durchscheinend
+  if (/DE_Skin/.test(m.name)) { m.color.setScalar(1.3); m.emissive.setRGB(0.04, 0.004, 0.003); }       // leicht rot glimmend
+  if (/DE_Membrane/.test(m.name)) { m.color.setScalar(1.9); m.emissive.setRGB(0.06, 0.005, 0.004); } // Flughaut, kaum glimmend
   if (/DE_Flower/.test(m.name)) { m.color.setRGB(0.9, 0.28, 0.05); m.emissive.setRGB(0.55, 0.14, 0.02); m.emissiveIntensity = 1; }
 });
 

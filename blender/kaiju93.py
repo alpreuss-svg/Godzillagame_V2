@@ -8,7 +8,7 @@ import bpy, bmesh, math
 import numpy as np
 from mathutils import Vector, Matrix, Euler, noise
 from common import link, material, make_image
-from biollante import metaball_mesh, ell, chain, add_cone, lin
+from biollante import metaball_mesh, ell, chain, add_cone, lin, horn_tube
 
 V = Vector
 RO_WING_ROOT = (5.5, -1, 2)
@@ -16,7 +16,7 @@ RO_WING_ROOT = (5.5, -1, 2)
 JOINTS = {'hip': (8.5, 1, 34), 'knee': (9, -2, 18), 'shoulder': (15, -3, 58), 'neck': (0, -5, 67), 'tail': (0, 10, 33),
           'garuda': (0, 14, 56)}
 
-ORDER = ['skin', 'membrane', 'horn', 'eye', 'metal', 'yellow', 'red', 'dark']
+ORDER = ['skin', 'membrane', 'horn', 'eye', 'metal', 'yellow', 'red', 'dark', 'hornbase', 'teeth']
 
 
 def mats():
@@ -29,6 +29,8 @@ def mats():
         'yellow': material('MG_Light', color=(1, 0.85, 0.2), emit=(1, 0.8, 0.2), emit_strength=5),
         'red': material('MG_Red', color=(0.8, 0.1, 0.06), emit=(1, 0.15, 0.06), emit_strength=2.5),
         'dark': material('MG_Dark', color=(0.12, 0.13, 0.15), rough=0.6, metal=0.5),
+        'hornbase': material('RO_HornBase', color=(0.5, 0.14, 0.09), rough=0.5),
+        'teeth': material('RO_Teeth', color=(0.88, 0.84, 0.72), rough=0.5),
     }
 
 
@@ -88,13 +90,14 @@ def rod(bm, cols, a, b, r0, r1, mat, col, seg=8):
 
 
 # ---------------- Rodan ----------------
-def bent(bm, pts, r0, r1, k, segs=5):
-    """Gebogenes Horn aus Kegelstümpfen entlang pts (r0 -> r1)."""
-    faces, n = [], len(pts) - 1
-    for i in range(n):
-        a, b = V(pts[i]), V(pts[i + 1])
-        faces += add_cone(bm, a, b - a, r0 + (r1 - r0) * i / n, (b - a).length * (1.0 if i == n - 1 else 1.25), segs)
-    set_mat(faces, k)
+def bent(bm, pts, r0, r1, k, segs=6):
+    """Gebogenes Horn/Bein als durchgehender Kegelstumpf entlang pts (r0 -> r1), spitz am Ende; k: Material oder Liste je Abschnitt."""
+    parts = horn_tube(bm, pts, r0, r1, segs)
+    faces = []
+    for i, fs in enumerate(parts):
+        set_mat(fs, k[i] if isinstance(k, (list, tuple)) else k)
+        faces += fs
+    return faces
 
 
 def rodan(M):
@@ -103,10 +106,11 @@ def rodan(M):
     E = [ell((0, 3, 0), (6, 11, 5.5), (-6, 0, 0)),           # Rumpf
          ell((0, -8, 2), (7, 6.5, 6.5)),                      # Brust
          ell((0, 15, -1), (3, 8, 2.5), (8, 0, 0))]            # Schwanzstummel
-    chain(E, [(0, -12, 4), (0, -17, 8.5), (0, -21, 11.5)], 3.4, 2.4)   # langer Hals
-    E += [ell((0, -25, 12.5), (3.0, 4.5, 3.0)),               # Kopf
-          ell((0, -33, 11.5), (1.5, 8, 1.6), (8, 0, 0)),      # Oberschnabel
-          ell((0, -31.5, 10), (1.2, 6.5, 0.9), (2, 0, 0))]    # Unterschnabel
+    chain(E, [(0, -12, 4), (0, -18, 10), (0, -24, 12.5), (0, -29, 14)], 3.4, 2.3)   # langer S-Hals
+    HO = V((0, -5, 1.5))                                      # Kopf sitzt am längeren Hals weiter vorn
+    E += [ell(V((0, -25, 12.5)) + HO, (3.0, 4.5, 3.0)),       # Kopf
+          ell(V((0, -33, 11.5)) + HO, (1.5, 8, 1.6), (8, 0, 0)),      # Oberschnabel
+          ell(V((0, -31.5, 10)) + HO, (1.2, 6.5, 0.9), (2, 0, 0))]    # Unterschnabel
     me = metaball_mesh('RO_body', E, 5000, res=0.55)
     bm = bmesh.new(); bm.from_mesh(me); bpy.data.meshes.remove(me)
     bm.normal_update()
@@ -117,9 +121,9 @@ def rodan(M):
         c = V((0.6, 0.2, 0.1)).lerp(V((0.32, 0.09, 0.06)), max(0, n.z)) * (0.85 + 0.3 * noise.noise(p * 0.2))
         if n.z < -0.15 and p.y < 8:                            # heller, quer gerippter Hals- und Bauchpanzer
             c = V((0.88, 0.74, 0.55)) if math.sin(p.y * 1.7) < 0.6 else V((0.62, 0.45, 0.3))
-        if p.y < -27.5:
+        if p.y < -32.5:
             c = V((0.2, 0.19, 0.2))                            # dunkler Schnabel
-        elif p.y < -21:
+        elif p.y < -26:
             c = c.lerp(V((0.38, 0.3, 0.32)), 0.5)              # gräulicher Kopf
         cols[v] = c
     for f in bm.faces:
@@ -129,16 +133,22 @@ def rodan(M):
     for sx in (1, -1):
         r = bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=6, radius=0.8)
         for v in r['verts']:
-            v.co += V((sx * 2.5, -26.5, 13.4))
+            v.co += V((sx * 2.5, -31.5, 14.9))
         set_mat(list({f for v in r['verts'] for f in v.link_faces}), 'eye')
-        bent(bm, [(sx * 1.3, -23.5, 14.5), (sx * 2.2, -19, 18), (sx * 3, -13, 19.5)], 1.2, 0.6, 'horn')   # Hörner
+        # große, nach hinten geschwungene Hörner: rote Basis, helle Spitzen
+        bent(bm, [(sx * 1.3, -28.5, 16), (sx * 2.4, -25, 19.5), (sx * 3.3, -20, 22), (sx * 3.8, -15, 23), (sx * 4, -11, 22)],
+             1.8, 0.6, ['hornbase', 'hornbase', 'horn', 'horn'])
+        for k in range(7):                                      # Zähne im Schnabel
+            set_mat(add_cone(bm, V((sx * (1.0 - k * 0.07), -33 - k * 1.6, 11.8 - k * 0.12)), V((0, -0.1, -1)), 0.28, 1.1, 4), 'teeth')
         rod(bm, cols, (sx * 3, 6, -3), (sx * 3.4, 13, -8), 1.6, 1.1, 'skin', (0.45, 0.13, 0.08))       # Beine
         for k in (-1, 0, 1):
             set_mat(add_cone(bm, V((sx * 3.4 + k * 0.9, 13, -8)), V((k * 0.3, -0.5, -1)), 0.5, 3.4, 4), 'horn')
     for k in range(9):                                          # kleine Stacheln über Nacken und Rücken
-        y = -20 + k * 3.2
-        z = 14 - k * 1.2 if k < 4 else 8 - (k - 4) * 0.6
+        y = -24 + k * 3.6
+        z = 15.5 - k * 1.4 if k < 4 else 9 - (k - 4) * 0.7
         set_mat(add_cone(bm, V((0, y, z)), V((0, 0.6, 1)), 0.6, 2.2, 4), 'horn')
+    for v in bm.verts:                                         # Körper kräftiger im Verhältnis zu den Flügeln
+        v.co = v.co * 1.3
     return to_object('RO_body', bm, cols, M)
 
 
@@ -156,17 +166,20 @@ def rodan_image(n=512):
     col = col * (0.85 + 0.3 * vnoise(X, Y, 12, 4, 2))[..., None]
     rng = np.random.default_rng(93)
     vd = np.full(X.shape, 1e9)
-    for i in range(16):                                                    # Adern vom Arm zum Hinterrand
-        t = (i + 0.5) / 16
+    for i in range(22):                                                    # feine, gewundene Adern vom Arm zum Hinterrand
+        t = (i + 0.5) / 22
         x, y = 88 * t, -6 - 10 * math.sin(t * math.pi * 0.9)
-        pts = [(x, y)]
-        for _ in range(6):
-            x += rng.uniform(-4, 3); y += rng.uniform(3, 6)
+        pts, ang = [(x, y)], math.pi / 2 + rng.uniform(-0.3, 0.3)
+        for _ in range(14):
+            ang += rng.uniform(-0.35, 0.35)
+            x += math.cos(ang) * 2.2; y += math.sin(ang) * 2.2
             pts.append((x, y))
-            if rng.random() < 0.4:
-                vd = np.minimum(vd, line_dist(X, Y, [(x, y), (x + rng.uniform(-6, 6), y + rng.uniform(3, 7))]))
+            if rng.random() < 0.18:
+                a2 = ang + rng.choice((-0.7, 0.7))
+                vd = np.minimum(vd, line_dist(X, Y, [(x, y), (x + math.cos(a2) * 5, y + math.sin(a2) * 5)]))
         vd = np.minimum(vd, line_dist(X, Y, pts))
-    col[vd < 0.5] = col[vd < 0.5] * 0.45
+    vein = np.clip(1 - vd / 0.35, 0, 1)[..., None]
+    col = col * (1 - 0.35 * vein)
     col[d < 0.8] = [0.3, 0.07, 0.05]
     return make_image('RO_wing_img', col)
 
@@ -227,6 +240,7 @@ def mg_torso(M):
               ell((sx * 14.5, -2, 59), (6, 6.5, 5.5))]       # runde Schulterpanzer
 
     def grooves(p):
+        return False                                        # Fugen liefern jetzt die aufgesetzten Platten
         if p.y < -6 and 47 < p.z < 59 and abs(abs(p.x) * 0.75 - (p.z - 47)) < 0.6:
             return True                                     # V-förmiger Brustpanzer
         if p.y < -4 and abs(p.z - 47.5) < 0.5:
@@ -245,22 +259,30 @@ def mg_torso(M):
         set_mat(list({f for v in r['verts'] for f in v.link_faces}), 'yellow')
         for k in range(3):                                   # Lüftungsrillen am Bauch
             box(bm, cols, (5 - k, 0.5, 0.5), (0, -9.4, 40.6 - k * 1.3), 'dark', D)
-        for sx in (1, -1):                                   # Rückendüsen
-            rod(bm, cols, (sx * 5, 7, 58), (sx * 5.5, 13, 51), 2.0, 2.4, 'metal', D, 10)
-            rod(bm, cols, (sx * 5.5, 13, 51), (sx * 5.6, 13.6, 50), 2.2, 2.2, 'dark', D, 10)
-        for k in range(5):                                   # kleine Rückenzacken
-            z = 40 + k * 4.5
-            box(bm, cols, (1.2, 4, 4), (0, 10 + (k % 2) * 0.5, z), 'metal', S, rot=(30, 0, 0), taper=(0.4, 0.4))
+        for sx in (1, -1):                                   # kantige Brustplatten (V) mit dunklen Fugen
+            box(bm, cols, (9.5, 2.2, 7), (sx * 6.2, -10.6, 55.5), 'metal', S, rot=(8, 0, sx * -22), taper=(0.9, 1))
+            box(bm, cols, (10, 0.8, 0.7), (sx * 6.0, -11.8, 51.6), 'dark', D, rot=(0, 0, sx * -22))
+            box(bm, cols, (6, 1.8, 4.4), (sx * 5.6, -9.6, 40), 'metal', S)                 # Bauchplatten
+            box(bm, cols, (4.4, 6, 9), (sx * 18, -2, 58), 'metal', S, taper=(0.8, 0.85))   # kantige Schulterplatten
+        box(bm, cols, (22, 0.9, 0.8), (0, -9.2, 48), 'dark', D)                          # Fuge unter der Brust
+        for sx in (1, -1):                                   # große Rückendüsen mit gelbem Glühen
+            rod(bm, cols, (sx * 5.5, 7, 60), (sx * 6.5, 15, 50), 2.8, 3.4, 'metal', D, 12)
+            rod(bm, cols, (sx * 6.5, 15, 50), (sx * 6.6, 15.8, 49), 3.2, 3.2, 'yellow', Y, 12)
+        for k in range(6):                                   # Rückenzacken
+            z = 38 + k * 4.4
+            box(bm, cols, (1.8, 5.5, 6), (0, 10.5 + (k % 2) * 0.5, z), 'metal', S, rot=(30, 0, 0), taper=(0.35, 0.35))
     return chrome('MG_torso', E, 6000, (0, 0, 0), extra, grooves)
 
 
 def mg_head(M):
     n = V(JOINTS['neck'])
+    n = n + V((0, -1, 3))                                  # Kopf sitzt auf einem längeren Hals höher
     E = [ell(n + V((0, -0.5, 0.5)), (4.5, 4.5, 4.5)),       # Halsring
          ell(n + V((0, -3, 4)), (3.6, 4.5, 3.4)),          # Schädel
-         ell(n + V((0, -9, 2.8)), (2.6, 5, 1.9)),          # Schnauze
-         ell(n + V((0, -8.5, 0.6)), (2.3, 4.6, 1.2)),      # Unterkiefer
+         ell(n + V((0, -10, 2.8)), (2.6, 6.5, 1.9)),       # lange Schnauze
+         ell(n + V((0, -9.5, 0.6)), (2.3, 6, 1.2)),        # Unterkiefer
          ell(n + V((0, 0.5, -1.5)), (3.8, 4, 4))]          # Hals
+    chain(E, [n - V((0, -1, 3)) + V((0, 0.5, -2)), n + V((0, 0.5, -1))], 4.2, 4.0)   # Halsstück zum Rumpf
     chain(E, [n + V((0, -6, 6.6)), n + V((0, -2, 7.8)), n + V((0, 2, 6.5))], 0.9, 0.7)   # Schädelkamm
 
     def grooves(p):
@@ -269,8 +291,8 @@ def mg_head(M):
     def extra(bm, cols):
         for sx in (1, -1):
             box(bm, cols, (1.6, 2.4, 0.9), n + V((sx * 2.3, -6.5, 4.9)), 'yellow', Y, rot=(0, sx * 15, sx * -20))   # Augen
-            for k in range(5):                               # Zahnreihen
-                yy = -12 + k * 1.5
+            for k in range(6):                               # Zahnreihen
+                yy = -14.5 + k * 1.6
                 set_mat(add_cone(bm, n + V((sx * (1.2 + k * 0.25), yy, 1.95)), V((0, 0, -1)), 0.32, 0.9, 4), 'metal')
                 set_mat(add_cone(bm, n + V((sx * (1.1 + k * 0.25), yy + 0.6, 1.55)), V((0, 0, 1)), 0.3, 0.8, 4), 'metal')
         for k in range(4):                                   # Zacken auf dem Kamm
@@ -284,38 +306,41 @@ def mg_head(M):
 
 def mg_arm(M):
     s = V(JOINTS['shoulder'])
-    el, wr = s + V((1.5, -2, -10)), s + V((1.5, -10, -14))
+    el, wr = s + V((1.5, -2, -11)), s + V((1.5, -12, -17))
     E = []
     chain(E, [s, el], 3.8, 3.3, step=0.4)                   # Oberarm
     chain(E, [el, wr], 3.3, 3.0, step=0.4)                  # Unterarm
     E += [ell(wr + V((0, -0.5, 0)), (3.6, 1.6, 3.6)),       # Manschette
-          ell(wr + V((0, -2.8, -0.4)), (2.6, 2.2, 2.4))]    # Hand
+          ell(wr + V((0, -3.2, -0.4)), (3.4, 2.8, 3.0))]    # Hand
 
     def grooves(p):
         return abs((p - el).length - 3.2) < 0.25
 
     def extra(bm, cols):
         for k in (-1.5, -0.5, 0.5, 1.5):                     # gegliederte Finger
-            b0 = wr + V((k * 1.2, -4.2, -0.6))
-            rod(bm, cols, b0, b0 + V((k * 0.3, -1.8, -0.8)), 0.55, 0.5, 'metal', S, 6)
-            set_mat(add_cone(bm, b0 + V((k * 0.3, -1.8, -0.8)), V((0, -0.6, -1)), 0.45, 1.6, 4), 'metal')
+            b0 = wr + V((k * 1.5, -5.2, -0.6))
+            rod(bm, cols, b0, b0 + V((k * 0.4, -2.6, -1.2)), 0.75, 0.65, 'metal', S, 6)
+            set_mat(add_cone(bm, b0 + V((k * 0.4, -2.6, -1.2)), V((0, -0.6, -1)), 0.6, 2.2, 4), 'metal')
     return chrome('MG_arm', E, 2400, JOINTS['shoulder'], extra, grooves)
 
 
 def mg_thigh(M):
     h, k = V(JOINTS['hip']), V(JOINTS['knee'])
-    E = [ell((h + k) / 2 + V((0, 0, 1)), (6.5, 7, 9.5)),    # massiger Oberschenkel
-         ell(h + V((5.5, 0, -7)), (1.8, 6, 7.5)),           # große Seitenplatte
-         ell(k + V((0, -3.5, 0)), (4.2, 3.2, 4.2))]         # runder Kniepanzer
+    E = [ell((h + k) / 2 + V((0, 0, 1)), (5.4, 6, 9)),       # Oberschenkel
+         ell(k + V((0, -3, 0)), (3.6, 2.8, 3.6))]           # Kniepanzer
 
     def grooves(p):
         return abs(p.x - (h.x + 3.7)) < 0.3 and p.z > k.z + 2
-    return chrome('MG_thigh', E, 2400, JOINTS['hip'], None, grooves)
+    def extra(bm, cols):                                       # kantige Seitenplatte und Frontplatte
+        box(bm, cols, (2, 11, 13), (h + k) / 2 + V((5.6, 0, 1)), 'metal', S, taper=(0.8, 0.85))
+        box(bm, cols, (7, 1.6, 9), (h + k) / 2 + V((0, -6, 2)), 'metal', S, taper=(0.85, 1))
+        box(bm, cols, (7.4, 1.0, 0.6), (h + k) / 2 + V((0, -6.6, -3)), 'dark', D)
+    return chrome('MG_thigh', E, 2400, JOINTS['hip'], extra, grooves)
 
 
 def mg_shin(M):
     k = V(JOINTS['knee'])
-    E = [ell(k + V((0, 1, -6)), (5.5, 6, 7.5)),             # Schienbein
+    E = [ell(k + V((0, 1, -6)), (4.6, 5, 7.5)),             # Schienbein
          ell(V((k.x, 0, 5)), (6, 6.5, 2.5)),                 # Knöchelring
          ell(V((k.x, -3, 2)), (7, 9, 2.2))]                  # breiter Fuß
 
@@ -325,6 +350,8 @@ def mg_shin(M):
     def extra(bm, cols):
         for j in (-1.5, -0.5, 0.5, 1.5):                     # vier Krallenzehen
             set_mat(add_cone(bm, V((k.x + j * 3, -10.5, 1.4)), V((0, -1, -0.3)), 1.2, 3.2, 5), 'metal')
+        box(bm, cols, (6.4, 1.6, 8), k + V((0, -4.6, -6)), 'metal', S, taper=(0.8, 1))    # Schienbeinplatte
+        box(bm, cols, (6.8, 0.8, 0.5), k + V((0, -5.2, -9.5)), 'dark', D)
     return chrome('MG_shin', E, 2400, JOINTS['knee'], extra, grooves)
 
 
