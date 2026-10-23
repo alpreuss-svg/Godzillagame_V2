@@ -108,7 +108,9 @@ export const LEVELS = {
     bossGoal: boss => boss.dead ? 'Battra ist besiegt' : boss.form === 'imago'
       ? 'Battra fliegt: Atomstrahl auf sie – stürzt sie sich herab, greif mit Klaue und Schwanz an!'
       : 'Die Battra-Larve kriecht aus der Bucht: Atomstrahl, Klaue und Schwanz – weich ihrem Horn aus!',
-    finalGoal: () => 'Mothra: Atomstrahl, wenn kein Schuppenpulver glitzert – der Schrei (L) bläst es weg! Beim Flügelsturm ist sie tief genug für Klaue und Schwanz.',
+    finalGoal: f => f.form === 'larva'
+      ? (f.state === 'cocoon' || f.state === 'pupa' ? 'Mothra verpuppt sich …' : 'Mothras Larve: Atomstrahl, Klaue und Schwanz – weich ihrem Seidenfaden aus!')
+      : 'Mothra: Atomstrahl, wenn kein Schuppenpulver glitzert – der Schrei (L) bläst es weg! Beim Flügelsturm ist sie tief genug für Klaue und Schwanz.',
     win: ['YOKOHAMA GEHÖRT GODZILLA', 'Battra und Mothra sind besiegt'],
   },
   1993: {

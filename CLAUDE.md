@@ -108,15 +108,20 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   schwarzen Bögen), `BT_body` (schwarz gepanzert, vorgesetzter Kopf mit Schnauze, Krone aus gelben Hörnern, schräge
   rote Augen, Fangzähne, Krallenarme, rote Flecken am Hinterleib, Zangen), `BT_wing` (schwarz mit verzweigten roten
   Blitzen, gelb gesäumt), `BT_head` (Larvenkopf schiefergrau mit Goldkanten, goldenes Horn schräg nach vorn oben,
-  Brauenplatten, rote Schlitzaugen, geschwungene Hauer). Mothras Larve kommt im Spiel nicht vor. Flügel liegen
+  Brauenplatten, rote Schlitzaugen, geschwungene Hauer), `MO_larva` (Kopf der Mothra-Larve: rotbraune Kuppel mit vier
+  tiefen Augenhöhlen und blau schimmernden Augen, Rüsselmaul mit Hornzacken, Stummelbeine mit Borsten), `MO_cocoon`
+  (weißer Seidenkokon). Flügel liegen
   waagrecht (XY), linker nach +X, Gelenk `WING_ROOT` (muss zu kaiju.js passen); Muster als Bild aus den Umrissen.
 - `blender/kaiju93.py` – nach Filmbildern: Rodan (`RO_body`: rot-orange, heller quer gerippter Hals und Bauch,
   langer dunkler Schnabel, zwei Hörner, Nackenstacheln; `RO_wing` mit geäderter Flughaut als Bild `rodan_image`) und
-  Mechagodzilla 1993 als runde Chrompanzerung aus Metaballs (`chrome`: V-Brustpanzer, Bauchlinse, Rückendüsen,
+  Mechagodzilla 1993 als runde Chrompanzerung aus Metaballs (Metallanteil 0,5 und im Spiel aufgehellt – mit 0,85
+  spiegelte der Chrom nachts nur Schwarz; ebenso Moguera) (`chrome`: V-Brustpanzer, Bauchlinse, Rückendüsen,
   Echsenkopf mit Kamm und Zahnreihen, massige Oberschenkel mit Seitenplatten, runde Kniepanzer, Vierzehenfüße) in
   Gelenkteilen (`MG_torso`, `MG_head`, `MG_arm`, `MG_thigh`, `MG_shin`, `MG_garuda` mit langen Kanonen; Ursprung je
   Teil im Gelenk `JOINTS`, muss zu kaiju93.js passen).
-- `blender/kaiju94.py` – Moguera (`MOG_body` auf Ketten, `MOG_drill` für Nase und Hände, `DRILLS`) und `SG_crystal`
+- `blender/kaiju94.py` – Moguera nach Filmbildern (`MOG_body`: silbern mit blauen gerippten Kettenpaneelen an
+  Schultern, Hüftkugeln, Schienbeinen und Füßen, Brustscheibe als Ring mit Kuppel, bronzene Knöchel und Gürtel, Kopf
+  mit gelben Visieren, große Sägescheibe auf dem Rücken; `MOG_drill` dunkelblau für Nase und Hände, `DRILLS`) und `SG_crystal`
   (Kristallgruppe für Stirnhorn und Kristalltürme), `SG_shoulder` (SpaceGodzillas riesiger Schulterkristall, weiß bis
   rosa mit roter Basis, Vertexfarben).
 - `blender/kaiju95.py` – Destoroyah nach Filmbildern: `DE_juvenile` (Krabbe/Skorpion: sechs spitze Beine, zwei
@@ -201,7 +206,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   schmilzt er, danach trifft der Strahl mit 8/s. Hochhaus-Falle wirkt weiter.
 - `js/chain.js` – biegsame Kette (Schlauch mit 10 Knochen, folgt einer Bezierkurve; optional Kopf an der Spitze und
   Vertexfarben mit Querringen, `ringColor` für eigene Ringfarbe, `spots` für Flankenflecken je Glied) für Biollantes
-  Ranken, Ghidorahs Hälse und Schwänze, Battras Larve (schiefergrau, goldene Ringe, rote Flecken), Destoroyahs Schwanz.
+  Ranken, Ghidorahs Hälse und Schwänze, Battras und Mothras Larve, Destoroyahs Schwanz. In moths.js bewegt `Crawler`
+  beide Larvenkörper (Kette folgt der Kopfspur wie eine Schlange).
 - `js/ghidorah.js` – 1991: `KingGhidorah` (Boss-Rolle wie die Super-X; bekommt auch Godzillas `attack`-Ereignisse)
   und `MechaKingGhidorah` (Endgegner-Rolle). Rumpf + Flügel (King schlägt, Mecha fast starr) + 3 Hälse und 2
   Schwänze als Ketten (Mecha-Mittelhals silbern gegliedert, Schwanzenden aus dem glb), Köpfe auf den Halsspitzen.
@@ -243,7 +249,9 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
 - `js/moths.js` – 1992: `Battra` (Boss-Rolle) in zwei Stufen – Larve (Kette 120 m mit Kopf, kriecht aus der Bucht,
   folgt ihrer Spur wie eine Schlange, walzt Gebäude nieder, rammt mit dem Horn (6 Schaden, stößt Godzilla zurück),
   roter Prismenstrahl aus dem Horn), besiegt gräbt sie sich ein und steigt als Falter auf (fliegt, rote Strahlen aus
-  den Augen, Sturzflug – dann für Klaue/Schwanz erreichbar); `Mothra` (Endgegner-Rolle): gelbe Strahlen aus den
+  den Augen, Sturzflug – dann für Klaue/Schwanz erreichbar); `Mothra` (Endgegner-Rolle) beginnt wie im Film als **Larve** aus der Bucht (Kette 110 m, kriecht heran,
+  Seidenfaden aus dem Maul bremst Godzilla auf 5 m/s, Biss aus der Nähe); besiegt spinnt sie sich in einen Kokon
+  ein (`mothraCocoon`, 3,5 s), ruht 7 s und schlüpft als Falter (`mothraHatch`) mit vollen Lebenspunkten. Falter: gelbe Strahlen aus den
   Fühlern, Schuppenpulver (goldene Glitzerwolke `fx.glow` 8 s, brennt Godzilla in 110 m und wirft den Atomstrahl
   zurück; der Schrei bläst es weg), Flügelsturm (fliegt auf 26 m herab, drückt Godzilla weg, reißt Gebäude um, dann
   für Klaue/Schwanz erreichbar). Strahlen sind schlanke `Beam`s ohne Licht, Gebäude fangen sie ab.
@@ -359,5 +367,4 @@ Burning Godzilla, Kernschmelze) spielbar – alle sieben Heisei-Level sind angel
 Außerdem offen: echte GPU-Last auf der UHD 615 prüfen (~370k Dreiecke mit Requisiten, ~70 Draw Calls; `?q=low`), Lautstärken
 anhören, Balance (Wellen, Schaden, Bossphase) im echten Spiel prüfen, Biollante-Kampf im echten Spiel abstimmen,
 Kämpfe im echten Spiel abstimmen, alle Monster nach den Bildvorlagen und Soundeffekten des Nutzers verfeinern
-(Mothra, Battra, Rodan, Mechagodzilla, SpaceGodzilla, Destoroyah und Burning Godzilla sind nach den Bildern des
-Nutzers überarbeitet; Moguera ist noch ein Entwurf ohne Bildvorlage).
+(alle Monster einschließlich Moguera und Mothras Larve sind nach den Bildern des Nutzers überarbeitet).

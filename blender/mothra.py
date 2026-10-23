@@ -8,6 +8,8 @@ als Kette (chain.js), die Flügel schlagen als ganze Teile um die Körperlängsa
 - BT_body: Battra-Falter – schwarz gepanzert, Krone aus gelben Hörnern, rote Augen, Fangzähne, kräftige Krallenarme,
   geringelter Hinterleib mit roten Flecken und Zangen am Ende.
 - BT_wing: linker Flügel – schwarz mit roten Blitzen, gelb umrandet, gezackter Hinterrand.
+- MO_larva: Kopf der Mothra-Larve – rotbraune Kuppel mit vier tiefen Augenhöhlen, Rüsselmaul mit Hornzacken,
+  Stummelbeine mit Borsten (den Körper baut das Spiel als Kette); MO_cocoon: weißer Seidenkokon.
 - BT_head: Kopf der Battra-Larve – schiefergrau gepanzert mit goldenen Plattenrändern, langes goldenes Horn schräg nach
   vorn oben, große rote Schlitzaugen, geschwungene Hauer, Kiefer; schaut nach -Y (sitzt auf der Kettenspitze).
 Blender: Z oben, Kopf nach -Y (im glTF +Z), Flügel in der XY-Ebene (waagrecht), linker Flügel nach +X."""
@@ -55,10 +57,11 @@ def mats():
         'bone': material('BT_Bone', color=(0.82, 0.78, 0.66), rough=0.5),
         'eyeM': material('MO_Eye', color=(0.1, 0.38, 0.95), emit=(0.2, 0.5, 1.0), emit_strength=0.7, rough=0.15),
         'eyeB': material('BT_Eye', color=(1.0, 0.12, 0.05), emit=(1.0, 0.15, 0.05), emit_strength=4.0),
+        'eyeL': material('MO_LarvaEye', color=(0.04, 0.05, 0.09), emit=(0.15, 0.35, 0.9), emit_strength=0.35, rough=0.05, metal=0.3),
     }
 
 
-ORDER = ['fur', 'wingM', 'wingB', 'horn', 'claw', 'gold', 'bone', 'eyeM', 'eyeB']
+ORDER = ['fur', 'wingM', 'wingB', 'horn', 'claw', 'gold', 'bone', 'eyeM', 'eyeB', 'eyeL']
 
 
 def set_mat(faces, k):
@@ -387,9 +390,74 @@ def larva_head(M):
     return to_object('BT_head', bm, cols, M)
 
 
+def mothra_larva_head(M):
+    """Kopf der Mothra-Larve nach Filmbildern, schaut nach -Y (glTF +Z), Halsansatz bei y=0: rotbraune, glatte Kuppel
+    mit vier tiefen Augenhöhlen (blau schimmernde Augen darin), Rüsselmaul mit kurzen Hornzacken, Stummelbeine mit
+    Borsten unten."""
+    E = [('b', V((0, 1, 0)), 10.5), ell((0, -4, 1), (10.5, 8.5, 9.5)), ell((0, -10.5, -1.5), (7, 5, 6.5)),
+         ell((0, -15, -3), (3.6, 3.2, 3.4))]
+    for sx in (1, -1):                                         # vier tiefe Augenhöhlen (negative Ellipsoide)
+        E.append(ell((sx * 3.6, -11.5, 3.5), (3.2, 2.6, 3.2), None, True))
+        E.append(ell((sx * 7.8, -8, 1.0), (3.0, 2.6, 3.2), None, True))
+    E.append(ell((0, -18, -3), (1.8, 2.5, 1.6), None, True))    # Mundöffnung
+    me = metaball_mesh('MO_larva', E, 3500, res=0.5)
+    bm = bmesh.new(); bm.from_mesh(me); bpy.data.meshes.remove(me)
+    bm.normal_update()
+    cols = {}
+    for v in bm.verts:
+        p = v.co.copy()
+        v.co += v.normal * noise.noise(p * 0.35) * 0.35
+        c = V((0.5, 0.25, 0.19)) * (0.85 + 0.25 * noise.noise(p * 0.25))
+        if abs(math.sin(p.y * 0.9 + p.z * 0.25)) < 0.12 and p.y > -8:
+            c = c * 0.65                                           # Hautfalten
+        if v.normal.z < -0.5:
+            c = c * 0.8
+        cols[v] = c
+    for f in bm.faces:
+        f.smooth = True
+        f.material_index = ORDER.index('fur')
+    bm.normal_update()
+    for sx in (1, -1):
+        for pos, r in (((sx * 3.5, -9.6, 3.4), 1.1), ((sx * 7.0, -6.4, 1.0), 1.0)):
+            res = bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=6, radius=r)
+            for v in res['verts']:
+                v.co += V(pos)
+            set_mat(list({f for v in res['verts'] for f in v.link_faces}), 'eyeL')
+        for k in range(3):                                         # Hornzacken um das Maul
+            a = math.radians(-50 + k * 50)
+            b0 = V((sx * (2 + math.cos(a) * 1.6), -16.5, -3 + math.sin(a) * 2.2))
+            bent(bm, [b0, b0 + V((sx * 1.6, -2.6, math.sin(a) * 1.2)), b0 + V((sx * 3.2, -3.8, math.sin(a) * 2.5 + 0.5))], 0.8, 0.3, 'bone')
+        for k in range(3):                                         # Stummelbeine mit Borsten
+            b0 = V((sx * 5.5, -6 + k * 4.5, -7.5))
+            set_mat(add_cone(bm, b0, V((sx * 0.3, -0.2, -1)), 1.4, 4, 5), 'bone')
+            for j in range(3):
+                set_mat(add_cone(bm, b0 + V((sx * 0.5, j - 1, -2)), V((sx * 0.4, (j - 1) * 0.4, -1)), 0.25, 3.5, 3), 'horn')
+    return to_object('MO_larva', bm, cols, M)
+
+
+def cocoon(M):
+    """Seidenkokon der Mothra-Larve: länglich, weiß, mit Seidenfäden, Ursprung unten, liegt entlang Y."""
+    E = [ell((0, 0, 14), (16, 30, 14)), ell((0, -16, 12), (11, 12, 11)), ell((0, 18, 11), (10, 12, 10))]
+    me = metaball_mesh('MO_cocoon', E, 3000, res=0.8)
+    bm = bmesh.new(); bm.from_mesh(me); bpy.data.meshes.remove(me)
+    bm.normal_update()
+    cols = {}
+    for v in bm.verts:
+        p = v.co.copy()
+        v.co += v.normal * noise.noise(p * 0.3) * 1.2
+        c = V((0.92, 0.9, 0.84)) * (0.85 + 0.15 * noise.noise(p * 0.5))
+        if abs(math.sin(p.y * 0.8 + math.atan2(p.x, p.z - 12) * 3)) < 0.15:
+            c = V((0.75, 0.72, 0.66))                              # Seidenfäden
+        cols[v] = c
+    for f in bm.faces:
+        f.smooth = True
+        f.material_index = ORDER.index('fur')
+    return to_object('MO_cocoon', bm, cols, M)
+
+
 def build():
     M = mats()
-    return [mothra_body(M), wing(M, True), battra_body(M), wing(M, False), larva_head(M)]
+    return [mothra_body(M), wing(M, True), battra_body(M), wing(M, False), larva_head(M), mothra_larva_head(M), cocoon(M)]
 
 
 def layout_preview(objs):
@@ -404,3 +472,5 @@ def layout_preview(objs):
             w.location = (ox + sx * WING_ROOT[0], WING_ROOT[1], 40 + WING_ROOT[2])
             w.rotation_euler = (0, sx * math.radians(-25), 0)
     by['BT_head'].location = (0, 0, 12)
+    by['MO_larva'].location = (0, -60, 12)
+    by['MO_cocoon'].location = (0, 60, 0)

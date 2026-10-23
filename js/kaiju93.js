@@ -165,6 +165,7 @@ export class Mechagodzilla {
     this.garuda.scale.setScalar(1.15);
     let metal = null;
     this.group.traverse(o => { if (o.isMesh && !metal && /MG_Metal/.test(o.material.name)) metal = o.material; });
+    metal.color.multiplyScalar(1.7);                                // Chrom nachts aufhellen
     this.tail = new Chain(scene, metal, 60, 5, 1.5, { color: [0.45, 0.48, 0.54], rings: 16 });
     this.tail.visible = false;
     this.laser = makeBeam(scene, [1.8, 1.5, 0.3], [2.4, 2.2, 1.2]);

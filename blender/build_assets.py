@@ -101,6 +101,8 @@ if 'mothra' in WHAT:
         common.color_preview(os.path.join(PRE, 'mothra_battra.png'), target=(110, -5, 40), dist=210, elev=25, azim=-110)
         common.color_preview(os.path.join(PRE, 'mothra_battra_head.png'), target=(110, -18, 36), dist=75, elev=12, azim=-120)
         common.color_preview(os.path.join(PRE, 'mothra_larva.png'), target=(0, -10, 14), dist=80, elev=12, azim=-55)
+        common.color_preview(os.path.join(PRE, 'mothra_molarva.png'), target=(0, -70, 12), dist=70, elev=12, azim=-60)
+        common.color_preview(os.path.join(PRE, 'mothra_cocoon.png'), target=(0, 60, 12), dist=110, elev=20, azim=-60)
 
 if 'kaiju93' in WHAT:
     common.reset()
@@ -119,7 +121,9 @@ if 'kaiju94' in WHAT:
     common.export_glb(os.path.join(OUT, 'kaiju94.glb'), objs)
     if PREVIEW:
         kaiju94.layout_preview(objs)
-        common.preview(os.path.join(PRE, 'kaiju94.png'), target=(0, 0, 35), dist=170, elev=12, azim=-70, color='VERTEX')
+        common.color_preview(os.path.join(PRE, 'kaiju94.png'), target=(0, 0, 35), dist=170, elev=12, azim=-70)
+        common.color_preview(os.path.join(PRE, 'kaiju94_moguera.png'), target=(-40, 0, 38), dist=120, elev=8, azim=-75)
+        common.color_preview(os.path.join(PRE, 'kaiju94_moguera_side.png'), target=(-40, 0, 38), dist=120, elev=8, azim=-20)
 
 if 'kaiju95' in WHAT:
     common.reset()

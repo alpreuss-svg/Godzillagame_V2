@@ -229,6 +229,9 @@ async function load() {
   events.on('powderStart', () => toast('Mothra streut Schuppenpulver – es wirft den Atomstrahl zurück! Schrei (L) bläst es weg.', 3.5));
   events.on('powderGone', () => toast('Das Schuppenpulver ist verweht', 2));
   events.on('gustStart', () => toast('Flügelsturm! Mothra ist tief – Klaue und Schwanz!', 2.5));
+  events.on('silkSpray', () => once2('silk', 10, () => toast('Mothras Larve spinnt Seide – sie klebt Godzilla fest!', 2.5)));
+  events.on('mothraCocoon', () => toast('Die Larve spinnt sich in einen Kokon ein …', 3));
+  events.on('mothraHatch', e => { cinema(e.title, 4); $('bossName').textContent = game.final.label; });
   events.on('biollanteBurn', () => toast('Die Rose verbrennt …', 3));
   events.on('biollanteSpores', () => toast('Goldene Sporen steigen auf – sie verwandelt sich!', 3.5));
   events.on('vineGrab', () => toast('Eine Ranke hält Godzilla fest – Klaue oder Kernpuls!', 2.5));

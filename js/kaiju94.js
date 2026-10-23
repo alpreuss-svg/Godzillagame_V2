@@ -72,6 +72,9 @@ export class Moguera {
     this.drills = [[...NOSE], [HAND[0], HAND[1], HAND[2]], [-HAND[0], HAND[1], HAND[2]]].map(pos => {
       const d = get('MOG_drill'); d.position.set(...pos); this.group.add(d); return d;
     });
+    const lit = new Set();                                            // nachts aufhellen (Bohrer teilen ein Material)
+    this.group.traverse(o => { if (o.isMesh && /MOG_Metal|MOG_Drill/.test(o.material.name)) lit.add(o.material); });
+    for (const m of lit) m.color.multiplyScalar(1.8);
     this.mesh = this.group;
     this.maser = makeBeam(scene, [1.8, 1.6, 0.6], [2.4, 2.4, 1.6]);
     this.missiles = new Missiles(scene, fx, 0xffd090, 1.4);

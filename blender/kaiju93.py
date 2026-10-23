@@ -25,7 +25,7 @@ def mats():
         'membrane': material('RO_Membrane', rough=0.7, img=rodan_image()),
         'horn': material('RO_Horn', color=(0.75, 0.66, 0.5), rough=0.5),
         'eye': material('RO_Eye', color=(1.0, 0.75, 0.2), emit=(1.0, 0.7, 0.2), emit_strength=3),
-        'metal': material('MG_Metal', rough=0.3, metal=0.85, vcol=True),
+        'metal': material('MG_Metal', rough=0.3, metal=0.5, vcol=True),     # weniger Metall: nachts sonst fast schwarz
         'yellow': material('MG_Light', color=(1, 0.85, 0.2), emit=(1, 0.8, 0.2), emit_strength=5),
         'red': material('MG_Red', color=(0.8, 0.1, 0.06), emit=(1, 0.15, 0.06), emit_strength=2.5),
         'dark': material('MG_Dark', color=(0.12, 0.13, 0.15), rough=0.6, metal=0.5),
