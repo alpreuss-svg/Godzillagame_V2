@@ -34,14 +34,26 @@ export class TouchControls {
       b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
     }
     // Steuerkreis: jeder Finger in der linken Bildschirmhälfte steuert, bezogen auf die Kreismitte
+    // Zwei-Finger-Zoom: zwei Finger außerhalb von Steuerkreis und Knöpfen auseinander- bzw. zusammenziehen
+    this.pinch = new Map();
     addEventListener('pointerdown', e => {
-      if (e.pointerType === 'mouse' || this.stick || e.clientX > innerWidth * 0.45 || e.target.closest?.('button, #levels')) return;
+      if (e.pointerType === 'mouse' || e.target.closest?.('button, #levels')) return;
+      if (this.stick || e.clientX > innerWidth * 0.45 || this.pinch.size) { this.pinch.set(e.pointerId, { x: e.clientX, y: e.clientY }); this.pinchD = 0; return; }
       const r = this.base.getBoundingClientRect();
       this.stick = { id: e.pointerId, cx: r.left + r.width / 2, cy: r.top + r.height / 2, R: r.width / 2 };
       this.drag(e);
     });
-    addEventListener('pointermove', e => { if (this.stick && e.pointerId === this.stick.id) this.drag(e); });
-    const end = e => { if (this.stick && e.pointerId === this.stick.id) this.release(); };
+    addEventListener('pointermove', e => {
+      if (this.stick && e.pointerId === this.stick.id) return this.drag(e);
+      const p = this.pinch.get(e.pointerId);
+      if (!p) return;
+      p.x = e.clientX; p.y = e.clientY;
+      if (this.pinch.size !== 2) return;
+      const [a, b] = [...this.pinch.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (this.pinchD) this.input.zoom += Math.log(this.pinchD / d) / 0.08;   // Kamera.dist *= 1 + zoom · 0,08
+      this.pinchD = d;
+    });
+    const end = e => { this.pinch.delete(e.pointerId); this.pinchD = 0; if (this.stick && e.pointerId === this.stick.id) this.release(); };
     addEventListener('pointerup', end); addEventListener('pointercancel', end);
     addEventListener('blur', () => { this.release(); this.held.clear(); });
   }

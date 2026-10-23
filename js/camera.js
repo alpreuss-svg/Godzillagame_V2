@@ -1,16 +1,17 @@
 // Feste Kamera schräg von oben, blickt nach Norden; gesteuert wird nach Himmelsrichtung (W = Norden).
-// Mausrad zoomt, Erschütterung bei Treffern.
+// Mausrad bzw. zwei Finger zoomen, Erschütterung bei Treffern. Auf dem Handy näher dran (kleiner Bildschirm).
 import * as THREE from 'three';
 
 const PITCH = 0.92;          // rad über dem Horizont (~53°)
-const DIST = [320, 620];
+const DIST = [320, 620], DIST_TOUCH = [170, 460];
 const LOOK_Y = 30;           // Blickpunkt etwa in Hüfthöhe
 const YAW = 0;               // Blickrichtung: 0 = Norden, PI/4 = Nordosten (ausprobiert, Nutzer wollte Norden)
 
 export class CameraRig {
-  constructor(camera) {
+  constructor(camera, touch = false) {
     this.cam = camera;
-    this.dist = 460;
+    this.range = touch ? DIST_TOUCH : DIST;
+    this.dist = touch ? 250 : 460;
     this.target = new THREE.Vector3();
     this.forward = new THREE.Vector3(0, 0, -1);   // Bewegung nach Himmelsrichtung, unabhängig vom Blickwinkel
     this.right = new THREE.Vector3(1, 0, 0);
@@ -22,7 +23,7 @@ export class CameraRig {
   snap(focus) { this.target.set(focus.x, LOOK_Y, focus.z); }
 
   update(dt, focus, input) {
-    this.dist = THREE.MathUtils.clamp(this.dist * (1 + input.zoom * 0.08), DIST[0], DIST[1]);
+    this.dist = THREE.MathUtils.clamp(this.dist * (1 + input.zoom * 0.08), this.range[0], this.range[1]);
     const k = 1 - Math.exp(-4 * dt);
     this.target.x += (focus.x - this.target.x) * k;
     this.target.z += (focus.z - this.target.z) * k;

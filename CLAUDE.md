@@ -144,6 +144,8 @@ Vorgänger (Teil 1, 2D-Canvas): https://github.com/alpreuss-svg/godzillagame –
   linken Bildschirmhälfte steuert. Rechts vier Knöpfe SCHLAG/STRAHL (halten)/PULS/BRÜLL, oben Pause und Ton. Erstes
   Antippen startet, schaltet Vollbild und sperrt Querformat (`goFullscreen`); Hochformat zeigt „Bitte quer halten“.
   Auf Touch-Geräten Grafikstufe `low`, kompakter HUD und Titel (`body.touch`), Level per Antippen wählbar.
+  Kamera auf dem Handy näher dran (250 m, Zwei-Finger-Zoom 170–460 m, `DIST_TOUCH` in camera.js) – 460 m waren dem
+  Nutzer auf dem Handy viel zu weit weg.
 - `js/camera.js` – **feste** Kamera schräg von oben (Pitch 0,92 rad, Abstand 460 m), blickt nach **Norden** – kein
   Drehen (Wunsch des Nutzers: kein Third-Person-Gefühl; Nordosten wurde probiert und verworfen, `YAW`). Gesteuert wird
   nach Himmelsrichtung (W = Norden). Mausrad zoomt 320–620 m, Erschütterung bei Treffern. Start: Südwesten der

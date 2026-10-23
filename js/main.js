@@ -78,7 +78,7 @@ const events = new Events();
 const input = new Input();
 if (input.touch) input.touch.visible = false;
 document.body.classList.toggle('touch', IS_TOUCH);
-const rig = new CameraRig(camera);
+const rig = new CameraRig(camera, IS_TOUCH);
 const game = { state: 'loading', events, scene, renderer, camera, rig, input };
 window.game = game;   // zum Ausprobieren in der Konsole
 
